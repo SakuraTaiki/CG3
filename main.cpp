@@ -85,8 +85,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) 
 {
 	SetUnhandledExceptionFilter(ExportDump);
-	uint32_t* p = nullptr;
-	*p = 100;
+	
 
 	//log出力用のフォルダ
 	std::filesystem::create_directory("logs");
