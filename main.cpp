@@ -63,6 +63,7 @@ std::string ConvertString(const std::wstring& str) {
 	return result;
 }
 
+
 //ウィンドウプロシージャ
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	//メッセージに応じてゲーム固有の処理を行う
@@ -77,6 +78,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	//標準のメッセージ処理を行う
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
+
+
+
+
 
 //Windousアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) 
@@ -250,7 +255,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 
-	hr = swapChain->GetBuffer(0, IID_PPV_ARGS(&swapChainResources[1]));
+	hr = swapChain->GetBuffer(1, IID_PPV_ARGS(&swapChainResources[1]));
 	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
 	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
@@ -268,9 +273,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 
+	//初期値で0を作る
+	ID3D12Fence* fence = nullptr;
 
+	uint64_t fenceValue = 0;
+
+	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+
+	assert(SUCCEEDED(hr));
+
+	//Fenseのシグナルを待つためのイベントを作成する
+
+	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+
+	assert(fenceEvent != nullptr);
 
 	MSG msg{};
+	//ウィンドウのxボタンが押されるまでループ
 	while (msg.message != WM_QUIT) {
 		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
 			TranslateMessage(&msg);
@@ -281,12 +300,61 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//これから書き込むバックバッファのインデックスを取得
 	UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+
+	//TransitionBarrierの設定
+
+	D3D12_RESOURCE_BARRIER barrier{};
+
+	//今回のバリアはTransition
+
+	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+
+	//Noneにしておく
+
+	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+	//バリアを張る対象のリソース
+
+	barrier.Transition.pResource = swapChainResources[backBufferIndex];
+
+	//遷移前のリソース
+
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+
+	//遷移後のリソース
+
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+	//TransitionBarrierを張る
+
+	commandList->ResourceBarrier(1, &barrier);
+
+
+
+
+
 	//描画先のRTVを設定
 	commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex],false, nullptr);
 	//指定した色で画面全体をクリアにする
 	float clearColor[] = { 0.1f,0.25f,0.5f,1.0f };
 	commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
 	//コマンドリストの内容を確定させる　すべてのコマンドを積んでからcloseすること
+
+	//画面に書く処理はすべて終わり、画面に映すので、状態を遷移
+
+	//今回はRenderTargetからPresentにする
+
+	barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+	barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+
+	//TransitionBarrierを張る
+
+	commandList->ResourceBarrier(1, &barrier);
+
+
+
+
 	hr = commandList->Close();
 	assert(SUCCEEDED(hr));
 
@@ -298,6 +366,35 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	commandQueue->ExecuteCommandLists(1, commandLists);
 	//GPUとOSに画面の交換を行うよう通知する
 	swapChain->Present(1, 0);
+
+	//fenceの値を更新
+
+	fenceValue++;
+
+	//GPUがここまでたどり着いたときにFenceの値を指定した値に代入するようにsignalを送る
+
+	commandQueue->Signal(fence, fenceValue);
+
+
+	//Fenceの値が指定したsignalの値にたどり着いてるか確認する
+
+	//GetCompletedValueの初期値はFence作成時に渡した初期値
+
+	if (fence->GetCompletedValue() < fenceValue) {
+		//指定したsignalにたどり着いていないのでたどり着くまで待つようにイベントを設定する
+
+		fence->SetEventOnCompletion(fenceValue, fenceEvent);
+
+		//	イベント待つ
+
+		WaitForSingleObject(fenceEvent, INFINITE);
+
+
+	}
+
+
+
+
 	//次のフレームのコマンドリストを準備
 	hr = commandAllocator->Reset();
 	assert(SUCCEEDED(hr));
