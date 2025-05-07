@@ -1,7 +1,7 @@
-#include <Windows.h>
-#include <cstdint>　
+#include<Windows.h>
+#include<cstdint>　
 #include<string.h>
-#include <string>
+#include<string>
 //#include <format>
 #include<filesystem>
 #include<fstream>
@@ -126,9 +126,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		wc.hInstance,
 		nullptr);
 
-
-
-#ifdef DEBUG
+#ifdef _DEBUG
 	ID3D12Debug1* debugController = nullptr;
 	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
 		//デバッグレイヤー有効化する
@@ -197,14 +195,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		D3D12_MESSAGE_ID denyIds[] = {
 			D3D12_MESSAGE_ID_RESOURCE_BARRIER_MISMATCHING_COMMAND_LIST_TYPE
 		};
+		//抑制するレベル
+		D3D12_MESSAGE_SEVERITY severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
 		D3D12_INFO_QUEUE_FILTER filter{};
 		filter.DenyList.NumIDs = _countof(denyIds);
 		filter.DenyList.pIDList = denyIds;
-		filter.DenyList.NumServerities = _countof(serverities);
-		filter.DenyList.pServerityList = serverities;
+		filter.DenyList.NumSeverities = _countof(serverities);
+		filter.DenyList.pSeverityList = serverities;
 		//指定したメッセージの表示を抑制する
 		infoQueue->PushStorageFilter(&filter);
-		infoQueue->Release()
+		infoQueue->Release();
 	}
 #endif
 
@@ -299,9 +299,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//GPUとOSに画面の交換を行うよう通知する
 	swapChain->Present(1, 0);
 	//次のフレームのコマンドリストを準備
-	assert(SUCCEEDED(hr));
 	hr = commandAllocator->Reset();
-	assert(SUCCEDED(hr));
+	assert(SUCCEEDED(hr));
+	hr = commandList->Reset(commandAllocator, nullptr);
+	assert(SUCCEEDED(hr));
 
 
 
