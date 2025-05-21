@@ -17,6 +17,8 @@
 #include<strsafe.h>
 #include<dxgidebug.h>
 #include<dxcapi.h>
+#include "Math.h"
+#include "Math.cpp"
 
 
 struct Vector4
@@ -285,12 +287,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	ShowWindow(hwnd, SW_SHOW);
 
 	//DXGIファクトリーの生成
+
 	IDXGIFactory7* dxgiFactory = nullptr;
+
 	//HRESULTはWindows系のエラーコードであり
+	// 
 	//関数が成功したかどうかをSUCCEEDEDマクロで判定できる
+
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
+
 	//初期化の根本的な部分でエラーが出た場合はプログラムが間違っているか
+	// 
 	//どうにもできない場合が多いのでassertにしておく
+
 	assert(SUCCEEDED(hr));
 
 
@@ -303,7 +312,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	{
 
 		DXGI_ADAPTER_DESC3 adapterDesc{};
+
 		hr = useAdapter->GetDesc3(&adapterDesc);
+
 		assert(SUCCEEDED(hr));
 
 		if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE))
@@ -320,6 +331,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 
 	D3D_FEATURE_LEVEL featureLevels[] = {
+
 		D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1, D3D_FEATURE_LEVEL_12_0
 	};
 
@@ -337,9 +349,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 
 	assert(device != nullptr);
+
 	Log(logstream, "complete create D3D12Device!!!\n");
+
 #ifdef _DEBUG
 	ID3D12InfoQueue* infoQueue = nullptr;
+
 	if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&infoQueue))))
 	{
 		//やばいエラー時に止まる
@@ -355,25 +370,33 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		};
 		//
 		D3D12_MESSAGE_SEVERITY severities[] = { D3D12_MESSAGE_SEVERITY_INFO };
+
 		D3D12_INFO_QUEUE_FILTER filter{};
+
 		filter.DenyList.NumIDs = _countof(denyIds);
 		filter.DenyList.pIDList = denyIds;
 		filter.DenyList.NumSeverities = _countof(severities);
 		filter.DenyList.pSeverityList = severities;
 
 		infoQueue->PushStorageFilter(&filter);
+
 		//解放
 		infoQueue->Release();
 	}
 #endif
 	ID3D12CommandQueue* commandQueue = nullptr;
+
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
+
 	hr = device->CreateCommandQueue(&commandQueueDesc, IID_PPV_ARGS(&commandQueue));
+
 
 	assert(SUCCEEDED(hr));
 
 	ID3D12CommandAllocator* commandAllocator = nullptr;
+
 	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
+
 	assert(SUCCEEDED(hr));
 
 	ID3D12GraphicsCommandList* commandList = nullptr;
@@ -455,18 +478,51 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 	//RootParameter作成。複数設定できるので配列。今回は結果１つだけなので長さ１の配列
-	D3D12_ROOT_PARAMETER rootParameters[1] = {};
+
+	D3D12_ROOT_PARAMETER rootParameters[2] = {};
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+
 	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderで使う
+
 	rootParameters[0].Descriptor.ShaderRegister = 0;//レジスタ番号０とバインド
+
+	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+
+	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	rootParameters[1].Descriptor.ShaderRegister = 0;
+
 	descriptionRootSignature.pParameters = rootParameters;//ルートパラメータ配列へのポインタ
+
 	descriptionRootSignature.NumParameters = _countof(rootParameters);//配列の長さ
 
+
+	//WVP用のリソースを作成
+
+	ID3D12Resource* wvpResource = CreateBufferResource(device, sizeof(Matrix4x4));
+
+	//データを書き込む
+
+	Matrix4x4* wvpData = nullptr;
+
+	//書き込むためのアドレスを取得
+
+	wvpResource->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
+
+	//単位行列を書き込んでおく
+
+	*wvpData = MakeIdentity4x4();
+
 	//シリアライズしてバイナリする
+
 	ID3DBlob* signatureBlob = nullptr;
+
 	ID3DBlob* errorBlob = nullptr;
+
 	hr = D3D12SerializeRootSignature(&descriptionRootSignature,
+
 		D3D_ROOT_SIGNATURE_VERSION_1, &signatureBlob, &errorBlob);
+
 	if (FAILED(hr))
 	{
 		Log(logstream, reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
@@ -474,47 +530,80 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	}
 	//バイナリをもとに生成
+
 	ID3D12RootSignature* rootSignature = nullptr;
+
 	hr = device->CreateRootSignature(0,
+
 		signatureBlob->GetBufferPointer(), signatureBlob->GetBufferSize(),
+
 		IID_PPV_ARGS(&rootSignature));
+
 	assert(SUCCEEDED(hr));
 
 	//InputLayout
+
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[1] = {};
+
 	inputElementDescs[0].SemanticName = "POSITION";
+
 	inputElementDescs[0].SemanticIndex = 0;
+
 	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+
 	inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
+
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
 
+
 	//blendstateの設定
+
 	D3D12_BLEND_DESC blendDesc{};
+
 	//全ての色要素を書き込む
+
 	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
+
 	//ResiterzeStateの設定
+
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
+
 	//裏面（時計回り）を表示しない
+
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+
 	//三角形の中を塗りつぶす
+
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
+
 	//Shaderをコンパイルする
+
 	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3D.VS.hlsl",
+
 		L"vs_6_0", dxcUtils, dxcCompiler, includeHandler, logstream);
+
 	assert(vertexShaderBlob != nullptr);
 
 	IDxcBlob* pixelShaderBlob = CompileShader(L"Object3D.PS.hlsl",
+
 		L"ps_6_0", dxcUtils, dxcCompiler, includeHandler, logstream);
+
 	assert(pixelShaderBlob != nullptr);
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPirelineStateDesc{};
+
 	graphicsPirelineStateDesc.pRootSignature = rootSignature;//rootsignature
+
 	graphicsPirelineStateDesc.InputLayout = inputLayoutDesc;//InputLayout
+
 	graphicsPirelineStateDesc.VS = { vertexShaderBlob->GetBufferPointer(),
+
 	vertexShaderBlob->GetBufferSize() };//vetexShader
 	graphicsPirelineStateDesc.PS = { pixelShaderBlob->GetBufferPointer(),
 	pixelShaderBlob->GetBufferSize() };//PixelShader
