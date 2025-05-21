@@ -97,11 +97,8 @@ IDxcBlob* CompileShader(
 	//	初期化で生成したものを3つ
 
 	IDxcUtils* dxcUtils,
-
 	IDxcCompiler3* dxcCompiler,
-
 	IDxcIncludeHandler* includeHandler,
-
 	std::ostream& os)
 {
 
@@ -114,11 +111,8 @@ IDxcBlob* CompileShader(
 	//hlslファイルに読み込む
 
 	IDxcBlobEncoding* shaderSource = nullptr;
-
 	HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
-
 	//読めなかったら止める
-
 	assert(SUCCEEDED(hr));
 
 	//読み込んだファイル内容を設定する
@@ -165,15 +159,12 @@ IDxcBlob* CompileShader(
 	);
 
 	//コンパイルエラーではなくdxcが起動できないなど致命的な状況
-
 	assert(SUCCEEDED(hr));
 
 	//警告・エラーが出てたらログに出して止める
 
 	IDxcBlobUtf8* shaderError = nullptr;
-
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
-
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0)
 	{
 
@@ -187,9 +178,7 @@ IDxcBlob* CompileShader(
 	//コンパイル結果から実行用のバイナリ部分を取得
 
 	IDxcBlob* shaderBlob = nullptr;
-
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-
 	assert(SUCCEEDED(hr));
 
 	//成功したログを出す
@@ -197,13 +186,9 @@ IDxcBlob* CompileShader(
 	Log(os,ConvertString(std::format(L"Compile Succeeded,path{},profile:{}\n", filePath, profile)));
 
 	//もう使わないリソースを解放
-
 	shaderSource->Release();
-
 	shaderResult->Release();
-
 	//実行用のバイナリを返却
-
 	return shaderBlob;
 
 
@@ -410,31 +395,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//初期値で0を作る
 	ID3D12Fence* fence = nullptr;
-
 	uint64_t fenceValue = 0;
 
 	hr = device->CreateFence(fenceValue, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
-
 	assert(SUCCEEDED(hr));
 
 	//Fenseのシグナルを待つためのイベントを作成する
 
 	HANDLE fenceEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-
 	assert(fenceEvent != nullptr);
 
 	//dxcCompilerを初期化
 
 	IDxcUtils* dxcUtils = nullptr;
-
 	IDxcCompiler3* dxcCompiler = nullptr;
-
 	hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils));
-
 	assert(SUCCEEDED(hr));
-
 	hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler));
-
 	assert(SUCCEEDED(hr));
 
 	//現時点でincludeはしないが、includeに対応するための設定を行っておく
@@ -442,7 +419,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	IDxcIncludeHandler* includeHandler=nullptr;
 
 	hr = dxcUtils->CreateDefaultIncludeHandler(&includeHandler);
-
 	assert(SUCCEEDED(hr));
 
 	
@@ -809,36 +785,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		
 
 	}
-	return 0;
-
-	//解放処理
-
 	CloseHandle(fenceEvent);
-
 	fence->Release();
-
 	rtvDescriptorHeap->Release();
-
 	swapChainResources[0]->Release();
-
 	swapChainResources[1]->Release();
-
 	swapChain->Release();
-
 	commandList->Release();
-
 	commandAllocator->Release();
-
 	commandQueue->Release();
-
 	device->Release();
-
 	useAdapter->Release();
-
 	dxgiFactory->Release();
 
-	
-
+	vertexResource->Release();
+	graphicsPipelineState->Release();
+	signatureBlob->Release();
+	if (errorBlob)
+	{
+		errorBlob->Release();
+	}
+	rootSignature->Release();
+	pixelShaderBlob->Release();
+	vertexShaderBlob->Release();
 #ifdef _DEBUG
 	debugController->Release();
 
