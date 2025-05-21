@@ -495,43 +495,69 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//全ての色要素を書き込む
 	blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
-	//ResiterzeStateの設定
+	//ResiterzerStateの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
+
 	//裏面（時計回り）を表示しない
 	rasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
+
 	//三角形の中を塗りつぶす
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	//Shaderをコンパイルする
+
 	IDxcBlob* vertexShaderBlob = CompileShader(L"Object3D.VS.hlsl",
+
 		L"vs_6_0", dxcUtils, dxcCompiler, includeHandler, logstream);
+
 	assert(vertexShaderBlob != nullptr);
 
 	IDxcBlob* pixelShaderBlob = CompileShader(L"Object3D.PS.hlsl",
+
 		L"ps_6_0", dxcUtils, dxcCompiler, includeHandler, logstream);
+
 	assert(pixelShaderBlob != nullptr);
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPirelineStateDesc{};
-	graphicsPirelineStateDesc.pRootSignature = rootSignature;//rootsignature
-	graphicsPirelineStateDesc.InputLayout = inputLayoutDesc;//InputLayout
-	graphicsPirelineStateDesc.VS = { vertexShaderBlob->GetBufferPointer(),
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
+
+	graphicsPipelineStateDesc.pRootSignature = rootSignature;//rootsignature
+
+	graphicsPipelineStateDesc.InputLayout = inputLayoutDesc;//InputLayout
+
+	graphicsPipelineStateDesc.VS = { vertexShaderBlob->GetBufferPointer(),
+
 	vertexShaderBlob->GetBufferSize() };//vetexShader
-	graphicsPirelineStateDesc.PS = { pixelShaderBlob->GetBufferPointer(),
+
+	graphicsPipelineStateDesc.PS = { pixelShaderBlob->GetBufferPointer(),
+
 	pixelShaderBlob->GetBufferSize() };//PixelShader
-	graphicsPirelineStateDesc.BlendState = blendDesc;//BlendState
-	graphicsPirelineStateDesc.RasterizerState = rasterizerDesc;//RasterizerState
+
+	graphicsPipelineStateDesc.BlendState = blendDesc;//BlendState
+
+	graphicsPipelineStateDesc.RasterizerState = rasterizerDesc;//RasterizerState
+
 	//書き込むRTVの情報
-	graphicsPirelineStateDesc.NumRenderTargets = 1;
-	graphicsPirelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+	graphicsPipelineStateDesc.NumRenderTargets = 1;
+
+	graphicsPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+
 	//利用するトポロジ（形状）のタイプ。三角形
-	graphicsPirelineStateDesc.PrimitiveTopologyType =
+
+	graphicsPipelineStateDesc.PrimitiveTopologyType =
+
 		D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
 	//どのように画面に色を打ち込むかの設定（気にしなくてもよい)
-	graphicsPirelineStateDesc.SampleDesc.Count = 1;
-	graphicsPirelineStateDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+
+	graphicsPipelineStateDesc.SampleDesc.Count = 1;
+
+	graphicsPipelineStateDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+
 	//実際に生成
+
 	ID3D12PipelineState* graphicsPipelineState = nullptr;
-	hr = device->CreateGraphicsPipelineState(&graphicsPirelineStateDesc,
+
+	hr = device->CreateGraphicsPipelineState(&graphicsPipelineStateDesc,
 		IID_PPV_ARGS(&graphicsPipelineState));
 	assert(SUCCEEDED(hr));
 
