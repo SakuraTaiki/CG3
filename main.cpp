@@ -506,6 +506,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//初期値0でfenceを作る
 
+	//初期値で0を作る
 	ID3D12Fence* fence = nullptr;
 
 	uint64_t fenceValue = 0;
@@ -546,7 +547,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	//シリアライズしてバイナリする
+			//シリアライズしてバイナリにする
 
 	ID3DBlob* signatureBlob = nullptr;
 
@@ -702,13 +703,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	vertexResourceDesc.SampleDesc.Count = 1;
 
-	//バッファの場合はこれにする決まり
+			//バッファの場合はこれにする決まり
 
-	vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			vertexResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-	//実際に頂点リソースを作る
+			//実際に頂点リソースを作る
 
-	ID3D12Resource* vertexResource = nullptr;
+			ID3D12Resource* vertexResource = nullptr;
 
 	hr = device->CreateCommittedResource(&uploadHeapProperties, D3D12_HEAP_FLAG_NONE,
 
@@ -718,7 +719,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	assert(SUCCEEDED(hr));
 
-	//頂点バッファビューを作成する
+			//頂点バッファビューを作成する
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
@@ -865,7 +866,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			//描画(drawcall/ドローコール)。３頂点で１つインスタンス。インスタンスについては今後
+	//描画！（DrawCall/ドローコール）3頂点で1つのインスタンス　インスタンスについては今後
 
 			commandList->DrawInstanced(3, 1, 0, 0);
 
@@ -881,9 +882,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			//コマンドリストの内容を確定させるすべてのコマンドを積んでからclauseすること
 
-			hr = commandList->Close();
-
-			assert(SUCCEEDED(hr));
+	hr = commandList->Close();
+	assert(SUCCEEDED(hr));
 
 			//GPU二コマンドリストの実行を行わせる
 
@@ -935,6 +935,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		}
 
 	}
+	return 0;
+
+	//解放処理
+
 	CloseHandle(fenceEvent);
 
 	fence->Release();
@@ -959,25 +963,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	dxgiFactory->Release();
 
-
-	vertexResource->Release();
-
-	graphicsPipelineState->Release();
-
-	signatureBlob->Release();
-
-	if (errorBlob)
-
-	{
-		errorBlob->Release();
-
-	}
-
-	rootSignature->Release();
-
-	pixelShaderBlob->Release();
-
-	vertexShaderBlob->Release();
+	
 
 #ifdef _DEBUG
 
@@ -1004,6 +990,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
 
 		debug->Release();
+	}
 
 	}
 	//警告時に止まる
