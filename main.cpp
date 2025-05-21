@@ -17,6 +17,12 @@
 #include<strsafe.h>
 #include<dxgidebug.h>
 #include<dxcapi.h>
+#include"externals/imgui/imgui.h"
+#include"externals/imgui/imgui_impl_dx12.h"
+#include"externals/imgui/imgui_impl_win32.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 
 struct Vector4
 {
@@ -121,6 +127,9 @@ std::string ConvertString(const std::wstring& str) {
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
 	WPARAM wparam, LPARAM lparam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
+		return true;
+	}
 	switch (msg)
 	{
 	case WM_DESTROY:
@@ -504,6 +513,32 @@ Matrix4x4 MakepersfectiveFovMatrix(float fovY, float aspectRatio, float nearClip
 	return result;
 }
 
+ID3D12DescriptorHeap* CreateDescriptorHeap
+(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible)
+{
+	ID3D12DescriptorHeap* descriptorHeap = nullptr;
+
+	D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+
+	descriptorHeapDesc.Type= heapType;//レンダーターゲットビュー用
+
+	descriptorHeapDesc.NumDescriptors = numDescriptors;//ダブルバッファ用に2つ多くても構わない
+
+	descriptorHeapDesc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+	HRESULT hr = device->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&descriptorHeap));
+
+	
+
+	//ディスクリプタヒープが作れなかったので起動できない
+
+	assert(SUCCEEDED(hr));
+
+	return descriptorHeap;
+
+
+
+}
 
 
 
@@ -730,19 +765,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//ディスクリプタヒープの生成
 
-	ID3D12DescriptorHeap* rtvDescriptorHeap = nullptr;
+	//RTV用のヒープでディスクリプタの数は2　
 
-	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc{};
+	ID3D12DescriptorHeap* rtvDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
 
-	rtvDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;//レンダーターゲットビュー用
+	ID3D12DescriptorHeap* srvDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
 
-	rtvDescriptorHeapDesc.NumDescriptors = 2;//ダブルバッファ用に2つ多くても構わない
 
-	hr = device->CreateDescriptorHeap(&rtvDescriptorHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap));
-
-	//ディスクリプタヒープが作れなかったので起動できない
-
-	assert(SUCCEEDED(hr));
 
 	//swapchainからresourceを引っ張ってくる
 
@@ -1091,6 +1120,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-5.0f} };
 
+	//ImGui初期化
+
+	IMGUI_CHECKVERSION();
+
+	ImGui::CreateContext();
+
+	ImGui::StyleColorsDark();
+
+	ImGui_ImplWin32_Init(hwnd);
+
+	ImGui_ImplDX12_Init(device, swapChainDesc.BufferCount, rtvDesc.Format, srvDescriptorHeap, srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+
 	MSG msg{};
 
 	
@@ -1106,6 +1148,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 		} else
 		{
+
+			ImGui_ImplDX12_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
+
+			ImGui::Begin("MaterialColor");
+
+			ImGui::ColorEdit4("Color", &(*materialData).x);
+
+			ImGui::End();
+
+			//同開発用UIの処理
+
+			ImGui::ShowDemoWindow();
+
 			//これから書き込むバックバッファのインデックスを取得
 
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -1171,10 +1228,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResource->GetGPUVirtualAddress());
 
+			//Imguiの内部コマンドを生成する
+
+			ImGui::Render();
+
+			//描画用のDescriptorHeapの設定
+
+			ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap };
+
+			commandList->SetDescriptorHeaps(1, descriptorHeaps);
+
+
+
 			//描画(drawcall/ドローコール)。３頂点で１つインスタンス。インスタンスについては今後
 
 			commandList->DrawInstanced(3, 1, 0, 0);
 			//今回はrenderTargetからpresentにする
+
+			//実際のcommandListのImGuiの描画コマンドを積む
+
+			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
@@ -1235,18 +1308,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			assert(SUCCEEDED(hr));
 
-			//ゲーム処理
-
-			
-
-			
-
 			transform.rotate.y += 0.03f;
 
-			Matrix4x4 worldMatrix = 
+			Matrix4x4 worldMatrix =
 				MakeAffinMatrix(transform.scale, transform.rotate, transform.translate);
 
 			*wvpData = worldMatrix;
+
+
+			
+
+
+			//ゲーム処理
+
+			
+			
+
+			
 
 			
 			Vector3 cameraPosition = { 0.0f,0.0f,-10.0f };
@@ -1261,11 +1339,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			*wvpData = worldViewProjectionMatrix;
 
+
 		}
 
 	}
 
+
 	CloseHandle(fenceEvent);
+
+	ImGui_ImplDX12_Shutdown();
+
+	ImGui_ImplWin32_Shutdown();
+
+	ImGui::DestroyContext();
 
 	fence->Release();
 
@@ -1309,6 +1395,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	materialResource->Release();
 
 	wvpResource->Release();
+
+	srvDescriptorHeap->Release();
+
+
+
 
 #ifdef _DEBUG
 
