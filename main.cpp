@@ -41,6 +41,12 @@ struct Vector3 {
 	float z;
 };
 
+struct  Vector2
+{
+	float x;
+	float y;
+};
+
 struct Transform
 {
 	Vector3 scale;
@@ -48,6 +54,13 @@ struct Transform
 	Vector3 rotate;
 
 	Vector3 translate;
+};
+
+struct VertexData
+{
+
+	Vector4 position;
+	Vector2 texcoord;
 };
 
 
@@ -601,27 +614,32 @@ ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMe
 	ID3D12Resource* resource = nullptr;
 
 	HRESULT hr = device->CreateCommittedResource(&heapProperties,//Heapの設定
+
 		D3D12_HEAP_FLAG_NONE,//Heapの特殊な設定
+
 		&resourceDesc,//Resourceの設定
+
 		D3D12_RESOURCE_STATE_GENERIC_READ,//初回のResourceState Textureは基本
 		nullptr, IID_PPV_ARGS(&resource));
 
 	assert(SUCCEEDED(hr));
+	return resource;
 }
 
-void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages) {
-	//Meta情報
+
+void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages)
+{
+	//Meta情報を取得
 
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
 
-	//全mipMap
+	//全MipMapについて
+
 	for (size_t mipLevel = 0; mipLevel < metadata.mipLevels; ++mipLevel) {
-		//MipMaLevelを指定して各イメージを取得
+
+		//MipMapLevelを指定して各Imageを取得
 
 		const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
-
-		//Textureに転送
-
 		HRESULT hr = texture->WriteToSubresource(UINT(mipLevel),
 			nullptr,//全領域へコピー
 			img->pixels,//元データアクセス
@@ -629,20 +647,9 @@ void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mip
 			UINT(img->slicePitch)//1枚サイズ
 		);
 		assert(SUCCEEDED(hr));
-
 	}
-	//Textureを呼んで転送する
-
-	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
-
-	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-
-	ID3D12Resource* textureResource = CreateTextureResource(device, metadata);
-
-	UploadTextureData(textureResource, mipImages);
-
-
 }
+
 
 
 
@@ -973,7 +980,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//RootParameter作成。複数設定できるので配列。今回は結果１つだけなので長さ１の配列
 
-	D3D12_ROOT_PARAMETER rootParameters[2] = {};
+	D3D12_ROOT_PARAMETER rootParameters[3] = {};
 
 	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 
@@ -1038,7 +1045,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//InputLayout
 
-	D3D12_INPUT_ELEMENT_DESC inputElementDescs[1] = {};
+	D3D12_INPUT_ELEMENT_DESC inputElementDescs[2] = {};
 
 	inputElementDescs[0].SemanticName = "POSITION";
 
@@ -1047,6 +1054,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	inputElementDescs[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 
 	inputElementDescs[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+	inputElementDescs[1].SemanticName = "TEXCOORD";
+
+	inputElementDescs[1].SemanticIndex = 0;
+
+	inputElementDescs[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+
+	inputElementDescs[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
 
@@ -1155,7 +1170,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//頂点リソースにデータを書き込む
 
-	Vector4* vertexData = nullptr;
+	VertexData* vertexData = nullptr;
 
 	//書き込むためのアドレスを取得
 
@@ -1163,15 +1178,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	//左下
 
-	vertexData[0] = { -0.5f, -0.5f, 0.0f, 1.0f };
+	vertexData[0].position = { -0.5f, -0.5f, 0.0f, 1.0f };
+	vertexData[0].texcoord = { 0.0f,1.0f };
 
 	//上
 
-	vertexData[1] = { 0.0f, 0.5f, 0.0f, 1.0f };
+	vertexData[1].position = { 0.0f, 0.5f, 0.0f, 1.0f };
+	vertexData[1].texcoord = { 0.5f,0.0f };
 
 	//右下
 
-	vertexData[2] = { 0.5f, -0.5f, 0.0f, 1.0f };
+	vertexData[2].position = { 0.5f, -0.5f, 0.0f, 1.0f };
+	vertexData[2].texcoord = { 1.0f,1.0f };
 
 	//ビューポート
 
@@ -1228,8 +1246,43 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-5.0f} };
 
+	//Textureを読んで転送する
 
+	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
 	
+	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
+	ID3D12Resource* textureResource = CreateTextureResource(device, metadata);
+
+	UploadTextureData(textureResource, mipImages);
+
+	//metadataを基にSRVを設定
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+
+	srvDesc.Format = metadata.format;
+
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2Dテクスチャ
+
+	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
+
+	//SRVを作成するDescriptorHeapの場所を決める
+
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
+
+	//戦闘はImGuiが使っているのでその次を使う
+
+	textureSrvHandleCPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	textureSrvHandleGPU.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	//SRVの生成
+
+	device->CreateShaderResourceView(textureResource, &srvDesc, textureSrvHandleCPU);
 
 
 
@@ -1332,6 +1385,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			//形状を設定。PSOに設定しているものとはまた別。同じものを設定すると考えておけばいい
 
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+
 
 			//マテリアルcBufferの場所を設定
 
@@ -1543,9 +1598,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		debug->Release();
 
 	}
-	//警告時に止まる
-
-	infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, true);
+	
 
 	return 0;
 }
