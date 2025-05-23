@@ -20,6 +20,7 @@
 #include"externals/imgui/imgui.h"
 #include"externals/imgui/imgui_impl_dx12.h"
 #include"externals/imgui/imgui_impl_win32.h"
+#include"externals/DirectXTex/DirectXTex.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -541,9 +542,114 @@ ID3D12DescriptorHeap* CreateDescriptorHeap
 }
 
 
+DirectX::ScratchImage LoadTexture(const std::string& filePath)
+{
+
+//テクスチャファイルを読んでプログラムを扱えるようにする
+
+	DirectX::ScratchImage image{};
+
+	std::wstring filePathW = ConvertString(filePath);
+
+	HRESULT hr = DirectX::LoadFromWICFile(filePathW.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
+
+	assert(SUCCEEDED(hr));
+
+	//ミニマップの生成
+
+	DirectX::ScratchImage mipImages{};
+
+	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
+
+	//ミップマップ付きのデータを渡す
+
+	return mipImages;
+
+}
+
+ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata) {
+
+	//metaDataを基にResourceの設定
+	D3D12_RESOURCE_DESC resourceDesc{};
+
+	resourceDesc.Width = UINT(metadata.width);//Textureの幅
+
+	resourceDesc.Height = UINT(metadata.height);//Textureの高さ
+
+	resourceDesc.MipLevels = UINT(metadata.mipLevels);//mipmapの数
+
+	resourceDesc.DepthOrArraySize = UINT(metadata.arraySize);
+
+	resourceDesc.Format = metadata.format;//TextureのFormat
+
+	resourceDesc.SampleDesc.Count = 1;//サンプリングカウント
+
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);
+
+	//利用するHeapの設定
+
+	D3D12_HEAP_PROPERTIES heapProperties{};
+
+	heapProperties.Type = D3D12_HEAP_TYPE_CUSTOM;
+
+	heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+
+	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+
+	//Resourceの設定
+
+	ID3D12Resource* resource = nullptr;
+
+	HRESULT hr = device->CreateCommittedResource(&heapProperties,//Heapの設定
+		D3D12_HEAP_FLAG_NONE,//Heapの特殊な設定
+		&resourceDesc,//Resourceの設定
+		D3D12_RESOURCE_STATE_GENERIC_READ,//初回のResourceState Textureは基本
+		nullptr, IID_PPV_ARGS(&resource));
+
+	assert(SUCCEEDED(hr));
+}
+
+void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mipImages) {
+	//Meta情報
+
+	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
+	//全mipMap
+	for (size_t mipLevel = 0; mipLevel < metadata.mipLevels; ++mipLevel) {
+		//MipMaLevelを指定して各イメージを取得
+
+		const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
+
+		//Textureに転送
+
+		HRESULT hr = texture->WriteToSubresource(UINT(mipLevel),
+			nullptr,//全領域へコピー
+			img->pixels,//元データアクセス
+			UINT(img->rowPitch),//1ラインサイズ
+			UINT(img->slicePitch)//1枚サイズ
+		);
+		assert(SUCCEEDED(hr));
+
+	}
+	//Textureを呼んで転送する
+
+	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
+
+	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
+	ID3D12Resource* textureResource = CreateTextureResource(device, metadata);
+
+	UploadTextureData(textureResource, mipImages);
+
+
+}
+
+
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
+
+	CoInitializeEx(0, COINIT_MULTITHREADED);
 
 	SetUnhandledExceptionFilter(ExposrtDump);
 
@@ -1086,6 +1192,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	viewport.MaxDepth = 1.0f;
 
 
+
+
 	//シザー矩形
 
 	D3D12_RECT scissorRect{};
@@ -1119,6 +1227,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	Transform transform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 
 	Transform cameraTransform{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,-5.0f} };
+
+
+	
+
+
 
 	//ImGui初期化
 
@@ -1245,6 +1358,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			commandList->DrawInstanced(3, 1, 0, 0);
 			//今回はrenderTargetからpresentにする
 
+			//Comの終了
+
+			CoUninitialize();
+
+
 			//実際のcommandListのImGuiの描画コマンドを積む
 
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
@@ -1344,6 +1462,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	}
 
+	
 
 	CloseHandle(fenceEvent);
 
