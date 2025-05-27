@@ -568,11 +568,13 @@ DirectX::ScratchImage LoadTexture(const std::string& filePath)
 
 	assert(SUCCEEDED(hr));
 
-	//ミニマップの生成
+	//ミップマップの生成
 
 	DirectX::ScratchImage mipImages{};
 
 	hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
+
+	assert(SUCCEEDED(hr));
 
 	//ミップマップ付きのデータを渡す
 
@@ -583,21 +585,23 @@ DirectX::ScratchImage LoadTexture(const std::string& filePath)
 ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMetadata& metadata) {
 
 	//metaDataを基にResourceの設定
+
 	D3D12_RESOURCE_DESC resourceDesc{};
 
 	resourceDesc.Width = UINT(metadata.width);//Textureの幅
 
 	resourceDesc.Height = UINT(metadata.height);//Textureの高さ
 
-	resourceDesc.MipLevels = UINT(metadata.mipLevels);//mipmapの数
+	resourceDesc.MipLevels = UINT16(metadata.mipLevels);//mipmapの数
 
-	resourceDesc.DepthOrArraySize = UINT(metadata.arraySize);
+	resourceDesc.DepthOrArraySize = UINT16(metadata.arraySize); //奥行き　or　配列Textureの配列
 
 	resourceDesc.Format = metadata.format;//TextureのFormat
 
 	resourceDesc.SampleDesc.Count = 1;//サンプリングカウント
 
-	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);
+	resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension); //Textureの次元数　普段使っているのは2次元
+
 
 	//利用するHeapの設定
 
@@ -609,7 +613,7 @@ ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMe
 
 	heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
 
-	//Resourceの設定
+	//Resourceの生成
 
 	ID3D12Resource* resource = nullptr;
 
@@ -620,7 +624,8 @@ ID3D12Resource* CreateTextureResource(ID3D12Device* device, const DirectX::TexMe
 		&resourceDesc,//Resourceの設定
 
 		D3D12_RESOURCE_STATE_GENERIC_READ,//初回のResourceState Textureは基本
-		nullptr, IID_PPV_ARGS(&resource));
+		nullptr,
+		IID_PPV_ARGS(&resource));
 
 	assert(SUCCEEDED(hr));
 	return resource;
@@ -640,6 +645,9 @@ void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mip
 		//MipMapLevelを指定して各Imageを取得
 
 		const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
+
+		//Textureに転送
+
 		HRESULT hr = texture->WriteToSubresource(UINT(mipLevel),
 			nullptr,//全領域へコピー
 			img->pixels,//元データアクセス
@@ -647,6 +655,7 @@ void UploadTextureData(ID3D12Resource* texture, const DirectX::ScratchImage& mip
 			UINT(img->slicePitch)//1枚サイズ
 		);
 		assert(SUCCEEDED(hr));
+
 	}
 }
 
@@ -969,6 +978,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	assert(SUCCEEDED(hr));
 
 
+	//DescriptorRange
+
+	D3D12_DESCRIPTOR_RANGE descriptorRange[1] = {};
+
+	descriptorRange[0].BaseShaderRegister = 0;
+
+	descriptorRange[0].NumDescriptors = 1;
+
+	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV; //SRVを使う
+
+	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; //Offsetを自動計算
+
+
 	//RootSignature作成
 
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
@@ -994,9 +1016,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	rootParameters[1].Descriptor.ShaderRegister = 0;
 
+	rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; //DescriptorTableを使う
+
+	rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; //PixelShaderで使う
+
+	rootParameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;// Tableの中身の配列を指定
+
+	rootParameters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange); //Tableで利用する数
+
+
 	descriptionRootSignature.pParameters = rootParameters;//ルートパラメータ配列へのポインタ
 
 	descriptionRootSignature.NumParameters = _countof(rootParameters);//配列の長さ
+
+
 
 
 	//WVP用のリソースを作成
@@ -1042,6 +1075,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 		IID_PPV_ARGS(&rootSignature));
 
 	assert(SUCCEEDED(hr));
+
+	//Samplerの設定
+
+	D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
+
+	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR; //バイリニアフィルタ
+
+	staticSamplers[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP; //0~1の範囲外をリピート
+
+	staticSamplers[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+
+	staticSamplers[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+
+	staticSamplers[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+
+	staticSamplers[0].MaxLOD = D3D12_FLOAT32_MAX; //ありったけのMipmapを使う
+
+	staticSamplers[0].ShaderRegister = 0; //レジスタ番号0を使う
+
+	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; //PixelShaderで使う
+
+	descriptionRootSignature.pStaticSamplers = staticSamplers;
+
+	descriptionRootSignature.NumStaticSamplers = _countof(staticSamplers);
+
+
 
 	//InputLayout
 
@@ -1179,16 +1238,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	//左下
 
 	vertexData[0].position = { -0.5f, -0.5f, 0.0f, 1.0f };
+
 	vertexData[0].texcoord = { 0.0f,1.0f };
 
 	//上
 
 	vertexData[1].position = { 0.0f, 0.5f, 0.0f, 1.0f };
+
 	vertexData[1].texcoord = { 0.5f,0.0f };
 
 	//右下
 
 	vertexData[2].position = { 0.5f, -0.5f, 0.0f, 1.0f };
+
 	vertexData[2].texcoord = { 1.0f,1.0f };
 
 	//ビューポート
@@ -1256,6 +1318,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	UploadTextureData(textureResource, mipImages);
 
+
+
 	//metadataを基にSRVを設定
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -1284,6 +1348,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 	device->CreateShaderResourceView(textureResource, &srvDesc, textureSrvHandleCPU);
 
+	
 
 
 	//ImGui初期化
@@ -1378,6 +1443,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 
 			commandList->SetGraphicsRootSignature(rootSignature);
 
+			//SRVのDescriptorTableの先頭を設定　2はrootparameter[2]である
+
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+
 			commandList->SetPipelineState(graphicsPipelineState);//PSOの設定
 
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);//VBVを設定
@@ -1405,6 +1474,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 			ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescriptorHeap };
 
 			commandList->SetDescriptorHeaps(1, descriptorHeaps);
+
+		
 
 
 
@@ -1554,6 +1625,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	graphicsPipelineState->Release();
 
 	signatureBlob->Release();
+
+	textureResource->Release();
 
 	if (errorBlob)
 	{

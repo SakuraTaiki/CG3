@@ -1,4 +1,4 @@
-#include"Object3d.hlsli"
+#include"object3d.hlsli"
 struct Material
 {
     float32_t4 color;
@@ -18,8 +18,11 @@ struct PixelShaderOutput
 PixelShaderOutput main(VertexShaderOutput input)
 {
     float32_t4 textureColor = gTexture.Sample(gSampler, input.texcoord);
+    
     PixelShaderOutput output;
+    
     output.color = gMaterial.color*textureColor;
+    
     return output;
 }
 
