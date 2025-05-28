@@ -1,4 +1,4 @@
-#include"object3d.hlsli"
+#include"Object3d.hlsli"
 struct TransformationMatrix
 {
     float32_t4x4 WVP;
@@ -15,7 +15,7 @@ struct VertexShaderInput
 {
     float32_t4 position : POSITION0;
     
-    float32_t4 texcoord : TEXCOORD0;
+    float32_t2 texcoord : TEXCOORD0;
 };
 
 VertexShaderOutput main(VertexShaderInput input)
