@@ -18,6 +18,7 @@
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/DirectXTex/DirectXTex.h"
 #include"externals/DirectXTex/d3dx12.h"
+#include <numbers>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -307,6 +308,7 @@ Matrix4x4 MakepersfectiveFovMatrix(float fovY, float aspectRatio, float nearClip
 	result.m[3][3] = 0;
 	return result;
 }
+
 
 static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 {
@@ -1117,7 +1119,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexData[5].position = { 0.5f,-0.5f,-0.5f,1.0f };
 	vertexData[5].texcoord = { 1.0f,1.0f };
 
-	
+	const uint32_t kSubdivision = 10;
+
+
+	const float kLonEvery = std::numbers::pi * 2.0f / float(kSubdivision);
+
+	const float kLatEvery = std::numbers::pi / float(kSubdivision);
+	//緯度の方向に分割
+
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
+		float lat=-
+
+	}
 
 	//04-00で新しくつくる
 
