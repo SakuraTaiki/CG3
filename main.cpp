@@ -1155,7 +1155,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		VertexData* vertexDataSphere = nullptr;
 
 		//書き込むためのアドレスの取得
-		vertexResourceSphere->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexResourceSphere));
+		vertexResourceSphere->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexDataSphere));
 
 	//Sprite用のTransformationMatrix用のリソースを作る Matrix4x4
 
@@ -1399,7 +1399,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//初期化
 	Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
-	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -5.0f} };
+	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -100.0f} };
 	//Sprite用のを作成
 	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 
@@ -1498,18 +1498,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
 			commandList->SetGraphicsRootSignature(rootsignatrue);
 			commandList->SetPipelineState(graphicsPipelineState);
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferView);//VBVを設定する
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
 
 			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			//マテリアルcBufferの場所設定
 			commandList->SetGraphicsRootConstantBufferView(0, materialResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 
 			//作画
-			commandList->DrawInstanced(6, 1, 0, 0);
+			commandList->DrawInstanced(sphereVertexNum, 1, 0, 0);
 
 
 
@@ -1522,12 +1522,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//作画
 			commandList->DrawInstanced(6, 1, 0, 0);
 
-			//球体の描画
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
-			//球体のCBufferの場所を設定
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
-			//描画　(DrawCall)
-			commandList->DrawInstanced(sphereVertexNum, 1, 0, 0);
 			ImGui::Render();
 
 			
@@ -1621,6 +1615,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	dsvDescriptorHeap->Release();
 	vertexResourceSprite->Release();
 	transformationMatrixResourceSprite->Release();
+	vertexResourceSphere->Release();
+	transformationMatrixResourceSphere->Release();
+
 #ifdef _DEBUG
 
 	debugController->Release();
