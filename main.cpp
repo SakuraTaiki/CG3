@@ -94,6 +94,7 @@ Matrix4x4 makeIdentity4x4()
 	return result;
 };
 
+//拡縮行列
 Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
 
 	Matrix4x4 result{ scale.x, 0.0f, 0.0f, 0.0f, 0.0f, scale.y, 0.0f, 0.0f, 0.0f, 0.0f, scale.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f };
@@ -101,6 +102,7 @@ Matrix4x4 MakeScaleMatrix(const Vector3& scale) {
 	return result;
 }
 
+//回転行列
 Matrix4x4 MakeRotateXMatrix(float theta) {
 	float sin = std::sin(theta);
 	float cos = std::cos(theta);
@@ -812,7 +814,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12CommandQueue* commandQueue = nullptr;
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
 	hr = device->CreateCommandQueue(&commandQueueDesc,
-		IID_PPV_ARGS(&commandQueue));
+	IID_PPV_ARGS(&commandQueue));
 
 	assert(SUCCEEDED(hr));
 
@@ -824,7 +826,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//コマンドリストを作成する
 	ID3D12GraphicsCommandList* commandList = nullptr;
 	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr,
-		IID_PPV_ARGS(&commandList));
+	IID_PPV_ARGS(&commandList));
 	assert(SUCCEEDED(hr));
 
 	//スラップチェインを作成する
@@ -849,7 +851,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ID3D12DescriptorHeap* rtvDescrriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, 2, false);
 	//SRV用の
 	ID3D12DescriptorHeap* srvDescrriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true);
-
 	//DSV用のHeap
 	ID3D12DescriptorHeap* dsvDescriptorHeap = CreateDescriptorHeap(device, D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false);
 
@@ -1067,56 +1068,49 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-	ID3D12Resource* vertexResouces = createBufferResouces(device, sizeof(VertexData) * 6);
+	//三角形を描画しないためコメントアウト
 
-	//頂点バッファビューを作成する
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
+	//ID3D12Resource* vertexResouces = createBufferResouces(device, sizeof(VertexData) * 6);
 
-	//リソースの先端アドレスから使う
-	vertexBufferView.BufferLocation = vertexResouces->GetGPUVirtualAddress();
+	////頂点バッファビューを作成する
+	//D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
 
-	//使用するリソースのサイズは頂点3つ分サイズ
-	vertexBufferView.SizeInBytes = sizeof(VertexData) * 6;
+	////リソースの先端アドレスから使う
+	//vertexBufferView.BufferLocation = vertexResouces->GetGPUVirtualAddress();
 
-	//1頂点当たりのサイズ
-	vertexBufferView.StrideInBytes = sizeof(VertexData);
+	////使用するリソースのサイズは頂点3つ分サイズ
+	//vertexBufferView.SizeInBytes = sizeof(VertexData) * 6;
 
-	
+	////1頂点当たりのサイズ
+	//vertexBufferView.StrideInBytes = sizeof(VertexData);
 
-	//WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
-	ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(Matrix4x4));
+	//
 
-	//データ書き込む
-	Matrix4x4* wvpData = nullptr;
+	////WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
+	//ID3D12Resource* wvpResouces = createBufferResouces(device, sizeof(Matrix4x4));
 
-	//書き込むためのアドレス
-	wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
-	*wvpData = makeIdentity4x4();
+	////データ書き込む
+	//Matrix4x4* wvpData = nullptr;
 
-	//頂点リソースサイズデータに書き込む
-	VertexData* vertexData = nullptr;
+	////書き込むためのアドレス
+	//wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
+	//*wvpData = makeIdentity4x4();
 
-	//書き込むためのアドレスの取得
-	vertexResouces->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexData));
+	////頂点リソースサイズデータに書き込む
+	//VertexData* vertexData = nullptr;
 
-
-
-
+	////書き込むためのアドレスの取得
+	//vertexResouces->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexData));
 
 	//球体
 
+	//Spehere用の頂点情報
 	const uint32_t kSubdivision = 16;
 	const uint32_t sphereVertexNum = kSubdivision * kSubdivision * 6;
 
-	//緯度分割1つ分の角度
-	const float kLonEvery = std::numbers::pi_v<float>*2.0f / float(kSubdivision);
-	//緯度分割1つ分の角度θ
-	const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
-	//緯度の方向に分割
+	
 
-	//Spehere用の頂点情報
-
-	//Sprite用の頂点リソースを作る
+	//Sphere用の頂点リソースを作る
 
 	ID3D12Resource* vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * sphereVertexNum);
 
@@ -1125,19 +1119,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
 
 	// リソースの先端アドレスから使う
-		vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
+	vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
 
-		//使用するリソースのサイズは頂点3つ分サイズ
-		vertexBufferViewSphere.SizeInBytes = sizeof(VertexData) * sphereVertexNum;
+	//使用するリソースのサイズは頂点3つ分サイズ
+	vertexBufferViewSphere.SizeInBytes = sizeof(VertexData) * sphereVertexNum;
 
-		//1頂点当たりのサイズ
-		vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
+	//1頂点当たりのサイズ
+	vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
 
-		//球体リソースサイズデータに書き込む
-		VertexData* vertexDataSphere = nullptr;
+	//球体リソースサイズデータに書き込む
+	VertexData* vertexDataSphere = nullptr;
 
-		//書き込むためのアドレスの取得
-		vertexResourceSphere->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexDataSphere));
+	//書き込むためのアドレスの取得
+	vertexResourceSphere->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexDataSphere));
 
 	//Sprite用のTransformationMatrix用のリソースを作る Matrix4x4
 
@@ -1157,7 +1151,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	
 
-
+	//緯度分割1つ分の角度
+	const float kLonEvery = std::numbers::pi_v<float>*2.0f / float(kSubdivision);
+	//緯度分割1つ分の角度θ
+	const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
+	//緯度の方向に分割
 
 	//緯度の方向に分割
 	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
@@ -1227,17 +1225,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	
 
-	
-
-	
-
-
-
-	
-
-	
-
-	
 
 	//04-00で新しくつくる
 
@@ -1385,6 +1372,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//Sprite用のを作成
 	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 
+	//メインループ
+
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
 	{
@@ -1426,7 +1415,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//04-00用にWorldViewProjectionMatrixを作る
 
 			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate,
-				transformSprite.translate);
+			transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
 			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
@@ -1456,9 +1445,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//transSitiionBarrierを張る
 			commandList->ResourceBarrier(1, &barrier);
-
-			
-			
 
 			//画面先のrtvを設定する
 			commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, &dsvHandle);
@@ -1578,8 +1564,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	device->Release();
 	useAsapter->Release();
 	dxgiFactory->Release();
-
-	vertexResouces->Release();
+	//使っていないのでコメントアウト
+	/*vertexResouces->Release();*/
 	graphicsPipelineState->Release();
 	signatureBlob->Release();
 	if (errorBlob)
@@ -1590,7 +1576,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
 	materialResouces->Release();
-	wvpResouces->Release();
+	//使っていないのでコメントアウト
+	/*wvpResouces->Release();*/
 	textureResource->Release();
 	intermediateResource->Release();
 	depthStencilResource->Release();
