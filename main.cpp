@@ -439,13 +439,9 @@ ID3D12DescriptorHeap* CreateDescriptorHeap(
 void ShowSRTWindow(Transform& transform)
 {
 
-	ImGui::Begin("SRT Settings (Debug Only)");
-
 	ImGui::SliderFloat3("Scale", &transform.scale.x, 0.1f, 10.0f);
 	ImGui::SliderFloat3("Rotate", &transform.rotate.x, -3.14159f, 3.14159f);
 	ImGui::SliderFloat3("Translate", &transform.translate.x, -100.0f, 100.0f);
-
-	ImGui::End();
 
 }
 
@@ -1532,25 +1528,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 			ImGui::ShowDemoWindow();
-			//切り替え用のImGuiを追加
-			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
-
-			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
-				materialDataSprite->enableLighting=temp_enableLighting?1:0;
-			}
+			
 			
 			//ゲームの処理
 			ImGui::Begin("MaterialColor");
 
 			ImGui::ColorEdit4("color", &(materrialData)->x);
-
 			ImGui::ColorEdit3("LightColor", &directionalLightData->color.x);
+
+			//切り替え用のImGuiを追加
+			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
+
+			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
+				materialDataSprite->enableLighting = temp_enableLighting ? 1 : 0;
+			}
+
 			ImGui::SliderFloat3("LightDirection", &directionalLightData->direction.x,-1.0f,1.0f);
 			ImGui::DragFloat("Intensity", &directionalLightData->intensity);
 
+			ShowSRTWindow(transform);
+
 			ImGui::End();
 
-			ShowSRTWindow(transform);
+			
 
 
 			transform.rotate.y += 0.03f;
