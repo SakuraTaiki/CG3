@@ -1545,7 +1545,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ColorEdit4("color", &(materrialData)->x);
 
 			ImGui::ColorEdit3("LightColor", &directionalLightData->color.x);
-			ImGui::DragFloat3("LightDirection", &directionalLightData->direction.x);
+			ImGui::SliderFloat3("LightDirection", &directionalLightData->direction.x,-1.0f,1.0f);
 			ImGui::DragFloat("Intensity", &directionalLightData->intensity);
 
 			ImGui::End();
