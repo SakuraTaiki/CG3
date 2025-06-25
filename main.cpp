@@ -73,6 +73,7 @@ struct Material
 {
 	Vector4 color;
 	int32_t enableLighting;
+	float padding[3];
 };
 
 struct TransformationMatrix
@@ -329,6 +330,13 @@ Matrix4x4 MakepersfectiveFovMatrix(float fovY, float aspectRatio, float nearClip
 	result.m[3][2] = (-(nearClip * farClip) / (farClip - nearClip));
 	result.m[3][3] = 0;
 	return result;
+}
+
+Vector3 Normalize(const Vector3& v) {
+	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+	if (length == 0.0f)
+		return { 0.0f, 0.0f, 0.0f };
+	return { v.x / length, v.y / length, v.z / length };
 }
 
 
@@ -1000,16 +1008,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
-	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Vector4));
+	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Material));
 
 	//マテリアル用のデータを書き込む
-	Vector4* materialData = nullptr;
+	Material* materialData = nullptr;
 
 	//書き込むためのアドレスを取得
 	materialResouces->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
 
 	//今回は赤を書き込んでみる
-	*materialData = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 
 
 
@@ -1171,32 +1179,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDataSprite[5].texcoord = { 1.0f,1.0f };
 
 
-	//*Index用//
+	////*Index用//
 
-	//リソース作成
-	ID3D12Resource* indexResourceSprite = createBufferResouces(device, sizeof(uint32_t) * 6);
-	//BufferView
-	D3D12_INDEX_BUFFER_VIEW indexBufferViewSprite{};
-	//リソースをアドレスから使う
-	indexBufferViewSprite.BufferLocation = indexResourceSprite->GetGPUVirtualAddress();
-	//リソースのサイズ
-	indexBufferViewSprite.SizeInBytes = sizeof(uint32_t) * 6;
-	//インデックスはuint32_tとする
-	indexBufferViewSprite.Format = DXGI_FORMAT_R32_UINT;
+	////リソース作成
+	//ID3D12Resource* indexResourceSprite = createBufferResouces(device, sizeof(uint32_t) * 6);
+	////BufferView
+	//D3D12_INDEX_BUFFER_VIEW indexBufferViewSprite{};
+	////リソースをアドレスから使う
+	//indexBufferViewSprite.BufferLocation = indexResourceSprite->GetGPUVirtualAddress();
+	////リソースのサイズ
+	//indexBufferViewSprite.SizeInBytes = sizeof(uint32_t) * 6;
+	////インデックスはuint32_tとする
+	//indexBufferViewSprite.Format = DXGI_FORMAT_R32_UINT;
 
-	//データ書き込み
-	uint32_t* indexDataSprite = nullptr;
-	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
+	////データ書き込み
+	//uint32_t* indexDataSprite = nullptr;
+	//indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
 
-	//インデックス初期化
-	indexDataSprite[0] = 0;
-	indexDataSprite[1] = 1;
-	indexDataSprite[2] = 2;
-	indexDataSprite[3] = 1;
-	indexDataSprite[4] = 3;
-	indexDataSprite[5] = 2;
+	////インデックス初期化
+	//indexDataSprite[0] = 0;
+	//indexDataSprite[1] = 1;
+	//indexDataSprite[2] = 2;
+	//indexDataSprite[3] = 1;
+	//indexDataSprite[4] = 3;
+	//indexDataSprite[5] = 2;
 
-	//*index終了//
+	////*index終了//
 
 
 
@@ -1389,9 +1397,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-	//光源用のリソース生成開始
+	//光源のスプライト用の初期化
 
-	//Sprite用のマテリアル用リソースを作る　
+	//マテリアル用リソースを作る　
 	ID3D12Resource* materialResourcesSprite = createBufferResouces(device, sizeof(Material));
 
 	//マテリアル用のデータを書き込む
@@ -1408,6 +1416,33 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f);
 
 	materialDataSprite->enableLighting = true;
+
+	//終了
+
+
+
+	//光源の球体用の初期化
+
+	//マテリアル用リソースを作る　
+	ID3D12Resource* materialResourcesSphere = createBufferResouces(device, sizeof(Material));
+
+	//マテリアル用のデータを書き込む
+	Material* materialDataSphere = nullptr;
+
+	//書き込むためのアドレスを取得
+	materialResourcesSphere->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSphere));
+
+	//生成終了
+
+	//球体フラグ生成
+
+	//今回は白を書き込んでみる
+	materialDataSphere->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	materialDataSphere->enableLighting = true;
+
+
+
 
 	//フラグ生成処理終了
 
@@ -1538,13 +1573,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
+	
+
+
+
+
 	//光の向き
 	ID3D12Resource* materialResourceDirection = createBufferResouces(device, sizeof(DirectionalLight));
-
-
-
-
-
 
 	DirectionalLight* directionalLightData = nullptr;
 	materialResourceDirection->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
@@ -1572,7 +1607,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		} else
 		{
 
-			bool temp_enableLighting = (materialDataSprite->enableLighting != 0);
+			bool temp_enableLightingSprite = (materialDataSprite->enableLighting != 0);
+			bool temp_enableLightingSphere = (materialDataSphere->enableLighting != 0);
+
 
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -1580,17 +1617,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ShowDemoWindow();
 
 
+			directionalLightData->direction = Normalize(directionalLightData->direction);
+
 			//ゲームの処理
 			ImGui::Begin("MaterialColor");
 
-			ImGui::ColorEdit4("color", &(materialData)->x);
+			ImGui::ColorEdit4("color", &(materialData)->color.x);
 			ImGui::ColorEdit3("LightColor", &directionalLightData->color.x);
 
 			//切り替え用のImGuiを追加
 			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
 
-			if (ImGui::Checkbox("enableLighting", &temp_enableLighting)) {
-				materialDataSprite->enableLighting = temp_enableLighting ? 1 : 0;
+			if (ImGui::Checkbox("enableLightingSprite", &temp_enableLightingSprite)) {
+				materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
+			}
+
+			if (ImGui::Checkbox("enableLightingSphere", &temp_enableLightingSphere)) {
+				materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
 			}
 
 			ImGui::SliderFloat3("LightDirection", &directionalLightData->direction.x, -1.0f, 1.0f);
@@ -1601,7 +1644,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::End();
 
 
-
+			
 
 			transform.rotate.y += 0.03f;
 			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
@@ -1669,6 +1712,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->RSSetViewports(1, &viewport);
 			commandList->RSSetScissorRects(1, &scissorRect);
 
+
+
 			//球体のIASet
 			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
 			commandList->SetGraphicsRootSignature(rootsignatrue);
@@ -1680,31 +1725,38 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			//マテリアルcBufferの場所設定
+
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
 
 			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 
 			//作画
 			commandList->DrawInstanced(sphereVertexNum, 1, 0, 0);
 
-			commandList->IASetIndexBuffer(&indexBufferViewSprite);
+			//Spriteの描画
 
-			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
-			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			//TransformationMatrixCBufferの場所を設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 
-			//
+			//作画
+			commandList->DrawInstanced(6, 1, 0, 0);
 
-			////Spriteの描画
-			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+			/*commandList->IASetIndexBuffer(&indexBufferViewSprite);*/
 
-			////TransformationMatrixCBufferの場所を設定
-			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-			// 
-			////作画
-			//commandList->DrawInstanced(6, 1, 0, 0);
+			/*commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);*/
+
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+
+			
+
+			
 
 			ImGui::Render();
 
@@ -1805,10 +1857,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexResourceSphere->Release();
 	transformationMatrixResourceSphere->Release();
 	materialResourcesSprite->Release();
+	materialResourcesSphere->Release();
 	materialResourceDirection->Release();
 	wvpResouces->Release();
 	vertexResouces->Release();
-	indexResourceSprite->Release();
+	/*indexResourceSprite->Release();*/
 #ifdef _DEBUG
 
 	debugController->Release();
