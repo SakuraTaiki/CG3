@@ -1420,6 +1420,7 @@ for (uint32_t latIndex = 0; latIndex <= kSubdivision; ++latIndex) {
 
 
 #pragma endregion
+
 #pragma region SphereIndex
 
 // インデックスリソース作成
@@ -1788,7 +1789,7 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 			commandList->SetGraphicsRootSignature(rootsignatrue);
 			commandList->SetPipelineState(graphicsPipelineState);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
-
+			commandList->IASetIndexBuffer(&indexBufferViewSphere);
 
 			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1800,7 +1801,7 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
 			//作画
-			commandList->DrawInstanced(sphereVertexNum, 1, 0, 0);
+			commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
 			//SpriteTransformationMatrixCBufferの場所を設定
 			//6-00にてIndexに変更
@@ -1929,6 +1930,7 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 	materialResourceDirection->Release();
 	wvpResouces->Release();
 	indexResourceSprite->Release();
+	indexResourceSphere->Release();
 #ifdef _DEBUG
 
 	debugController->Release();
