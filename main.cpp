@@ -74,6 +74,7 @@ struct Material
 	Vector4 color;
 	int32_t enableLighting;
 	float padding[3];
+	Matrix4x4 uvTransform;
 };
 
 struct TransformationMatrix
@@ -1004,24 +1005,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptionRootSignatrue.NumStaticSamplers = _countof(staticSamplers);
 
 
-
-
-
-	//マテリアル用のリソースを作る　今回はcolor一つ分のサイズを用意する
-	ID3D12Resource* materialResouces = createBufferResouces(device, sizeof(Material));
-
-	//マテリアル用のデータを書き込む
-	Material* materialData = nullptr;
-
-	//書き込むためのアドレスを取得
-	materialResouces->Map(0, nullptr, reinterpret_cast<void**>(&materialData));
-
-	//今回は赤を書き込んでみる
-	materialData->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-
-
-
 	//シアライズしてばいなりにする
 	ID3DBlob* signatureBlob = nullptr;
 	ID3DBlob* errorBlob = nullptr;
@@ -1136,43 +1119,43 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		//Sprite用の頂点リソースを作る
 
-		ID3D12Resource* vertexResourceSprite = createBufferResouces(device, sizeof(VertexData) * 6);
+	ID3D12Resource* vertexResourceSprite = createBufferResouces(device, sizeof(VertexData) * 6);
 
-		//頂点バッファビューを作成する
+	//頂点バッファビューを作成する
 
-		D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSprite{};
 
-		//リソースの先端アドレスから使う
-		vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
+	//リソースの先端アドレスから使う
+	vertexBufferViewSprite.BufferLocation = vertexResourceSprite->GetGPUVirtualAddress();
 
-		//使用するリソースのサイズは頂点3つ分サイズ
-		vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 6;
+	//使用するリソースのサイズは頂点3つ分サイズ
+	vertexBufferViewSprite.SizeInBytes = sizeof(VertexData) * 6;
 
-		//1頂点当たりのサイズ
-		vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
+	//1頂点当たりのサイズ
+	vertexBufferViewSprite.StrideInBytes = sizeof(VertexData);
 
-		//頂点リソースサイズデータに書き込む
-		VertexData* vertexDataSprite = nullptr;
+	//頂点リソースサイズデータに書き込む
+	VertexData* vertexDataSprite = nullptr;
 
-		//書き込むためのアドレスの取得
-		vertexResourceSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexDataSprite));
+	//書き込むためのアドレスの取得
+	vertexResourceSprite->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexDataSprite));
 
-		//1枚目の三角形
+	//1枚目の三角形
 
-		//左上
-		vertexDataSprite[0].position = { 0.0f, 360.0f,0.0f,1.0f };
-		vertexDataSprite[0].texcoord = { 0.0f, 1.0f };
-		//左下
-		vertexDataSprite[1].position = { 0.0f, 0.0f, 0.0f, 1.0f };
-		vertexDataSprite[1].texcoord = { 0.0f, 0.0f };
+	//左上
+	vertexDataSprite[0].position = { 0.0f, 360.0f,0.0f,1.0f };
+	vertexDataSprite[0].texcoord = { 0.0f, 1.0f };
+	//左下
+	vertexDataSprite[1].position = { 0.0f, 0.0f, 0.0f, 1.0f };
+	vertexDataSprite[1].texcoord = { 0.0f, 0.0f };
 
-		//右下
-		vertexDataSprite[2].position = { 640.0f,360.0f, 0.0f, 1.0f };
-		vertexDataSprite[2].texcoord = { 1.0f, 1.0f };
+	//右下
+	vertexDataSprite[2].position = { 640.0f,360.0f, 0.0f, 1.0f };
+	vertexDataSprite[2].texcoord = { 1.0f, 1.0f };
 
-		//右上
-		vertexDataSprite[3].position = { 640.0f,0.0f,0.0f,1.0f };
-		vertexDataSprite[3].texcoord = { 1.0f,0.0f };
+	//右上
+	vertexDataSprite[3].position = { 640.0f,0.0f,0.0f,1.0f };
+	vertexDataSprite[3].texcoord = { 1.0f,0.0f };
 
 
 #pragma endregion 
@@ -1214,11 +1197,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	indexBufferViewSprite.SizeInBytes = sizeof(uint32_t) * 6;
 	//インデックスはuint32_tとする
 	indexBufferViewSprite.Format = DXGI_FORMAT_R32_UINT;
-	
+
 	//データ書き込み
 	uint32_t* indexDataSprite = nullptr;
 	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
-	
+
 	//インデックス初期化
 	indexDataSprite[0] = 0;
 	indexDataSprite[1] = 1;
@@ -1226,7 +1209,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	indexDataSprite[3] = 1;
 	indexDataSprite[4] = 3;
 	indexDataSprite[5] = 2;
-	
+
 #pragma endregion 
 
 #pragma region BeforeSphere
@@ -1365,57 +1348,57 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//	}
 	//}
 
-	
+
 
 #pragma endregion 
 
 
 #pragma region AfterSphere
 
-const uint32_t kSubdivision = 16;
-const uint32_t vertexCount = (kSubdivision + 1) * (kSubdivision + 1);
-const uint32_t indexCount = kSubdivision * kSubdivision * 6;
+	const uint32_t kSubdivision = 16;
+	const uint32_t vertexCount = (kSubdivision + 1) * (kSubdivision + 1);
+	const uint32_t indexCount = kSubdivision * kSubdivision * 6;
 
-// 頂点リソース作成
-ID3D12Resource* vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * vertexCount);
+	// 頂点リソース作成
+	ID3D12Resource* vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * vertexCount);
 
-// 頂点バッファビュー作成
-D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
-vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
-vertexBufferViewSphere.SizeInBytes = sizeof(VertexData) * vertexCount;
-vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
+	// 頂点バッファビュー作成
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
+	vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
+	vertexBufferViewSphere.SizeInBytes = sizeof(VertexData) * vertexCount;
+	vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
 
-// 頂点データ書き込み
-VertexData* vertexDataSphere = nullptr;
-vertexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSphere));
+	// 頂点データ書き込み
+	VertexData* vertexDataSphere = nullptr;
+	vertexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataSphere));
 
-const float kLonEvery = std::numbers::pi_v<float> *2.0f / float(kSubdivision);
-const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
+	const float kLonEvery = std::numbers::pi_v<float> *2.0f / float(kSubdivision);
+	const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
 
-for (uint32_t latIndex = 0; latIndex <= kSubdivision; ++latIndex) {
-	float lat = -std::numbers::pi_v<float> / 2.0f + kLatEvery * latIndex;
-	for (uint32_t lonIndex = 0; lonIndex <= kSubdivision; ++lonIndex) {
-		float lon = kLonEvery * lonIndex;
+	for (uint32_t latIndex = 0; latIndex <= kSubdivision; ++latIndex) {
+		float lat = -std::numbers::pi_v<float> / 2.0f + kLatEvery * latIndex;
+		for (uint32_t lonIndex = 0; lonIndex <= kSubdivision; ++lonIndex) {
+			float lon = kLonEvery * lonIndex;
 
-		uint32_t index = latIndex * (kSubdivision + 1) + lonIndex;
+			uint32_t index = latIndex * (kSubdivision + 1) + lonIndex;
 
-		vertexDataSphere[index].position = {
-			std::cosf(lat) * std::cosf(lon),
-			std::sinf(lat),
-			std::cosf(lat) * std::sinf(lon),
-			1.0f
-		};
-		vertexDataSphere[index].texcoord = {
-			float(lonIndex) / float(kSubdivision),
-			1.0f - float(latIndex) / float(kSubdivision)
-		};
-		vertexDataSphere[index].normal = {
-			std::cosf(lat) * std::cosf(lon),
-			std::sinf(lat),
-			std::cosf(lat) * std::sinf(lon)
-		};
+			vertexDataSphere[index].position = {
+				std::cosf(lat) * std::cosf(lon),
+				std::sinf(lat),
+				std::cosf(lat) * std::sinf(lon),
+				1.0f
+			};
+			vertexDataSphere[index].texcoord = {
+				float(lonIndex) / float(kSubdivision),
+				1.0f - float(latIndex) / float(kSubdivision)
+			};
+			vertexDataSphere[index].normal = {
+				std::cosf(lat) * std::cosf(lon),
+				std::sinf(lat),
+				std::cosf(lat) * std::sinf(lon)
+			};
+		}
 	}
-}
 
 
 
@@ -1423,48 +1406,48 @@ for (uint32_t latIndex = 0; latIndex <= kSubdivision; ++latIndex) {
 
 #pragma region SphereIndex
 
-// インデックスリソース作成
-ID3D12Resource* indexResourceSphere = createBufferResouces(device, sizeof(uint32_t) * indexCount);
+	// インデックスリソース作成
+	ID3D12Resource* indexResourceSphere = createBufferResouces(device, sizeof(uint32_t) * indexCount);
 
-// インデックスバッファビュー作成
-D3D12_INDEX_BUFFER_VIEW indexBufferViewSphere{};
-indexBufferViewSphere.BufferLocation = indexResourceSphere->GetGPUVirtualAddress();
-indexBufferViewSphere.SizeInBytes = sizeof(uint32_t) * indexCount;
-indexBufferViewSphere.Format = DXGI_FORMAT_R32_UINT;
+	// インデックスバッファビュー作成
+	D3D12_INDEX_BUFFER_VIEW indexBufferViewSphere{};
+	indexBufferViewSphere.BufferLocation = indexResourceSphere->GetGPUVirtualAddress();
+	indexBufferViewSphere.SizeInBytes = sizeof(uint32_t) * indexCount;
+	indexBufferViewSphere.Format = DXGI_FORMAT_R32_UINT;
 
-// インデックスデータ書き込み
-uint32_t* indexDataSphere = nullptr;
-indexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSphere));
+	// インデックスデータ書き込み
+	uint32_t* indexDataSphere = nullptr;
+	indexResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSphere));
 
-uint32_t currentIndex = 0;
-for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-	for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-		uint32_t a = latIndex * (kSubdivision + 1) + lonIndex;
-		uint32_t b = (latIndex + 1) * (kSubdivision + 1) + lonIndex;
-		uint32_t c = latIndex * (kSubdivision + 1) + (lonIndex + 1);
-		uint32_t d = (latIndex + 1) * (kSubdivision + 1) + (lonIndex + 1);
+	uint32_t currentIndex = 0;
+	for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
+		for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
+			uint32_t a = latIndex * (kSubdivision + 1) + lonIndex;
+			uint32_t b = (latIndex + 1) * (kSubdivision + 1) + lonIndex;
+			uint32_t c = latIndex * (kSubdivision + 1) + (lonIndex + 1);
+			uint32_t d = (latIndex + 1) * (kSubdivision + 1) + (lonIndex + 1);
 
-		// 1枚目の三角形
-		indexDataSphere[currentIndex++] = a;
-		indexDataSphere[currentIndex++] = b;
-		indexDataSphere[currentIndex++] = c;
+			// 1枚目の三角形
+			indexDataSphere[currentIndex++] = a;
+			indexDataSphere[currentIndex++] = b;
+			indexDataSphere[currentIndex++] = c;
 
-		// 2枚目の三角形
-		indexDataSphere[currentIndex++] = c;
-		indexDataSphere[currentIndex++] = b;
-		indexDataSphere[currentIndex++] = d;
+			// 2枚目の三角形
+			indexDataSphere[currentIndex++] = c;
+			indexDataSphere[currentIndex++] = b;
+			indexDataSphere[currentIndex++] = d;
+		}
 	}
-}
 
-// TransformationMatrixリソース作成
-ID3D12Resource* transformationMatrixResourceSphere = createBufferResouces(device, sizeof(Matrix4x4));
-Matrix4x4* transformationMatrixDataSphere = nullptr;
-transformationMatrixResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSphere));
-*transformationMatrixDataSphere = makeIdentity4x4();
+	// TransformationMatrixリソース作成
+	ID3D12Resource* transformationMatrixResourceSphere = createBufferResouces(device, sizeof(Matrix4x4));
+	Matrix4x4* transformationMatrixDataSphere = nullptr;
+	transformationMatrixResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSphere));
+	*transformationMatrixDataSphere = makeIdentity4x4();
 
-const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 
 #pragma endregion
@@ -1490,9 +1473,9 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 
 #pragma region LightSprite
 
-	//光源のスプライト用の初期化
+	//光源のスプライト用の生成
 
-	//マテリアル用リソースを作る　
+	//マテリアルスプライト用リソースを作る　
 	ID3D12Resource* materialResourcesSprite = createBufferResouces(device, sizeof(Material));
 
 	//マテリアル用のデータを書き込む
@@ -1503,20 +1486,19 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 
 	//生成終了
 
-	//球体フラグ生成
-
+	
 	//今回は白を書き込んでみる
-	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f);
+	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f,1.0f);
 
-	materialDataSprite->enableLighting = true;
+	materialDataSprite->enableLighting = 1;
 #pragma endregion 
-	
 
-	
+
+
 #pragma region LightSphere
-//光源の球体用の初期化
+	//光源の球体用の初期化
 
-	//マテリアル用リソースを作る　
+		//マテリアル球体用リソースを作る　
 	ID3D12Resource* materialResourcesSphere = createBufferResouces(device, sizeof(Material));
 
 	//マテリアル用のデータを書き込む
@@ -1527,12 +1509,12 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 
 	//生成終了
 
-	//球体フラグ生成
-
 	//今回は白を書き込んでみる
 	materialDataSphere->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	materialDataSphere->enableLighting = true;
+	materialDataSphere->enableLighting = 1;
+
+	
 
 #pragma endregion 
 
@@ -1655,11 +1637,26 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 
 #pragma endregion 
 
+
+#pragma region UVTransform
+	
+	materialDataSprite->uvTransform = makeIdentity4x4();
+	materialDataSphere->uvTransform = makeIdentity4x4();
+
+#pragma endregion
 	//初期化
 
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	//Sprite用のを作成
 	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
+
+	
+
+	Transform uvTransformSprite{
+		{1.0f,1.0f,1.0f},
+		{0.0f,1.0f,0.0f},
+		{0.0f,0.0f,0.0f},
+	};
 
 	//メインループ
 
@@ -1694,29 +1691,43 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 #pragma region ImGui
 			ImGui::Begin("MaterialColor");
 
-			ImGui::ColorEdit4("color", &(materialData)->color.x);
-	
-				ImGui::ColorEdit3("LightColor", &directionalLightData->color.x);
-	//切り替え用のImGuiを追加
-			ImGui::Checkbox("useMonsterBall", &useMonsterBall);
+			// Sphere用
+			ImGui::Text("Sphere Material");
+			ImGui::ColorEdit4("Sphere Color", &materialDataSphere->color.x);
+			ImGui::Checkbox("Enable Lighting (Sphere)", &temp_enableLightingSphere);
+			materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
 
-			if (ImGui::Checkbox("enableLightingSprite", &temp_enableLightingSprite)) {
-				materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
-			}
+			// Sprite用
+			ImGui::Separator();
+			ImGui::Text("Sprite Material");
+			ImGui::ColorEdit4("Sprite Color", &materialDataSprite->color.x);
+			ImGui::Checkbox("Enable Lighting (Sprite)", &temp_enableLightingSprite);
+			materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
 
-			if (ImGui::Checkbox("enableLightingSphere", &temp_enableLightingSphere)) {
-				materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
-			}
-
-			ImGui::SliderFloat3("LightDirection", &directionalLightData->direction.x, -1.0f, 1.0f);
+			// 光源
+			ImGui::Separator();
+			ImGui::Text("Light");
+			ImGui::ColorEdit3("Light Color", &directionalLightData->color.x);
+			ImGui::SliderFloat3("Light Direction", &directionalLightData->direction.x, -1.0f, 1.0f);
 			ImGui::DragFloat("Intensity", &directionalLightData->intensity);
+
+			// モンスターボール切り替え
+			ImGui::Separator();
+			ImGui::Checkbox("Use Monster Ball", &useMonsterBall);
+
+			// Sprite UV操作
+			ImGui::Separator();
+			ImGui::Text("Sprite UV Transform");
+			ImGui::DragFloat2("UV Translate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+			ImGui::DragFloat2("UV Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+			ImGui::SliderAngle("UV Rotate", &uvTransformSprite.rotate.z);
 
 			ShowSRTWindow(transform);
 
 			ImGui::End();
 
 #pragma endregion
-			
+
 			//球体の回転
 			transform.rotate.y += 0.03f;
 			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
@@ -1739,6 +1750,21 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 
 			//画面のクリア処理
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+
+			//UVTransform
+
+			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
+			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+
+			//確実に書き込む
+
+			//スプライト用
+			materialDataSprite->uvTransform=uvTransformMatrix;
+
+			//球体用
+			materialDataSphere->uvTransform = makeIdentity4x4();
+
 
 			//TransitonBarrierの設定
 			D3D12_RESOURCE_BARRIER barrier{};
@@ -1806,7 +1832,7 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 			//SpriteTransformationMatrixCBufferの場所を設定
 			//6-00にてIndexに変更
 
-			
+
 
 
 			// プリミティブのトポロジを設定（三角形リスト）
@@ -1818,14 +1844,14 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			
+
 			//Spriteの描画
 			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
-			
-			
 
-			
+
+
+
 			ImGui::Render();
 
 
@@ -1911,7 +1937,6 @@ const uint32_t descriptorSizeDSV = device->GetDescriptorHandleIncrementSize(D3D1
 	rootsignatrue->Release();
 	pixelShaderBlob->Release();
 	vertexShaderBlob->Release();
-	materialResouces->Release();
 	//使っていないのでコメントアウト
 	wvpResouces->Release();
 	textureResource->Release();
