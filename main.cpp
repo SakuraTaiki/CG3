@@ -727,7 +727,7 @@ MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const st
 
 #pragma region ModelData obj
 
-ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename) 
+ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename)
 {
 	//1::変数宣言
 	ModelData modelData;//構築するモデルデータ
@@ -787,7 +787,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 				VertexData vertex = { position,texcoord,normal };
 				modelData.vertices.push_back(vertex);
 				triangle[faceVertex] = { position,texcoord,normal };
-				
+
 			}
 			//頂点を逆順で登録することで、回り順を逆にする
 			modelData.vertices.push_back(triangle[2]);
@@ -1617,9 +1617,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//生成終了
 
-	
+
 	//今回は白を書き込んでみる
-	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f,1.0f);
+	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	materialDataSprite->enableLighting = 1;
 #pragma endregion 
@@ -1645,7 +1645,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	materialDataSphere->enableLighting = 1;
 
-	
+
 
 #pragma endregion 
 
@@ -1737,7 +1737,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//頂点リソースにデータを書き込む
 	VertexData* vertexDataModel = nullptr;
 	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
-	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);//頂点データをリソースにコピー
+	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData) * vertexCountObj);//頂点データをリソースにコピー
 
 #pragma endregion 
 
@@ -1817,7 +1817,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 #pragma region UVTransform
-	
+
 	materialDataSprite->uvTransform = makeIdentity4x4();
 	materialDataSphere->uvTransform = makeIdentity4x4();
 
@@ -1828,7 +1828,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//Sprite用のを作成
 	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 
-	
+
 
 	Transform uvTransformSprite{
 		{1.0f,1.0f,1.0f},
@@ -1941,7 +1941,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//確実に書き込む
 
 			//スプライト用
-			materialDataSprite->uvTransform=uvTransformMatrix;
+			materialDataSprite->uvTransform = uvTransformMatrix;
 
 			//球体用
 			materialDataSphere->uvTransform = makeIdentity4x4();
@@ -2031,8 +2031,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//Spriteの描画
 		/*	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);*/
 
-			
-			
+
+
 
 
 
