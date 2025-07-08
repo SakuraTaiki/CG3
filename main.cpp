@@ -91,10 +91,20 @@ struct DirectionalLight
 	float intensity;//輝度
 };
 
+
+//mtl読み込み用
+struct MaterialData
+{
+	std::string textureFilePath;
+};
+
+//Obj読み込み用
 struct ModelData
 {
 	std::vector<VertexData>vertices;
+	MaterialData material;
 };
+
 
 // 単位行列の作成
 Matrix4x4 makeIdentity4x4()
@@ -683,7 +693,39 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ID3D12DescriptorHeap* descrip
 ////	);
 ////	assert(SUCCEEDED(hr));
 //}
-#pragma region ModelData
+
+#pragma region MaterialData
+
+MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename)
+{
+	MaterialData materialData;//構築するMaterialData
+	std::string line;//ファイルから読んだ1行を格納するもの
+	std::ifstream file(directoryPath + "/" + filename);//ファイルを開く
+	assert(file.is_open());//とりあえず開けなかったら止める
+
+	while (std::getline(file, line)) {
+		std::string identifier;
+		std::istringstream s(line);
+		s >> identifier;
+
+		//identifierに応じた処理
+		if (identifier == "map_Kd") {
+			std::string textureFilename;
+			s >> textureFilename;
+			//連結してファイルパスにする
+			materialData.textureFilePath = directoryPath + "/" + textureFilename;
+		}
+
+	}
+
+	return materialData;
+}
+
+#pragma endregion
+
+
+
+#pragma region ModelData obj
 
 ModelData LoadObjFile(const std::string& directoryPath, const std::string& filename) 
 {
@@ -709,12 +751,15 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		if (identifier == "v") {
 			Vector4 position;
 			s >> position.x >> position.y >> position.z;
-			position.y *= -1.0f;
+			position.x *= -1.0f;
+			/*position.y *= -1.0f;*/
+			/*position.z *= -1.0f;*/
 			position.w = 1.0f;
 			positions.push_back(position);
 		} else if (identifier == "vt") {
 			Vector2 texcoord;
 			s >> texcoord.x >> texcoord.y;
+			texcoord.y = 1.0f - texcoord.y;
 			texcoords.push_back(texcoord);
 		} else if (identifier == "vn") {
 			Vector3 normal;
@@ -748,6 +793,13 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 			modelData.vertices.push_back(triangle[2]);
 			modelData.vertices.push_back(triangle[1]);
 			modelData.vertices.push_back(triangle[0]);
+		} else if (identifier == "mtllib") {
+			//materialTemplateLibraryファイルの名前を格納する
+			std::string materialFilename;
+			s >> materialFilename;
+			//基本的にobjファイルと同一階層にmtlは存在させるのでディレクトリ名とファイル名を渡す
+			modelData.material = LoadMaterialTemplateFile(directoryPath, materialFilename);
+
 		}
 	}
 	return modelData;
@@ -755,9 +807,10 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 
 #pragma endregion
 
+
+
+
 bool useMonsterBall = true;
-
-
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
@@ -1644,8 +1697,56 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region MonsterBall
 
+	////2枚目のTextureを読んで転送する
+	//DirectX::ScratchImage mipImages2 = LoadTexture("resources/monsterBall.png");
+	//const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
+	//ID3D12Resource* textureResource2 = CreateTextureResource(device, metadata2);
+	//ID3D12Resource* intermediateResource2 = UploadTextureData(textureResource2, mipImages2, device, commandList);
+
+	////mataDataを基にSRVの設定
+	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
+	//srvDesc2.Format = metadata2.format;
+	//srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	//srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	//srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
+
+	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+
+	////srvを作成する
+	//device->CreateShaderResourceView(textureResource2, &srvDesc2, textureSrvHandleCPU2);
+
+#pragma endregion
+
+#pragma region ModelData
+
+//モデル読み込み
+	ModelData modelData = LoadObjFile("resources", "axis.obj");
+
+	//Objサイズ格納変数
+	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
+
+	//頂点リソースを作る
+	ID3D12Resource* vertexResourceModel = createBufferResouces(device, sizeof(VertexData) * modelData.vertices.size());
+	//頂点バッファビュー
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewModel{};
+	vertexBufferViewModel.BufferLocation = vertexResourceModel->GetGPUVirtualAddress();//リソースの先端アドレスから使う
+	vertexBufferViewModel.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size());
+	vertexBufferViewModel.StrideInBytes = sizeof(VertexData);//1頂点当たりのサイズ
+
+	//頂点リソースにデータを書き込む
+	VertexData* vertexDataModel = nullptr;
+	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
+	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);//頂点データをリソースにコピー
+
+#pragma endregion 
+
+
+	//06-02　32枚目
+#pragma region model Texture
+
 	//2枚目のTextureを読んで転送する
-	DirectX::ScratchImage mipImages2 = LoadTexture("resources/monsterBall.png");
+	DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
 	ID3D12Resource* textureResource2 = CreateTextureResource(device, metadata2);
 	ID3D12Resource* intermediateResource2 = UploadTextureData(textureResource2, mipImages2, device, commandList);
@@ -1664,7 +1765,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	device->CreateShaderResourceView(textureResource2, &srvDesc2, textureSrvHandleCPU2);
 
 #pragma endregion
-
 
 
 	//textureを読んで転送する
@@ -1736,28 +1836,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		{0.0f,0.0f,0.0f},
 	};
 
-#pragma region ModelData
 
-	//モデル読み込み
-	ModelData modelData = LoadObjFile("resources", "plane.obj");
 
-	//Objサイズ格納変数
-	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
 
-	//頂点リソースを作る
-	ID3D12Resource* vertexResourceModel = createBufferResouces(device, sizeof(VertexData) * modelData.vertices.size());
-	//頂点バッファビュー
-	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewModel{};
-	vertexBufferViewModel.BufferLocation = vertexResourceModel->GetGPUVirtualAddress();//リソースの先端アドレスから使う
-	vertexBufferViewModel.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size());
-	vertexBufferViewModel.StrideInBytes = sizeof(VertexData);//1頂点当たりのサイズ
-
-	//頂点リソースにデータを書き込む
-	VertexData* vertexDataModel = nullptr;
-	vertexResourceModel->Map(0,nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
-	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);//頂点データをリソースにコピー
-
-#pragma endregion 
 	//メインループ
 
 	//windowの×ボタンが押されるまでループ
@@ -2059,6 +2140,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	wvpResouces->Release();
 	indexResourceSprite->Release();
 	indexResourceSphere->Release();
+	vertexResourceModel->Release();
 #ifdef _DEBUG
 
 	debugController->Release();
