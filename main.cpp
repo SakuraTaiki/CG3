@@ -995,19 +995,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 	//コマンドアロケータを生成する
-	ID3D12CommandAllocator* commandAllocator = nullptr;
+	ComPtr<ID3D12CommandAllocator> commandAllocator = nullptr;
 	hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
 	assert(SUCCEEDED(hr));
 
 	//コマンドリストを作成する
-	ID3D12GraphicsCommandList* commandList = nullptr;
-	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr,
+	ComPtr<ID3D12GraphicsCommandList> commandList = nullptr;
+	hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), nullptr,
 		IID_PPV_ARGS(&commandList));
 	assert(SUCCEEDED(hr));
 
 	//スラップチェインを作成する
 
-	IDXGISwapChain4* swapChain = nullptr;
+	ComPtr<IDXGISwapChain4> swapChain = nullptr;
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
 	swapChainDesc.Width = kClientWidth;//画面幅
 	swapChainDesc.Height = kClientHeight;//画面高さ
