@@ -118,7 +118,7 @@ struct D3DResourceLeakChecker {
 			debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 			debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
 			debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
-			debug->Release();
+			
 		}
 	}
 };
@@ -391,7 +391,7 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 	minidumpInformation.ClientPointers = TRUE;
 	MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle, MiniDumpNormal, &minidumpInformation, nullptr, nullptr);
 
-
+	
 
 
 	return EXCEPTION_EXECUTE_HANDLER;
@@ -476,6 +476,7 @@ ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(
 	descriptorHeapDesc.NumDescriptors = numDescriptors;
 	descriptorHeapDesc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	HRESULT hr = device->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&descriptorHeap));
+	
 	return descriptorHeap;
 }
 
@@ -562,8 +563,7 @@ ComPtr<IDxcBlob> CompileShander(
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
 	Log(os, ConvertString(std::format(L"Compile Succeeded, path:{}, profile:{}\n", filePath, profile)));
-	shaderSource->Release();
-	shaderResult->Release();
+	
 	return shaderBlob;
 
 }
@@ -920,7 +920,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	
 
 	
-
+	
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
@@ -2118,53 +2118,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//解放処理
 	CloseHandle(fenceEvent);
-//	fence->Release();
-//	rtvDescrriptorHeap->Release();
-//	srvDescrriptorHeap->Release();
-//	swapChainResouces[0]->Release();
-//	swapChainResouces[1]->Release();
-//	swapChain->Release();
-//	commandList->Release();
-//	commandAllocator->Release();
-//	commandQueue->Release();
-//	device->Release();
-//	useAsapter->Release();
-//	dxgiFactory->Release();
-//	//インデックスに変更
-//	//vertexResouces->Release();
-//	graphicsPipelineState->Release();
-//	signatureBlob->Release();
-//	if (errorBlob)
-//	{
-//		errorBlob->Release();
-//	}
-//	rootsignatrue->Release();
-//	pixelShaderBlob->Release();
-//	vertexShaderBlob->Release();
-//	//使っていないのでコメントアウト
-//	wvpResouces->Release();
-//	textureResource->Release();
-//	textureResource2->Release();
-//	intermediateResource->Release();
-//	intermediateResource2->Release();
-//	depthStencilResource->Release();
-//	dsvDescriptorHeap->Release();
-//	//インデックスに変更
-//	vertexResourceSprite->Release();
-//	transformationMatrixResourceSprite->Release();
-//	vertexResourceSphere->Release();
-//	transformationMatrixResourceSphere->Release();
-//	materialResourcesSprite->Release();
-//	materialResourcesSphere->Release();
-//	materialResourceDirection->Release();
-//	wvpResouces->Release();
-//	indexResourceSprite->Release();
-//	indexResourceSphere->Release();
-//	vertexResourceModel->Release();
-//#ifdef _DEBUG
-//
-//	debugController->Release();
-//#endif // _DEBUG
+
+
 
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
