@@ -935,7 +935,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//見つからなかったので起動できない
 	assert(useAsapter != nullptr);
 
-	ID3D12Device* device = nullptr;
+	ComPtr<ID3D12Device> device = nullptr;
 	//機能レベルとログの出力
 	D3D_FEATURE_LEVEL featrueLevels[] =
 	{ D3D_FEATURE_LEVEL_12_2, D3D_FEATURE_LEVEL_12_1,D3D_FEATURE_LEVEL_12_0 };
@@ -958,7 +958,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #ifdef _DEBUG
 
-	ID3D12InfoQueue* infoqueue = nullptr;
+	ComPtr<ID3D12InfoQueue> infoqueue = nullptr;
 
 	if (SUCCEEDED(device->QueryInterface(IID_PPV_ARGS(&infoqueue))))
 	{
@@ -982,14 +982,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//指定したメッセージの表示を抑制する
 		infoqueue->PushStorageFilter(&filter);
 
-		//解放
-		infoqueue->Release();
 	}
 
 
 #endif // !_DEBUG
 	//コマンドキューを生成する
-	ID3D12CommandQueue* commandQueue = nullptr;
+	ComPtr<ID3D12CommandQueue> commandQueue = nullptr;
 	D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
 	hr = device->CreateCommandQueue(&commandQueueDesc,
 		IID_PPV_ARGS(&commandQueue));
@@ -2004,17 +2002,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
 			commandList->IASetIndexBuffer(&indexBufferViewSphere);
 
-			////形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
-			//commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
+			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			////マテリアルcBufferの場所設定
-			//commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
-			//commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			//commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
-			//commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+			//マテリアルcBufferの場所設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			////作画
-			//commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+			//作画
+			commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
 			//SpriteTransformationMatrixCBufferの場所を設定
 			//6-00にてIndexに変更
