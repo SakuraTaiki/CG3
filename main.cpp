@@ -22,6 +22,9 @@
 #include <numbers>
 #include<wrl.h>
 #include <xaudio2.h>
+#define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
+#include <dinput.h>
+
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -31,6 +34,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "dxcompiler.lib")
 #pragma comment(lib,"xaudio2.lib")
+#pragma comment(lib,"dinput8.lib")
+#pragma comment(lib,"dxguid.lib")
 
 using Microsoft::WRL::ComPtr;
 
@@ -978,6 +983,7 @@ bool useMonsterBall = true;
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
+#pragma region DirectX初期化処理
 
 	SetUnhandledExceptionFilter(ExportDump);
 
@@ -1054,6 +1060,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
 		result = xAudio2->CreateMasteringVoice(&masterVoice);
 
+		
+		////前フレームのキー入力
+		//BYTE prevKey[256] = {};
 
 #ifdef _DEBUG
 	ComPtr<ID3D12Debug1> debugController = nullptr;
@@ -1411,6 +1420,28 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//頂点とリソース用のヒープ設定
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+	//DirectInputの初期化
+	IDirectInput8* directInput = nullptr;
+	result = DirectInput8Create(wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
+	assert(SUCCEEDED(result));
+
+	IDirectInputDevice8* keyboard = nullptr;
+	result = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
+	assert(SUCCEEDED(result));
+
+	//入力データ形式のセット
+	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
+	assert(SUCCEEDED(result));
+
+	//排他制御レベルのセット
+	result = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+	assert(SUCCEEDED(result));
+
+	keyboard->Acquire();
+
+
+#pragma endregion
 
 #pragma region Sprite
 
@@ -2030,6 +2061,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			DispatchMessage(&msg);
 		} else
 		{
+
+#pragma region グラフィックスコマンド
+		
+			BYTE key[256] = {};
+			HRESULT result = keyboard->GetDeviceState(sizeof(key), key);
+			if (FAILED(result)) {
+				// 再Acquireしてリトライ
+				keyboard->Acquire();
+				result = keyboard->GetDeviceState(sizeof(key), key);
+				if (FAILED(result)) {
+					OutputDebugStringA("キー状態の取得に失敗しました\n");
+				}
+			}
+
+			// キー判定（成功した場合のみ）
+			if (SUCCEEDED(result)) {
+				if (key[DIK_SPACE] & 0x80) {
+					OutputDebugStringA("Hit 0\n");
+				}
+			}            
+
+		/*	memcpy(prevKey, key, sizeof(key));*/
+
+#pragma endregion                                     
+
 
 			bool temp_enableLightingSprite = (materialDataSprite->enableLighting != 0);
 			bool temp_enableLightingSphere = (materialDataSphere->enableLighting != 0);
