@@ -811,7 +811,7 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		if (identifier == "v") {
 			Vector4 position;
 			s >> position.x >> position.y >> position.z;
-			position.x *= -1.0f;
+			/*position.x *= -1.0f;*/
 			/*position.y *= -1.0f;*/
 			/*position.z *= -1.0f;*/
 			position.w = 1.0f;
@@ -824,7 +824,8 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 		} else if (identifier == "vn") {
 			Vector3 normal;
 			s >> normal.x >> normal.y >> normal.z;
-			normal.y *= -1.0f;
+			/*normal.x *= -1.0f;*/
+			/*normal.y *= -1.0f;*/
 			normals.push_back(normal);
 		} else if (identifier == "f") {
 			//面は三角形限定　その他は未対応
@@ -1924,7 +1925,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma region ModelData
 
 //モデル読み込み
-	ModelData modelData = LoadObjFile("resources", "axis.obj");
+	ModelData modelData = LoadObjFile("resources", "plane.obj");
 
 	//Objサイズ格納変数
 	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
@@ -2244,7 +2245,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//6-00にてIndexに変更
 
 
-
+#pragma region OBJSprite
 
 			// プリミティブのトポロジを設定（三角形リスト）
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2252,15 +2253,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			/*commandList->IASetIndexBuffer(&indexBufferViewSprite);*/
 			// 頂点バッファビューの設定（忘れがち）
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
 			commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
 			//Spriteの描画
-		/*	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);*/
+#pragma endregion
 
+#pragma region UVSprite
+
+
+
+
+			// プリミティブのトポロジを設定（三角形リスト）
+			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+			commandList->IASetIndexBuffer(&indexBufferViewSprite);
+			// 頂点バッファビューの設定（忘れがち）
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+
+			//Spriteの描画
+			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+
+#pragma endregion 
 
 
 
