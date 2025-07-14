@@ -1856,7 +1856,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region LightOBJ
 		
-	//OBJの初期化
+	//OBJのライトの初期化
 
 		//マテリアル球体用リソースを作る　
 	ComPtr<ID3D12Resource> materialResourcesOBJ = createBufferResouces(device.Get(), sizeof(Material));
@@ -1865,14 +1865,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Material* materialDataOBJ = nullptr;
 
 	//書き込むためのアドレスを取得
-	materialResourcesSphere->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSphere));
+	materialResourcesOBJ->Map(0, nullptr, reinterpret_cast<void**>(&materialDataOBJ));
 
 	//生成終了
 
 	//今回は白を書き込んでみる
-	materialDataSphere->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+	materialDataOBJ->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	materialDataSphere->enableLighting = true;
+	materialDataOBJ->enableLighting = true;
 
 #pragma endregion
 
@@ -1922,32 +1922,59 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		srvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
+
+
+
+	//textureを読んで転送する
+	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
+	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+	ComPtr<ID3D12Resource> textureResource = CreateTextureResource(device.Get(), metadata);
+	ComPtr<ID3D12Resource> intermediateResource = UploadTextureData(textureResource.Get(), mipImages, device.Get(), commandList.Get());
+	//DepthStencilTextureをウィンドウのサイズで作成
+	ComPtr<ID3D12Resource> depthStencilResource = CreateDepthStencilTextureResource(device.Get(), kClientWidth, kClientHeight);
+
+	//mataDataを基にSRVの設定
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Format = metadata.format;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
+
+	//SRVを作成するDescriptorHeapの場所を決める
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
+
+	//srvを作成する
+	device->CreateShaderResourceView(textureResource.Get(), &srvDesc, textureSrvHandleCPU);
+
+
 #pragma region MonsterBall
 
-	////2枚目のTextureを読んで転送する
-	//DirectX::ScratchImage mipImages2 = LoadTexture("resources/monsterBall.png");
-	//const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
-	//ID3D12Resource* textureResource2 = CreateTextureResource(device, metadata2);
-	//ID3D12Resource* intermediateResource2 = UploadTextureData(textureResource2, mipImages2, device, commandList);
+	//2枚目のTextureを読んで転送する
+	DirectX::ScratchImage mipImages2 = LoadTexture("resources/monsterBall.png");
+	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
+	ComPtr<ID3D12Resource> textureResource2 = CreateTextureResource(device, metadata2);
+	ComPtr<ID3D12Resource> intermediateResource2 = UploadTextureData(textureResource2, mipImages2, device, commandList);
 
-	////mataDataを基にSRVの設定
-	//D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
-	//srvDesc2.Format = metadata2.format;
-	//srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
-	//srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
+	//mataDataを基にSRVの設定
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
+	srvDesc2.Format = metadata2.format;
+	srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
 
-	//D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
-	//D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 
-	////srvを作成する
-	//device->CreateShaderResourceView(textureResource2, &srvDesc2, textureSrvHandleCPU2);
+	//srvを作成する
+	device->CreateShaderResourceView(textureResource2.Get(), &srvDesc2, textureSrvHandleCPU2);
 
 #pragma endregion
 
+
 #pragma region ModelData
 
-//モデル読み込み
+	//モデル読み込み
 	ModelData modelData = LoadObjFile("resources", "plane.obj");
 
 	//Objサイズ格納変数
@@ -1964,7 +1991,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//頂点リソースにデータを書き込む
 	VertexData* vertexDataModel = nullptr;
 	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
-	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData) * vertexCountObj);//頂点データをリソースにコピー
+	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);//頂点データをリソースにコピー
 
 #pragma endregion 
 
@@ -1973,48 +2000,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma region model Texture
 
 	//2枚目のTextureを読んで転送する
-	DirectX::ScratchImage mipImages2 = LoadTexture(modelData.material.textureFilePath);
-	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
-	ComPtr<ID3D12Resource> textureResource2 = CreateTextureResource(device.Get(), metadata2);
-	ComPtr<ID3D12Resource> intermediateResource2 = UploadTextureData(textureResource2.Get(), mipImages2, device.Get(), commandList.Get());
+	DirectX::ScratchImage mipImages3 = LoadTexture(modelData.material.textureFilePath);
+	const DirectX::TexMetadata& metadata3 = mipImages3.GetMetadata();
+	ComPtr<ID3D12Resource> textureResource3 = CreateTextureResource(device.Get(), metadata3);
+	ComPtr<ID3D12Resource> intermediateResource3 = UploadTextureData(textureResource3.Get(), mipImages3, device.Get(), commandList.Get());
 
 	//mataDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
-	srvDesc2.Format = metadata2.format;
-	srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
-	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3{};
+	srvDesc3.Format = metadata3.format;
+	srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc3.Texture2D.MipLevels = UINT(metadata3.mipLevels);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU3 = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
 
 	//srvを作成する
-	device->CreateShaderResourceView(textureResource2.Get(), &srvDesc2, textureSrvHandleCPU2);
+	device->CreateShaderResourceView(textureResource3.Get(), &srvDesc3, textureSrvHandleCPU3);
 
 #pragma endregion
-
-
-	//textureを読んで転送する
-	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
-	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-	ComPtr<ID3D12Resource> textureResource = CreateTextureResource(device.Get(), metadata);
-	ComPtr<ID3D12Resource> intermediateResource = UploadTextureData(textureResource.Get(), mipImages, device.Get(), commandList.Get());
-	//DepthStencilTextureをウィンドウのサイズで作成
-	ComPtr<ID3D12Resource> depthStencilResource = CreateDepthStencilTextureResource(device.Get(), kClientWidth, kClientHeight);
-
-	//mataDataを基にSRVの設定
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Format = metadata2.format;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
-	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
-
-	//SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
-
-	//srvを作成する
-	device->CreateShaderResourceView(textureResource.Get(), &srvDesc, textureSrvHandleCPU);
 
 
 
@@ -2047,6 +2051,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	materialDataSprite->uvTransform = makeIdentity4x4();
 	materialDataSphere->uvTransform = makeIdentity4x4();
+	materialDataOBJ->uvTransform = makeIdentity4x4();
 
 #pragma endregion
 	//初期化
@@ -2113,6 +2118,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			bool temp_enableLightingSprite = (materialDataSprite->enableLighting != 0);
 			bool temp_enableLightingSphere = (materialDataSphere->enableLighting != 0);
+			bool temp_enableLightingOBJ = (materialDataOBJ->enableLighting != 0);
 
 
 			ImGui_ImplDX12_NewFrame();
@@ -2138,6 +2144,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ColorEdit4("Sprite Color", &materialDataSprite->color.x);
 			ImGui::Checkbox("Enable Lighting (Sprite)", &temp_enableLightingSprite);
 			materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
+
+			// OBJ用
+			ImGui::Separator();
+			ImGui::Text("OBJ Material");
+			ImGui::ColorEdit4("OBJ Color", &materialDataOBJ->color.x);
+			ImGui::Checkbox("Enable Lighting (OBJ)", &temp_enableLightingOBJ);
+			materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
 
 			// 光源
 			ImGui::Separator();
@@ -2245,36 +2258,36 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-			////球体のIASet
-			////rootsignaltrueを設定　psoに設定しているけど別途設定が必要
-			//commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-			//commandList->SetPipelineState(graphicsPipelineState.Get());
-			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
-			//commandList->IASetIndexBuffer(&indexBufferViewSphere);
+			//球体のIASet
+			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
+			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+			commandList->SetPipelineState(graphicsPipelineState.Get());
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
+			commandList->IASetIndexBuffer(&indexBufferViewSphere);
 
-			////形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
-			//commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
+			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			////マテリアルcBufferの場所設定
-			//commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
-			//commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			//commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
-			//commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+			//マテリアルcBufferの場所設定
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			////作画
-			//commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+			//作画
+			commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
 			//SpriteTransformationMatrixCBufferの場所を設定
 			//6-00にてIndexに変更
 
 
-#pragma region OBJSprite
+#pragma region OBJ
 
 			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 			commandList->SetPipelineState(graphicsPipelineState.Get());
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
