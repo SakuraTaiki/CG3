@@ -1825,7 +1825,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//今回は白を書き込んでみる
 	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	materialDataSprite->enableLighting = 1;
+	materialDataSprite->enableLighting = false;
+
 #pragma endregion 
 
 
@@ -1847,19 +1848,41 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//今回は白を書き込んでみる
 	materialDataSphere->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
-	materialDataSphere->enableLighting = 1;
+	materialDataSphere->enableLighting = true;
 
-
+	
 
 #pragma endregion 
 
+#pragma region LightOBJ
+		
+	//OBJの初期化
+
+		//マテリアル球体用リソースを作る　
+	ComPtr<ID3D12Resource> materialResourcesOBJ = createBufferResouces(device.Get(), sizeof(Material));
+
+	//マテリアル用のデータを書き込む
+	Material* materialDataOBJ = nullptr;
+
+	//書き込むためのアドレスを取得
+	materialResourcesSphere->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSphere));
+
+	//生成終了
+
+	//今回は白を書き込んでみる
+	materialDataSphere->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	materialDataSphere->enableLighting = true;
+
+#pragma endregion
+
 	//Sprite用のTransformationMatrix用のリソースを作る Matrix4x4
 
-	ComPtr<ID3D12Resource> transformationMatrixResourceSprite = createBufferResouces(device.Get(), sizeof(Matrix4x4));
+	ComPtr<ID3D12Resource> transformationMatrixResourceSprite = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
 
 	//	データを書き込む
 
-	Matrix4x4* transformationMatrixDataSprite = nullptr;
+	TransformationMatrix* transformationMatrixDataSprite = nullptr;
 
 	//書き込むアドレスを取得
 
@@ -1867,7 +1890,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//単位行列を書き込んでおく
 
-	*transformationMatrixDataSprite = makeIdentity4x4();
+	transformationMatrixDataSprite->WVP = makeIdentity4x4();
 
 	//ビューボート
 	D3D12_VIEWPORT viewport{};
@@ -2158,7 +2181,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
 			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
-			*transformationMatrixDataSprite = worldViewProjectionMatrixSprite;
+			transformationMatrixDataSprite->WVP = worldViewProjectionMatrixSprite;
 
 			//画面のクリア処理
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -2247,16 +2270,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region OBJSprite
 
-			//commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-			//commandList->SetPipelineState(graphicsPipelineState.Get());
-			//commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-			//commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
-			//commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			//commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+			commandList->SetPipelineState(graphicsPipelineState.Get());
+			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			//commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
+			commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
 			////Spriteの描画
 #pragma endregion
 
@@ -2269,6 +2292,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+
 			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 #pragma endregion 
