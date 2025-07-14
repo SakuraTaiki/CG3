@@ -1987,8 +1987,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
 	//SRVを作成するDescriptorHeapの場所を決める
-	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 1);
-	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 1);
+	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
+	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
 
 	//srvを作成する
 	device->CreateShaderResourceView(textureResource.Get(), &srvDesc, textureSrvHandleCPU);
@@ -2222,12 +2222,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-			//球体のIASet
-			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
-			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-			commandList->SetPipelineState(graphicsPipelineState.Get());
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
-			commandList->IASetIndexBuffer(&indexBufferViewSphere);
+			////球体のIASet
+			////rootsignaltrueを設定　psoに設定しているけど別途設定が必要
+			//commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+			//commandList->SetPipelineState(graphicsPipelineState.Get());
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
+			//commandList->IASetIndexBuffer(&indexBufferViewSphere);
 
 			////形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 			//commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2247,43 +2247,34 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region OBJSprite
 
-			// プリミティブのトポロジを設定（三角形リスト）
-			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			//commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+			//commandList->SetPipelineState(graphicsPipelineState.Get());
+			//commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
+			//commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
+			//commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
+			//commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			//commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			/*commandList->IASetIndexBuffer(&indexBufferViewSprite);*/
-			// 頂点バッファビューの設定（忘れがち）
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
-
-			commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
-			//Spriteの描画
+			//commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
+			////Spriteの描画
 #pragma endregion
 
 #pragma region UVSprite
-
-
-
-
-			// プリミティブのトポロジを設定（三角形リスト）
+			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+			commandList->SetPipelineState(graphicsPipelineState.Get());
 			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-			commandList->IASetIndexBuffer(&indexBufferViewSprite);
-			// 頂点バッファビューの設定（忘れがち）
 			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+			commandList->IASetIndexBuffer(&indexBufferViewSprite);
 			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-
-			//Spriteの描画
 			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 #pragma endregion 
 
 
-
+			
 
 
 			ImGui::Render();
