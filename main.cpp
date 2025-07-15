@@ -1775,10 +1775,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 
 	// TransformationMatrixリソース作成
-	ComPtr<ID3D12Resource> transformationMatrixResourceSphere = createBufferResouces(device.Get(), sizeof(Matrix4x4));
-	Matrix4x4* transformationMatrixDataSphere = nullptr;
+	ComPtr<ID3D12Resource> transformationMatrixResourceSphere = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
+	TransformationMatrix* transformationMatrixDataSphere = nullptr;
 	transformationMatrixResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSphere));
-	*transformationMatrixDataSphere = makeIdentity4x4();
+	transformationMatrixDataSphere->WVP = makeIdentity4x4();
 
 	const uint32_t descriptorSizeSRV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	const uint32_t descriptorSizeRTV = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -1876,6 +1876,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma endregion
 
+#pragma region SpriteTransform
 	//Sprite用のTransformationMatrix用のリソースを作る Matrix4x4
 
 	ComPtr<ID3D12Resource> transformationMatrixResourceSprite = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
@@ -1946,7 +1947,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//srvを作成する
 	device->CreateShaderResourceView(textureResource.Get(), &srvDesc, textureSrvHandleCPU);
-
+#pragma endregion
 
 #pragma region MonsterBall
 
@@ -1992,6 +1993,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	VertexData* vertexDataModel = nullptr;
 	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
 	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);//頂点データをリソースにコピー
+
+	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
+	TransformationMatrix* transformationMatrixDataOBJ = nullptr;
+	transformationMatrixResourceOBJ->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataOBJ));
+	transformationMatrixDataOBJ->WVP = makeIdentity4x4();
 
 #pragma endregion 
 
@@ -2075,6 +2081,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	bool isSphereActive = true;
 	bool isSpriteActive = false;
+	bool isOBJActive = false;
+
 
 	//メインループ
 
@@ -2136,86 +2144,93 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region ImGui
 
-
+			//=== [描画対象の選択] ===//
 			ImGui::Begin("Control Panel");
 			ImGui::Checkbox("Enable Sphere", &isSphereActive);
 			ImGui::Checkbox("Enable Sprite", &isSpriteActive);
-			ImGui::End();
-
-			ImGui::Begin("Transform Panel");
-
-			// Sphere Transform
-			ImGui::Text("Sphere Transform");
-			ImGui::DragFloat3("Sphere Position", &transformSphere.translate.x, 0.1f);
-			ImGui::DragFloat3("Sphere Rotation", &transformSphere.rotate.x, 0.1f);
-			ImGui::DragFloat3("Sphere Scale", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
-
-			// Sprite Transform
-			ImGui::Separator();
-			ImGui::Text("Sprite Transform");
-			ImGui::DragFloat3("Sprite Position", &transformSprite.translate.x, 0.1f);
-			ImGui::DragFloat3("Sprite Rotation", &transformSprite.rotate.x, 0.1f);
-			ImGui::DragFloat3("Sprite Scale", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
-
-			// OBJがある場合も同様に
-			ImGui::Separator();
-			ImGui::Text("OBJ Transform");
-			ImGui::DragFloat3("OBJ Position", &transformOBJ.translate.x, 0.1f);
-			ImGui::DragFloat3("OBJ Rotation", &transformOBJ.rotate.x, 0.1f);
-			ImGui::DragFloat3("OBJ Scale", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
-
-			ImGui::End();
-
-			ImGui::Begin("MaterialColor");
-
-			// Sphere用
-			ImGui::Text("Sphere Material");
-			ImGui::ColorEdit4("Sphere Color", &materialDataSphere->color.x);
-			ImGui::Checkbox("Enable Lighting (Sphere)", &temp_enableLightingSphere);
-			materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
-
-			// Sprite用
-			ImGui::Separator();
-			ImGui::Text("Sprite Material");
-			ImGui::ColorEdit4("Sprite Color", &materialDataSprite->color.x);
-			ImGui::Checkbox("Enable Lighting (Sprite)", &temp_enableLightingSprite);
-			materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
-
-			// OBJ用
-			ImGui::Separator();
-			ImGui::Text("OBJ Material");
-
-			ImGui::ColorEdit4("OBJ Color", &materialDataOBJ->color.x);
-			ImGui::Checkbox("Enable Lighting (OBJ)", &temp_enableLightingOBJ);
-			materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
-
-			// 光源
-			ImGui::Separator();
-			ImGui::Text("Light");
-			ImGui::ColorEdit3("Light Color", &directionalLightData->color.x);
-			ImGui::SliderFloat3("Light Direction", &directionalLightData->direction.x, -1.0f, 1.0f);
-			ImGui::DragFloat("Intensity", &directionalLightData->intensity);
-
-			// モンスターボール切り替え
-			ImGui::Separator();
+			ImGui::Checkbox("Enable OBJ", &isOBJActive);
 			ImGui::Checkbox("Use Monster Ball", &useMonsterBall);
+			ImGui::End();
 
-			// Sprite UV操作
-			ImGui::Separator();
-			ImGui::Text("Sprite UV Transform");
-			ImGui::DragFloat2("UV Translate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-			ImGui::DragFloat2("UV Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-			ImGui::SliderAngle("UV Rotate", &uvTransformSprite.rotate.z);
+			
 
+			//=== [トランスフォーム] ===//
+			ImGui::Begin("Transform Settings");
+			if (ImGui::CollapsingHeader("Sphere Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+			{
+				ImGui::DragFloat3("Position", &transformSphere.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &transformSphere.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
+			}
+
+			if (ImGui::CollapsingHeader("Sprite Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+			{
+				ImGui::DragFloat3("Position", &transformSprite.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &transformSprite.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
+			}
+
+			
+			if (ImGui::CollapsingHeader("OBJ Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+			{
+				ImGui::DragFloat3("Position", &transformOBJ.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &transformOBJ.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
+			}
+
+			ImGui::End();
+
+			//=== [マテリアル・ライト] ===//
+			ImGui::Begin("Material & Lighting");
+
+			if (ImGui::CollapsingHeader("Sphere Material", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit4("Color", &materialDataSphere->color.x);
+				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSphere);
+				materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
+			}
+
+			if (ImGui::CollapsingHeader("Sprite Material", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit4("Color", &materialDataSprite->color.x);
+				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSprite);
+				materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
+			}
+
+			if (ImGui::CollapsingHeader("OBJ Material", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit4("Color", &materialDataOBJ->color.x);
+				ImGui::Checkbox("Enable Lighting", &temp_enableLightingOBJ);
+				materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
+			}
+
+			if (ImGui::CollapsingHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit3("Light Color", &directionalLightData->color.x);
+				ImGui::SliderFloat3("Light Direction", &directionalLightData->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity", &directionalLightData->intensity);
+			}
+
+			ImGui::End();
+
+			
+			
+
+			//=== [UV設定（Sprite）] ===//
+			ImGui::Begin("Sprite UV Transform");
+
+			ImGui::Text("UV Transform");
+			ImGui::DragFloat2("Translate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+			ImGui::DragFloat2("Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+			ImGui::SliderAngle("Rotate", &uvTransformSprite.rotate.z);
+
+			ImGui::End();
 			ShowSRTWindow(transform);
 
-			ImGui::End();
+			
 
 #pragma endregion
 
 			//球体の回転
 			/*transform.rotate.y += 0.03f;*/
 			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+
 
 			//カメラの処理
 			Matrix4x4 cameraMatrix = MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
@@ -2225,6 +2240,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			wvpData->WVP = worldViewProjectionMatrix;
 			wvpData->World = worldMatrix;
 
+
 			//SpriteのWorldViewProjectionMatrixを作る
 			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate,
 				transformSprite.translate);
@@ -2232,6 +2248,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
 			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 			transformationMatrixDataSprite->WVP = worldViewProjectionMatrixSprite;
+
+
+			//SphereのWVPを更新
+			Matrix4x4 worldMatrixSphere = MakeAffineMatrix(transformSphere.scale, transformSphere.rotate, transformSphere.translate);
+			Matrix4x4 viewMatrixSphere = Inverse(cameraMatrix);
+			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 wvpMatrixSphere = Multiply(worldMatrixSphere, Multiply(viewMatrixSphere, projectionMatrixSphere));
+			transformationMatrixDataSphere->WVP = wvpMatrixSphere;
+
+
+			//OBJのWVPを更新
+			Matrix4x4 worldMatrixOBJ = MakeAffineMatrix(transformOBJ.scale, transformOBJ.rotate, transformOBJ.translate);
+			Matrix4x4 viewMatrixOBJ = Inverse(cameraMatrix);
+			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 wvpMatrixOBJ = Multiply(worldMatrixOBJ, Multiply(viewMatrixOBJ, projectionMatrixOBJ));
+			transformationMatrixDataOBJ->WVP = wvpMatrixOBJ;
+
+
+
 
 			//画面のクリア処理
 			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -2319,18 +2354,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			}
 
 #pragma region OBJ
+			if (isOBJActive) 
+			{
+				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+				commandList->SetPipelineState(graphicsPipelineState.Get());
+				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
+				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceOBJ->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-			commandList->SetPipelineState(graphicsPipelineState.Get());
-			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
-
-			commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
-			////Spriteの描画
+				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
+			}
+			
 #pragma endregion
 
 #pragma region UVSprite
