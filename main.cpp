@@ -2059,8 +2059,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	//Sprite用のを作成
 	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-
-
+	Transform transformSphere{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
+	Transform transformOBJ{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 
 	Transform uvTransformSprite{
 		{1.0f,1.0f,1.0f},
@@ -2072,6 +2072,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav");
 	
 	SoundPlayWave(xAudio2.Get(), soundData1);
+
+	bool isSphereActive = true;
+	bool isSpriteActive = false;
 
 	//メインループ
 
@@ -2120,6 +2123,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			bool temp_enableLightingSphere = (materialDataSphere->enableLighting != 0);
 			bool temp_enableLightingOBJ = (materialDataOBJ->enableLighting != 0);
 
+			
+
 
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -2130,6 +2135,37 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			directionalLightData->direction = Normalize(directionalLightData->direction);
 
 #pragma region ImGui
+
+
+			ImGui::Begin("Control Panel");
+			ImGui::Checkbox("Enable Sphere", &isSphereActive);
+			ImGui::Checkbox("Enable Sprite", &isSpriteActive);
+			ImGui::End();
+
+			ImGui::Begin("Transform Panel");
+
+			// Sphere Transform
+			ImGui::Text("Sphere Transform");
+			ImGui::DragFloat3("Sphere Position", &transformSphere.translate.x, 0.1f);
+			ImGui::DragFloat3("Sphere Rotation", &transformSphere.rotate.x, 0.1f);
+			ImGui::DragFloat3("Sphere Scale", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
+
+			// Sprite Transform
+			ImGui::Separator();
+			ImGui::Text("Sprite Transform");
+			ImGui::DragFloat3("Sprite Position", &transformSprite.translate.x, 0.1f);
+			ImGui::DragFloat3("Sprite Rotation", &transformSprite.rotate.x, 0.1f);
+			ImGui::DragFloat3("Sprite Scale", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
+
+			// OBJがある場合も同様に
+			ImGui::Separator();
+			ImGui::Text("OBJ Transform");
+			ImGui::DragFloat3("OBJ Position", &transformOBJ.translate.x, 0.1f);
+			ImGui::DragFloat3("OBJ Rotation", &transformOBJ.rotate.x, 0.1f);
+			ImGui::DragFloat3("OBJ Scale", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
+
+			ImGui::End();
+
 			ImGui::Begin("MaterialColor");
 
 			// Sphere用
@@ -2148,6 +2184,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// OBJ用
 			ImGui::Separator();
 			ImGui::Text("OBJ Material");
+
 			ImGui::ColorEdit4("OBJ Color", &materialDataOBJ->color.x);
 			ImGui::Checkbox("Enable Lighting (OBJ)", &temp_enableLightingOBJ);
 			materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
@@ -2257,29 +2294,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->RSSetScissorRects(1, &scissorRect);
 
 
+			if (isSphereActive) {
+				//球体のIASet
+				//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
+				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+				commandList->SetPipelineState(graphicsPipelineState.Get());
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
+				commandList->IASetIndexBuffer(&indexBufferViewSphere);
 
-			//球体のIASet
-			//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
-			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-			commandList->SetPipelineState(graphicsPipelineState.Get());
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
-			commandList->IASetIndexBuffer(&indexBufferViewSphere);
+				//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
+				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-			//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
-			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				//マテリアルcBufferの場所設定
+				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			//マテリアルcBufferの場所設定
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, wvpResouces->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
-			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+				//作画
+				commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 
-			//作画
-			commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
-
-			//SpriteTransformationMatrixCBufferの場所を設定
-			//6-00にてIndexに変更
-
+				//SpriteTransformationMatrixCBufferの場所を設定
+				//6-00にてIndexに変更
+			}
 
 #pragma region OBJ
 
@@ -2297,18 +2334,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 #pragma region UVSprite
-			commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-			commandList->SetPipelineState(graphicsPipelineState.Get());
-			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-			commandList->IASetIndexBuffer(&indexBufferViewSprite);
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+			if (isSpriteActive)
+			{
+				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+				commandList->SetPipelineState(graphicsPipelineState.Get());
+				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+				commandList->IASetIndexBuffer(&indexBufferViewSprite);
+				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
 
-			commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-
+				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+			}
 #pragma endregion 
 
 
