@@ -160,7 +160,7 @@ struct D3DResourceLeakChecker {
 			debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL);
 			debug->ReportLiveObjects(DXGI_DEBUG_APP, DXGI_DEBUG_RLO_ALL);
 			debug->ReportLiveObjects(DXGI_DEBUG_D3D12, DXGI_DEBUG_RLO_ALL);
-			
+
 		}
 	}
 };
@@ -433,7 +433,7 @@ static LONG WINAPI ExportDump(EXCEPTION_POINTERS* exception)
 	minidumpInformation.ClientPointers = TRUE;
 	MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle, MiniDumpNormal, &minidumpInformation, nullptr, nullptr);
 
-	
+
 
 
 	return EXCEPTION_EXECUTE_HANDLER;
@@ -518,7 +518,7 @@ ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(
 	descriptorHeapDesc.NumDescriptors = numDescriptors;
 	descriptorHeapDesc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	HRESULT hr = device->CreateDescriptorHeap(&descriptorHeapDesc, IID_PPV_ARGS(&descriptorHeap));
-	
+
 	return descriptorHeap;
 }
 
@@ -605,7 +605,7 @@ ComPtr<IDxcBlob> CompileShander(
 	hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
 	assert(SUCCEEDED(hr));
 	Log(os, ConvertString(std::format(L"Compile Succeeded, path:{}, profile:{}\n", filePath, profile)));
-	
+
 	return shaderBlob;
 
 }
@@ -869,9 +869,9 @@ ModelData LoadObjFile(const std::string& directoryPath, const std::string& filen
 #pragma endregion
 
 
-SoundData SoundLoadWave(const char* filename) 
+SoundData SoundLoadWave(const char* filename)
 {
-	
+
 	//①
 	//ファイル入力ストリームのインスタンス
 	std::ifstream file;
@@ -879,7 +879,7 @@ SoundData SoundLoadWave(const char* filename)
 	file.open(filename, std::ios_base::binary);
 	//ファイルオープン失敗を検出する
 	assert(file.is_open());
-	
+
 	//②
 	//Riffヘッダーの読み込み
 	RiffHeader riff;
@@ -924,7 +924,7 @@ SoundData SoundLoadWave(const char* filename)
 		//再読み込み
 		file.read((char*)&data, sizeof(data));
 	}
-	
+
 	//③
 	if (strncmp(data.id, "data", 4) != 0) {
 		assert(0);
@@ -948,7 +948,7 @@ SoundData SoundLoadWave(const char* filename)
 	return soundData;
 }
 
-void SoundUnLoad(SoundData* soundData) 
+void SoundUnLoad(SoundData* soundData)
 {
 	//バッファのメモリ解放
 	delete[]soundData->pBuffer;
@@ -958,7 +958,7 @@ void SoundUnLoad(SoundData* soundData)
 	soundData->wfex = {};
 }
 
-void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData) 
+void SoundPlayWave(IXAudio2* xAudio2, const SoundData& soundData)
 {
 	HRESULT result;
 
@@ -990,15 +990,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//comの初期化
 	CoInitializeEx(0, COINIT_MULTITHREADED);
-	
+
 	D3DResourceLeakChecker leakCheck;
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
 	ComPtr<IXAudio2>xAudio2;
 	IXAudio2MasteringVoice* masterVoice;
 
-	
-	
+
+
 
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
@@ -1058,12 +1058,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//xAudio2インスタンス生成
 	HRESULT result;
-		result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
-		result = xAudio2->CreateMasteringVoice(&masterVoice);
+	result = XAudio2Create(&xAudio2, 0, XAUDIO2_DEFAULT_PROCESSOR);
+	result = xAudio2->CreateMasteringVoice(&masterVoice);
 
-		
-		////前フレームのキー入力
-		//BYTE prevKey[256] = {};
+
+	////前フレームのキー入力
+	//BYTE prevKey[256] = {};
 
 #ifdef _DEBUG
 	ComPtr<ID3D12Debug1> debugController = nullptr;
@@ -1079,10 +1079,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #endif // !_DEBUG
 
 
-	
 
-	
-	
+
+
+
 	//関数が成功したかどうかSUCCEEDマクロで判定できる
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
 	assert(SUCCEEDED(hr));
@@ -1533,6 +1533,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//データ書き込み
 	uint32_t* indexDataSprite = nullptr;
+
+
+
+
 	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
 
 	//インデックス初期化
@@ -1797,12 +1801,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//データ書き込む
 	TransformationMatrix* wvpData = nullptr;
 
-	Transform transform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, 0.0f} };
+
 
 	//書き込むためのアドレス
 	wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
 	wvpData->WVP = makeIdentity4x4();
-	wvpData->World = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
+
 
 #pragma endregion 	
 
@@ -1850,12 +1854,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	materialDataSphere->enableLighting = true;
 
-	
+
 
 #pragma endregion 
 
 #pragma region LightOBJ
-		
+
 	//OBJのライトの初期化
 
 		//マテリアル球体用リソースを作る　
@@ -1885,6 +1889,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	TransformationMatrix* transformationMatrixDataSprite = nullptr;
 
+
+
 	//書き込むアドレスを取得
 
 	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSprite));
@@ -1892,6 +1898,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//単位行列を書き込んでおく
 
 	transformationMatrixDataSprite->WVP = makeIdentity4x4();
+
+
 
 	//ビューボート
 	D3D12_VIEWPORT viewport{};
@@ -1992,7 +2000,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//頂点リソースにデータを書き込む
 	VertexData* vertexDataModel = nullptr;
 	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
-	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);//頂点データをリソースにコピー
+	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData) * vertexCountObj);//頂点データをリソースにコピー
 
 	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
 	TransformationMatrix* transformationMatrixDataOBJ = nullptr;
@@ -2039,19 +2047,44 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-#pragma region LightDirection
+#pragma region LightDirectionSprite
 	//光の向き
-	ComPtr<ID3D12Resource> materialResourceDirection = createBufferResouces(device.Get(), sizeof(DirectionalLight));
+	ComPtr<ID3D12Resource> materialResourceDirectionSprite = createBufferResouces(device.Get(), sizeof(DirectionalLight));
 
-	DirectionalLight* directionalLightData = nullptr;
-	materialResourceDirection->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData));
+	DirectionalLight* directionalLightDataSprite = nullptr;
+	materialResourceDirectionSprite->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDataSprite));
 
-	directionalLightData->color = { 1.0f,1.0f,1.0f,1.0f };
-	directionalLightData->direction = { 0.0f,-1.0f,0.0f };
-	directionalLightData->intensity = 1.0f;
+	directionalLightDataSprite->color = { 1.0f,1.0f,1.0f,1.0f };
+	directionalLightDataSprite->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightDataSprite->intensity = 1.0f;
 
 #pragma endregion 
 
+#pragma region LightDirectionSphere
+	//光の向き
+	ComPtr<ID3D12Resource> materialResourceDirectionSphere = createBufferResouces(device.Get(), sizeof(DirectionalLight));
+
+	DirectionalLight* directionalLightDataSphere = nullptr;
+	materialResourceDirectionSphere->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDataSphere));
+
+	directionalLightDataSphere->color = { 1.0f,1.0f,1.0f,1.0f };
+	directionalLightDataSphere->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightDataSphere->intensity = 1.0f;
+#pragma endregion
+
+#pragma region LightDirectionOBJ
+
+	//光の向き
+	ComPtr<ID3D12Resource> materialResourceDirectionOBJ = createBufferResouces(device.Get(), sizeof(DirectionalLight));
+
+	DirectionalLight* directionalLightDataOBJ = nullptr;
+	materialResourceDirectionOBJ->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDataOBJ));
+
+	directionalLightDataOBJ->color = { 1.0f,1.0f,1.0f,1.0f };
+	directionalLightDataOBJ->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightDataOBJ->intensity = 1.0f;
+
+#pragma endregion 
 
 #pragma region UVTransform
 
@@ -2062,8 +2095,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 	//初期化
 
-	Transform cameraTransform = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
+	Transform cameraTransformSprite = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
+	Transform cameraTransformSphere = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
+	Transform cameraTransformOBJ = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
 	//Sprite用のを作成
+
 	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 	Transform transformSphere{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 	Transform transformOBJ{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
@@ -2076,11 +2112,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//音声読み込み
 	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav");
-	
+
 	SoundPlayWave(xAudio2.Get(), soundData1);
 
 	bool isSphereActive = true;
-	bool isSpriteActive = false;
+	bool isSpriteActive = true;
 	bool isOBJActive = false;
 
 
@@ -2103,7 +2139,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		{
 
 #pragma region グラフィックスコマンド
-		
+
 			BYTE key[256] = {};
 			HRESULT result = keyboard->GetDeviceState(sizeof(key), key);
 			if (FAILED(result)) {
@@ -2120,9 +2156,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				if (key[DIK_SPACE] & 0x80) {
 					OutputDebugStringA("Hit 0\n");
 				}
-			}            
+			}
 
-		/*	memcpy(prevKey, key, sizeof(key));*/
+			/*	memcpy(prevKey, key, sizeof(key));*/
 
 #pragma endregion                                     
 
@@ -2131,7 +2167,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			bool temp_enableLightingSphere = (materialDataSphere->enableLighting != 0);
 			bool temp_enableLightingOBJ = (materialDataOBJ->enableLighting != 0);
 
-			
+
 
 
 			ImGui_ImplDX12_NewFrame();
@@ -2140,7 +2176,56 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ShowDemoWindow();
 
 
-			directionalLightData->direction = Normalize(directionalLightData->direction);
+			directionalLightDataSprite->direction = Normalize(directionalLightDataSprite->direction);
+			directionalLightDataSphere->direction = Normalize(directionalLightDataSphere->direction);
+			directionalLightDataOBJ->direction = Normalize(directionalLightDataOBJ->direction);
+
+			//球体の回転
+			/*transform.rotate.y += 0.03f;*/
+
+#pragma region CameraSprite
+			//カメラの処理
+
+			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
+
+
+			Matrix4x4 cameraMatrixSprite = MakeAffineMatrix(cameraTransformSprite.scale, cameraTransformSprite.rotate, cameraTransformSprite.translate);
+			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
+			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+			transformationMatrixDataSprite->WVP = worldViewProjectionMatrixSprite;
+			transformationMatrixDataSprite->World = worldMatrixSprite;
+#pragma endregion
+
+#pragma region CameraSphere
+			Matrix4x4 worldMatrixSphere = MakeAffineMatrix(transformSphere.scale, transformSphere.rotate, transformSphere.translate);
+
+
+			Matrix4x4 cameraMatrixSphere = MakeAffineMatrix(cameraTransformSphere.scale, cameraTransformSphere.rotate, cameraTransformSphere.translate);
+			Matrix4x4 viewMatrixSphere = Inverse(cameraMatrixSphere);
+			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixSphere = Multiply(worldMatrixSphere, Multiply(viewMatrixSphere, projectionMatrixSphere));
+			transformationMatrixDataSphere->WVP = worldViewProjectionMatrixSphere;
+			transformationMatrixDataSphere->World = worldMatrixSphere;
+#pragma endregion
+
+#pragma region CameraOBJ
+			Matrix4x4 worldMatrixOBJ = MakeAffineMatrix(transformOBJ.scale, transformOBJ.rotate, transformOBJ.translate);
+
+
+			Matrix4x4 cameraMatrixOBJ = MakeAffineMatrix(cameraTransformOBJ.scale, cameraTransformOBJ.rotate, cameraTransformOBJ.translate);
+			Matrix4x4 viewMatrixOBJ = Inverse(cameraMatrixOBJ);
+			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
+			Matrix4x4 worldViewProjectionMatrixOBJ = Multiply(worldMatrixOBJ, Multiply(viewMatrixOBJ, projectionMatrixOBJ));
+			transformationMatrixDataOBJ->WVP = worldViewProjectionMatrixOBJ;
+			transformationMatrixDataOBJ->World = worldMatrixOBJ;
+#pragma endregion
+
+
+
+
+
+
 
 #pragma region ImGui
 
@@ -2152,30 +2237,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Checkbox("Use Monster Ball", &useMonsterBall);
 			ImGui::End();
 
-			
+
 
 			//=== [トランスフォーム] ===//
 			ImGui::Begin("Transform Settings");
-			if (ImGui::CollapsingHeader("Sphere Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+			if (ImGui::CollapsingHeader("Sphere Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				ImGui::DragFloat3("Position", &transformSphere.translate.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &transformSphere.rotate.x, 0.1f);
-				ImGui::DragFloat3("Scale", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
+				ImGui::DragFloat3("PositionSphere", &transformSphere.translate.x, 0.1f);
+				ImGui::DragFloat3("RotationSphere", &transformSphere.rotate.x, 0.1f);
+				ImGui::DragFloat3("ScaleSphere", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
 			}
 
-			if (ImGui::CollapsingHeader("Sprite Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+			if (ImGui::CollapsingHeader("Sprite Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				ImGui::DragFloat3("Position", &transformSprite.translate.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &transformSprite.rotate.x, 0.1f);
-				ImGui::DragFloat3("Scale", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
+				ImGui::DragFloat3("PositionSprite", &transformSprite.translate.x, 0.1f);
+				ImGui::DragFloat3("RotationSprite", &transformSprite.rotate.x, 0.1f);
+				ImGui::DragFloat3("ScaleSprite", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
 			}
 
-			
-			if (ImGui::CollapsingHeader("OBJ Transform", ImGuiTreeNodeFlags_DefaultOpen)) 
+
+			if (ImGui::CollapsingHeader("OBJ Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				ImGui::DragFloat3("Position", &transformOBJ.translate.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &transformOBJ.rotate.x, 0.1f);
-				ImGui::DragFloat3("Scale", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
+				ImGui::DragFloat3("PositionOBJ", &transformOBJ.translate.x, 0.1f);
+				ImGui::DragFloat3("RotationOBJ", &transformOBJ.rotate.x, 0.1f);
+				ImGui::DragFloat3("ScaleOBJ", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
 			}
 
 			ImGui::End();
@@ -2184,33 +2269,45 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::Begin("Material & Lighting");
 
 			if (ImGui::CollapsingHeader("Sphere Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit4("Color", &materialDataSphere->color.x);
-				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSphere);
+				ImGui::ColorEdit4("ColorSphere", &materialDataSphere->color.x);
+				ImGui::Checkbox("Enable Lighting Sphere", &temp_enableLightingSphere);
 				materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
 			}
 
 			if (ImGui::CollapsingHeader("Sprite Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit4("Color", &materialDataSprite->color.x);
+				ImGui::ColorEdit4("ColorSprite", &materialDataSprite->color.x);
 				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSprite);
 				materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
 			}
 
 			if (ImGui::CollapsingHeader("OBJ Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit4("Color", &materialDataOBJ->color.x);
-				ImGui::Checkbox("Enable Lighting", &temp_enableLightingOBJ);
+				ImGui::ColorEdit4("ColorOBJ", &materialDataOBJ->color.x);
+				ImGui::Checkbox("Enable Lighting OBJ", &temp_enableLightingOBJ);
 				materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
 			}
 
-			if (ImGui::CollapsingHeader("Directional Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit3("Light Color", &directionalLightData->color.x);
-				ImGui::SliderFloat3("Light Direction", &directionalLightData->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity", &directionalLightData->intensity);
+			if (ImGui::CollapsingHeader("Directional LightSprite", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit3("Light Color Sprite", &directionalLightDataSprite->color.x);
+				ImGui::SliderFloat3("Light Direction Sprite", &directionalLightDataSprite->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity Sprite", &directionalLightDataSprite->intensity);
+			}
+
+			if (ImGui::CollapsingHeader("Directional LightSphere", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit3("Light Color Sphere", &directionalLightDataSphere->color.x);
+				ImGui::SliderFloat3("Light Direction Sphere", &directionalLightDataSphere->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity Sphere", &directionalLightDataSphere->intensity);
+			}
+
+			if (ImGui::CollapsingHeader("Directional LightOBJ", ImGuiTreeNodeFlags_DefaultOpen)) {
+				ImGui::ColorEdit3("Light Color OBJ", &directionalLightDataOBJ->color.x);
+				ImGui::SliderFloat3("Light Direction OBJ", &directionalLightDataOBJ->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity OBJ", &directionalLightDataOBJ->intensity);
 			}
 
 			ImGui::End();
 
-			
-			
+
+
 
 			//=== [UV設定（Sprite）] ===//
 			ImGui::Begin("Sprite UV Transform");
@@ -2221,51 +2318,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::SliderAngle("Rotate", &uvTransformSprite.rotate.z);
 
 			ImGui::End();
-			ShowSRTWindow(transform);
 
-			
+
+
 
 #pragma endregion
-
-			//球体の回転
-			/*transform.rotate.y += 0.03f;*/
-			Matrix4x4 worldMatrix = MakeAffineMatrix(transform.scale, transform.rotate, transform.translate);
-
-
-			//カメラの処理
-			Matrix4x4 cameraMatrix = MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrix = Multiply(worldMatrix, Multiply(viewMatrix, projectionMatrix));
-			wvpData->WVP = worldViewProjectionMatrix;
-			wvpData->World = worldMatrix;
-
-
-			//SpriteのWorldViewProjectionMatrixを作る
-			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate,
-				transformSprite.translate);
-			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
-			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
-			transformationMatrixDataSprite->WVP = worldViewProjectionMatrixSprite;
-
-
-			//SphereのWVPを更新
-			Matrix4x4 worldMatrixSphere = MakeAffineMatrix(transformSphere.scale, transformSphere.rotate, transformSphere.translate);
-			Matrix4x4 viewMatrixSphere = Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 wvpMatrixSphere = Multiply(worldMatrixSphere, Multiply(viewMatrixSphere, projectionMatrixSphere));
-			transformationMatrixDataSphere->WVP = wvpMatrixSphere;
-
-
-			//OBJのWVPを更新
-			Matrix4x4 worldMatrixOBJ = MakeAffineMatrix(transformOBJ.scale, transformOBJ.rotate, transformOBJ.translate);
-			Matrix4x4 viewMatrixOBJ = Inverse(cameraMatrix);
-			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 wvpMatrixOBJ = Multiply(worldMatrixOBJ, Multiply(viewMatrixOBJ, projectionMatrixOBJ));
-			transformationMatrixDataOBJ->WVP = wvpMatrixOBJ;
-
-
 
 
 			//画面のクリア処理
@@ -2274,9 +2331,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//UVTransform
 
 			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
-			uvTransformMatrix = Multiply(uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
 			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
-
 			//確実に書き込む
 
 			//スプライト用
@@ -2321,7 +2376,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-			ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescrriptorHeap.Get()};
+			ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescrriptorHeap.Get() };
 			commandList->SetDescriptorHeaps(1, descriptorHeaps);
 
 			//コマンドを積む
@@ -2344,7 +2399,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
-				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSphere->GetGPUVirtualAddress());
 
 				//作画
 				commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
@@ -2354,7 +2409,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			}
 
 #pragma region OBJ
-			if (isOBJActive) 
+			if (isOBJActive)
 			{
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
@@ -2363,11 +2418,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceOBJ->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionOBJ->GetGPUVirtualAddress());
 
 				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
 			}
-			
+
 #pragma endregion
 
 #pragma region UVSprite
@@ -2381,14 +2436,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirection->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSprite->GetGPUVirtualAddress());
 
 				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 			}
 #pragma endregion 
 
 
-			
+
 
 
 			ImGui::Render();
@@ -2408,7 +2463,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			hr = commandList->Close();
 			assert(SUCCEEDED(hr));
 
-			ID3D12CommandList* commandLists[] = { commandList.Get()};
+			ID3D12CommandList* commandLists[] = { commandList.Get() };
 			commandQueue->ExecuteCommandLists(1, commandLists);
 			swapChain->Present(1, 0);
 
@@ -2467,5 +2522,4 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	CoUninitialize();
 
 	return 0;
-	}
-	
+}
