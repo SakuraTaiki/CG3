@@ -1,3 +1,4 @@
+
 #include <windows.h>
 #include <cstdint>
 #include <filesystem>
@@ -1966,7 +1967,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// 頂点リソースへCPUからデータを書き込む
 	VertexData* vertexDataModel = nullptr;
 	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));
-	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);
+	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData) * vertexCountObj);
 
 	// OBJモデル用のWVP行列バッファ（Transform用定数バッファ）を作成
 	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ =
@@ -2301,83 +2302,82 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 
-#pragma region ▼ ImGui入力処理 ▼
+#pragma region  ImGui入力処理 
 
-			//=== 描画対象の選択 ===//
 			ImGui::Begin("Control Panel");
-			static const char* drawTargetNames[] = { "Sphere", "Sprite", "OBJ" };
-			static int drawTargetIndex = 0; // 0: Sphere, 1: Sprite, 2: OBJ
-			ImGui::Combo("Draw Target", &drawTargetIndex, drawTargetNames, IM_ARRAYSIZE(drawTargetNames));
+			static bool drawTargetFlags[3] = { true, true, true }; // 0: Sphere, 1: Sprite, 2: OBJ
+			ImGui::Checkbox("Draw Sphere", &drawTargetFlags[0]);
+			ImGui::Checkbox("Draw Sprite", &drawTargetFlags[1]);
+			ImGui::Checkbox("Draw OBJ", &drawTargetFlags[2]);
 			ImGui::Checkbox("Use Monster Ball", &useMonsterBall);
 			ImGui::End();
 
-			//=== Transform ===//
 			ImGui::Begin("Transform Settings");
-			switch (drawTargetIndex) {
-			case 0:
-				ImGui::Text("Sphere Transform");
-				ImGui::DragFloat3("Position", &transformSphere.translate.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &transformSphere.rotate.x, 0.1f);
-				ImGui::DragFloat3("Scale", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
-				break;
-			case 1:
-				ImGui::Text("Sprite Transform");
-				ImGui::DragFloat3("Position", &transformSprite.translate.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &transformSprite.rotate.x, 0.1f);
-				ImGui::DragFloat3("Scale", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
-				break;
-			case 2:
-				ImGui::Text("OBJ Transform");
-				ImGui::DragFloat3("Position", &transformOBJ.translate.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &transformOBJ.rotate.x, 0.1f);
-				ImGui::DragFloat3("Scale", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
-				break;
+
+			// Sphere
+			if (drawTargetFlags[0]) {
+				ImGui::SeparatorText("Sphere Transform");
+				ImGui::DragFloat3("Position##Sphere", &transformSphere.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation##Sphere", &transformSphere.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale##Sphere", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
 			}
+
+			// Sprite
+			if (drawTargetFlags[1]) {
+				ImGui::SeparatorText("Sprite Transform");
+				ImGui::DragFloat3("Position##Sprite", &transformSprite.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation##Sprite", &transformSprite.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale##Sprite", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
+			}
+
+			// OBJ
+			if (drawTargetFlags[2]) {
+				ImGui::SeparatorText("OBJ Transform");
+				ImGui::DragFloat3("Position##OBJ", &transformOBJ.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation##OBJ", &transformOBJ.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale##OBJ", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
+			}
+
 			ImGui::End();
 
-			//=== Material & Light ===//
+
 			ImGui::Begin("Material & Lighting");
-			switch (drawTargetIndex) {
-			case 0:
-				ImGui::Text("Sphere Material");
-				ImGui::ColorEdit4("Color", &materialDataSphere->color.x);
-				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSphere);
+
+			if (drawTargetFlags[0]) {
+				ImGui::SeparatorText("Sphere Material & Light");
+				ImGui::ColorEdit4("Color##Sphere", &materialDataSphere->color.x);
+				ImGui::Checkbox("Enable Lighting##Sphere", &temp_enableLightingSphere);
 				materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
 
-				ImGui::Text("Sphere Light");
-				ImGui::ColorEdit3("Light Color", &directionalLightDataSphere->color.x);
-				ImGui::SliderFloat3("Direction", &directionalLightDataSphere->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity", &directionalLightDataSphere->intensity);
-				break;
+				ImGui::ColorEdit3("Light Color##Sphere", &directionalLightDataSphere->color.x);
+				ImGui::SliderFloat3("Direction##Sphere", &directionalLightDataSphere->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity##Sphere", &directionalLightDataSphere->intensity);
+			}
 
-			case 1:
-				ImGui::Text("Sprite Material");
-				ImGui::ColorEdit4("Color", &materialDataSprite->color.x);
-				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSprite);
+			if (drawTargetFlags[1]) {
+				ImGui::SeparatorText("Sprite Material & Light");
+				ImGui::ColorEdit4("Color##Sprite", &materialDataSprite->color.x);
+				ImGui::Checkbox("Enable Lighting##Sprite", &temp_enableLightingSprite);
 				materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
 
-				ImGui::Text("Sprite Light");
-				ImGui::ColorEdit3("Light Color", &directionalLightDataSprite->color.x);
-				ImGui::SliderFloat3("Direction", &directionalLightDataSprite->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity", &directionalLightDataSprite->intensity);
-				break;
+				ImGui::ColorEdit3("Light Color##Sprite", &directionalLightDataSprite->color.x);
+				ImGui::SliderFloat3("Direction##Sprite", &directionalLightDataSprite->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity##Sprite", &directionalLightDataSprite->intensity);
+			}
 
-			case 2:
-				ImGui::Text("OBJ Material");
-				ImGui::ColorEdit4("Color", &materialDataOBJ->color.x);
-				ImGui::Checkbox("Enable Lighting", &temp_enableLightingOBJ);
+			if (drawTargetFlags[2]) {
+				ImGui::SeparatorText("OBJ Material & Light");
+				ImGui::ColorEdit4("Color##OBJ", &materialDataOBJ->color.x);
+				ImGui::Checkbox("Enable Lighting##OBJ", &temp_enableLightingOBJ);
 				materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
 
-				ImGui::Text("OBJ Light");
-				ImGui::ColorEdit3("Light Color", &directionalLightDataOBJ->color.x);
-				ImGui::SliderFloat3("Direction", &directionalLightDataOBJ->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity", &directionalLightDataOBJ->intensity);
-				break;
+				ImGui::ColorEdit3("Light Color##OBJ", &directionalLightDataOBJ->color.x);
+				ImGui::SliderFloat3("Direction##OBJ", &directionalLightDataOBJ->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity##OBJ", &directionalLightDataOBJ->intensity);
 			}
-			ImGui::End();
 
-			//=== UV Transform (Sprite専用) ===//
-			if (drawTargetIndex == 1) {
+			ImGui::End();
+			if (drawTargetFlags[1]) {
 				ImGui::Begin("Sprite UV Transform");
 				ImGui::DragFloat2("Translate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
 				ImGui::DragFloat2("Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
@@ -2385,9 +2385,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				ImGui::End();
 			}
 
-#pragma endregion ▲ ImGui入力処理 終了 ▲
+#pragma endregion  ImGui入力処理 終了 
 
-#pragma region ▼ 描画準備処理 ▼
+#pragma region  描画準備処理 
 
 			//--- UVTransformの行列計算 ---
 			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
@@ -2429,8 +2429,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 			//=== 描画処理 ===//
-			switch (drawTargetIndex) {
-			case 0: // Sphere
+			if (drawTargetFlags[0]) {
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
 				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
@@ -2441,9 +2440,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSphere->GetGPUVirtualAddress());
 				commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
-				break;
+			}
 
-			case 1: // Sprite
+			if (drawTargetFlags[1]) {
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
 				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2454,9 +2453,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSprite->GetGPUVirtualAddress());
 				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-				break;
+			}
 
-			case 2: // OBJ
+			if(drawTargetFlags[2]){
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
 				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2466,7 +2465,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionOBJ->GetGPUVirtualAddress());
 				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
-				break;
 			}
 
 
