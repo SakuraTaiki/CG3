@@ -1792,119 +1792,77 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 
-#pragma region Camera
-	//05_03追加
+#pragma region Camera // WVP行列用リソースの初期化
 
-	//WVPのリソースを作る matrix4*4 一つ分のサイズを用意する
+	// WVP（World × View × Projection）用の定数バッファを作成
 	ComPtr<ID3D12Resource> wvpResouces = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
 
-	//データ書き込む
+	// 定数バッファにデータを書き込むためのポインタを取得
 	TransformationMatrix* wvpData = nullptr;
-
-
-
-	//書き込むためのアドレス
 	wvpResouces->Map(0, nullptr, reinterpret_cast<void**>(&wvpData));
+
+	// 初期値として単位行列をセット（描画前の安全な初期状態）
 	wvpData->WVP = makeIdentity4x4();
 
+#pragma endregion
 
-#pragma endregion 	
+#pragma region LightSprite // スプライト用マテリアルリソースの初期化
 
-#pragma region LightSprite
-
-	//光源のスプライト用の生成
-
-	//マテリアルスプライト用リソースを作る　
+	// スプライトのマテリアル用の定数バッファを作成
 	ComPtr<ID3D12Resource> materialResourcesSprite = createBufferResouces(device.Get(), sizeof(Material));
 
-	//マテリアル用のデータを書き込む
+	// 書き込むアドレスを取得してポインタを保持
 	Material* materialDataSprite = nullptr;
-
-	//書き込むためのアドレスを取得
 	materialResourcesSprite->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSprite));
 
-	//生成終了
-
-
-	//今回は白を書き込んでみる
+	// 色を白に設定（RGBA全て1.0f）
 	materialDataSprite->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
+	// スプライトはライティングを使わない
 	materialDataSprite->enableLighting = false;
 
-#pragma endregion 
+#pragma endregion
 
+#pragma region LightSphere // 球体用マテリアルリソースの初期化
 
-
-#pragma region LightSphere
-	//光源の球体用の初期化
-
-		//マテリアル球体用リソースを作る　
 	ComPtr<ID3D12Resource> materialResourcesSphere = createBufferResouces(device.Get(), sizeof(Material));
-
-	//マテリアル用のデータを書き込む
 	Material* materialDataSphere = nullptr;
-
-	//書き込むためのアドレスを取得
 	materialResourcesSphere->Map(0, nullptr, reinterpret_cast<void**>(&materialDataSphere));
 
-	//生成終了
-
-	//今回は白を書き込んでみる
+	// 白に設定
 	materialDataSphere->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
+	// 球体はライティングを有効にする
 	materialDataSphere->enableLighting = true;
 
+#pragma endregion
 
+#pragma region LightOBJ // OBJモデル用マテリアルリソースの初期化
 
-#pragma endregion 
-
-#pragma region LightOBJ
-
-	//OBJのライトの初期化
-
-		//マテリアル球体用リソースを作る　
 	ComPtr<ID3D12Resource> materialResourcesOBJ = createBufferResouces(device.Get(), sizeof(Material));
-
-	//マテリアル用のデータを書き込む
 	Material* materialDataOBJ = nullptr;
-
-	//書き込むためのアドレスを取得
 	materialResourcesOBJ->Map(0, nullptr, reinterpret_cast<void**>(&materialDataOBJ));
 
-	//生成終了
-
-	//今回は白を書き込んでみる
+	// 白に設定
 	materialDataOBJ->color = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
 
+	// OBJモデルはライティングを有効にする
 	materialDataOBJ->enableLighting = true;
 
 #pragma endregion
 
-#pragma region SpriteTransform
-	//Sprite用のTransformationMatrix用のリソースを作る Matrix4x4
+#pragma region SpriteTransform // スプライト用変換行列バッファ・ビューポートなどの初期化
 
+	// スプライト描画用のWVP行列バッファを作成
 	ComPtr<ID3D12Resource> transformationMatrixResourceSprite = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
-
-	//	データを書き込む
-
 	TransformationMatrix* transformationMatrixDataSprite = nullptr;
-
-
-
-	//書き込むアドレスを取得
-
 	transformationMatrixResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSprite));
 
-	//単位行列を書き込んでおく
-
+	// 単位行列で初期化
 	transformationMatrixDataSprite->WVP = makeIdentity4x4();
 
-
-
-	//ビューボート
+	// ビューポート設定（画面全体）
 	D3D12_VIEWPORT viewport{};
-
-	//クライアント領域のサイズと一緒にして画面全体に表示
 	viewport.Width = kClientWidth;
 	viewport.Height = kClientHeight;
 	viewport.TopLeftX = 0;
@@ -1912,171 +1870,184 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	viewport.MinDepth = 0.0f;
 	viewport.MaxDepth = 1.0f;
 
-	//シザー矩形
+	// シザー矩形（切り抜き範囲）も画面全体に設定
 	D3D12_RECT scissorRect{};
 	scissorRect.left = 0;
 	scissorRect.right = kClientWidth;
 	scissorRect.top = 0;
 	scissorRect.bottom = kClientHeight;
 
-	//imguiの初期化
+	//=== ImGuiの初期化 ===//
 	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
-	ImGui_ImplWin32_Init(hwnd);
-	ImGui_ImplDX12_Init(device.Get(),
-		swapChainDesc.BufferCount,
-		rtvDesc.Format,
-		srvDescrriptorHeap.Get(),
+	ImGui::CreateContext(); // コンテキスト作成
+	ImGui::StyleColorsDark(); // ダークテーマ使用
+	ImGui_ImplWin32_Init(hwnd); // Win32プラットフォーム用初期化
+	ImGui_ImplDX12_Init(
+		device.Get(),                          // デバイス
+		swapChainDesc.BufferCount,            // スワップチェインバッファ数
+		rtvDesc.Format,                       // RTVフォーマット
+		srvDescrriptorHeap.Get(),             // SRVヒープ
 		srvDescrriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		srvDescrriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 
-
-
-	//textureを読んで転送する
+	//=== テクスチャ「uvChecker.png」の読み込みと転送 ===//
 	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
 	const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+
+	// GPU側テクスチャリソースとアップロード用リソースを作成
 	ComPtr<ID3D12Resource> textureResource = CreateTextureResource(device.Get(), metadata);
 	ComPtr<ID3D12Resource> intermediateResource = UploadTextureData(textureResource.Get(), mipImages, device.Get(), commandList.Get());
-	//DepthStencilTextureをウィンドウのサイズで作成
+
+	// ウィンドウサイズでDepthStencil用テクスチャを作成
 	ComPtr<ID3D12Resource> depthStencilResource = CreateDepthStencilTextureResource(device.Get(), kClientWidth, kClientHeight);
 
-	//mataDataを基にSRVの設定
+	// SRVの設定（テクスチャをシェーダーに渡すビューを作成）
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Format = metadata.format;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
-	//SRVを作成するDescriptorHeapの場所を決める
+	// SRVヒープのインデックス2に登録
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
 
-	//srvを作成する
+	// SRVの作成
 	device->CreateShaderResourceView(textureResource.Get(), &srvDesc, textureSrvHandleCPU);
+
 #pragma endregion
 
-#pragma region MonsterBall
+#pragma region MonsterBall // テクスチャ「monsterBall.png」の読み込みとSRV作成
 
-	//2枚目のTextureを読んで転送する
+	// モンスターボールの画像を読み込む
 	DirectX::ScratchImage mipImages2 = LoadTexture("resources/monsterBall.png");
 	const DirectX::TexMetadata& metadata2 = mipImages2.GetMetadata();
+
+	// テクスチャリソースを作成
 	ComPtr<ID3D12Resource> textureResource2 = CreateTextureResource(device, metadata2);
 	ComPtr<ID3D12Resource> intermediateResource2 = UploadTextureData(textureResource2, mipImages2, device, commandList);
 
-	//mataDataを基にSRVの設定
+	// SRVの設定（2Dテクスチャ）
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc2{};
 	srvDesc2.Format = metadata2.format;
 	srvDesc2.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc2.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc2.Texture2D.MipLevels = UINT(metadata2.mipLevels);
 
+	// SRVヒープのインデックス2（※複数同一インデックスで作成してる点に注意）
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU2 = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU2 = GetGPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 2);
 
-	//srvを作成する
+	// SRVを作成
 	device->CreateShaderResourceView(textureResource2.Get(), &srvDesc2, textureSrvHandleCPU2);
 
 #pragma endregion
 
 
-#pragma region ModelData
+#pragma region ModelData // OBJモデルの読み込みとバッファ設定
 
-	//モデル読み込み
-	ModelData modelData = LoadObjFile("resources", "plane.obj");
+	// モデルデータ（バニー.obj）を読み込む
+	ModelData modelData = LoadObjFile("resources", "bunny.obj");
 
-	//Objサイズ格納変数
+	// 頂点数を取得して格納（頂点バッファ作成などで使用）
 	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
 
-	//頂点リソースを作る
-	ComPtr<ID3D12Resource> vertexResourceModel = createBufferResouces(device.Get(), sizeof(VertexData) * modelData.vertices.size());
-	//頂点バッファビュー
+	// 頂点用のリソース（バッファ）を作成
+	ComPtr<ID3D12Resource> vertexResourceModel =
+		createBufferResouces(device.Get(), sizeof(VertexData) * modelData.vertices.size());
+
+	// 頂点バッファビュー（バッファの先頭アドレスやサイズなどを設定）
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewModel{};
-	vertexBufferViewModel.BufferLocation = vertexResourceModel->GetGPUVirtualAddress();//リソースの先端アドレスから使う
-	vertexBufferViewModel.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size());
-	vertexBufferViewModel.StrideInBytes = sizeof(VertexData);//1頂点当たりのサイズ
+	vertexBufferViewModel.BufferLocation = vertexResourceModel->GetGPUVirtualAddress(); // GPU仮想アドレスの取得
+	vertexBufferViewModel.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size()); // バッファ全体のサイズ
+	vertexBufferViewModel.StrideInBytes = sizeof(VertexData); // 頂点1つ分のサイズ
 
-	//頂点リソースにデータを書き込む
+	// 頂点リソースへCPUからデータを書き込む
 	VertexData* vertexDataModel = nullptr;
-	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));//書き込むためのアドレス
-	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData) * vertexCountObj);//頂点データをリソースにコピー
+	vertexResourceModel->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModel));
+	std::memcpy(vertexDataModel, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);
 
-	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
+	// OBJモデル用のWVP行列バッファ（Transform用定数バッファ）を作成
+	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ =
+		createBufferResouces(device.Get(), sizeof(TransformationMatrix));
 	TransformationMatrix* transformationMatrixDataOBJ = nullptr;
 	transformationMatrixResourceOBJ->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataOBJ));
-	transformationMatrixDataOBJ->WVP = makeIdentity4x4();
+	transformationMatrixDataOBJ->WVP = makeIdentity4x4(); // 初期値として単位行列を設定
 
-#pragma endregion 
+#pragma endregion
 
+#pragma region model Texture // OBJモデル用テクスチャの読み込みとSRV作成
 
-	//06-02　32枚目
-#pragma region model Texture
-
-	//2枚目のTextureを読んで転送する
+	// モデルのマテリアルに指定されたテクスチャを読み込む
 	DirectX::ScratchImage mipImages3 = LoadTexture(modelData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata3 = mipImages3.GetMetadata();
-	ComPtr<ID3D12Resource> textureResource3 = CreateTextureResource(device.Get(), metadata3);
-	ComPtr<ID3D12Resource> intermediateResource3 = UploadTextureData(textureResource3.Get(), mipImages3, device.Get(), commandList.Get());
 
-	//mataDataを基にSRVの設定
+	// GPU上のテクスチャリソースとアップロード用リソースを作成
+	ComPtr<ID3D12Resource> textureResource3 = CreateTextureResource(device.Get(), metadata3);
+	ComPtr<ID3D12Resource> intermediateResource3 =
+		UploadTextureData(textureResource3.Get(), mipImages3, device.Get(), commandList.Get());
+
+	// SRV（シェーダーリソースビュー）の設定（テクスチャをシェーダーで使用するためのビュー）
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc3{};
 	srvDesc3.Format = metadata3.format;
 	srvDesc3.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;//2dテクスチャ
+	srvDesc3.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc3.Texture2D.MipLevels = UINT(metadata3.mipLevels);
 
+	// ディスクリプタヒープ内の3番目のスロットにSRVを作成（バニー.obj用）
 	D3D12_CPU_DESCRIPTOR_HANDLE textureSrvHandleCPU3 = GetCPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
 	D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU3 = GetGPUDescriptorHandle(srvDescrriptorHeap.Get(), descriptorSizeSRV, 2);
 
-	//srvを作成する
 	device->CreateShaderResourceView(textureResource3.Get(), &srvDesc3, textureSrvHandleCPU3);
 
 #pragma endregion
 
-
-
-	//DSVの設定
+	//=======================================//
+	//=== DSV（深度ステンシルビュー）設定 ===//
+	//=======================================//
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
-	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;//Format 基本的にResourceに合わせる
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;//2dTexture
+	dsvDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT; // 深度 + ステンシルの一般的なフォーマット
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D; // 2Dテクスチャとして扱う
 
-	//DSVHeapの先頭に作る
-	device->CreateDepthStencilView(depthStencilResource.Get(), &dsvDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	// DSVヒープの先頭スロットにDSVを作成
+	device->CreateDepthStencilView(
+		depthStencilResource.Get(),
+		&dsvDesc,
+		dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
+#pragma region LightDirectionSprite // スプライト用ライト設定
 
-
-
-#pragma region LightDirectionSprite
-	//光の向き
-	ComPtr<ID3D12Resource> materialResourceDirectionSprite = createBufferResouces(device.Get(), sizeof(DirectionalLight));
-
+	// スプライト用の平行光源（DirectionalLight）バッファを作成
+	ComPtr<ID3D12Resource> materialResourceDirectionSprite =
+		createBufferResouces(device.Get(), sizeof(DirectionalLight));
 	DirectionalLight* directionalLightDataSprite = nullptr;
 	materialResourceDirectionSprite->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDataSprite));
 
+	// 光の色・方向・強さを設定
 	directionalLightDataSprite->color = { 1.0f,1.0f,1.0f,1.0f };
-	directionalLightDataSprite->direction = { 0.0f,-1.0f,0.0f };
+	directionalLightDataSprite->direction = { 0.0f,-1.0f,0.0f }; // 上から下方向
 	directionalLightDataSprite->intensity = 1.0f;
 
-#pragma endregion 
+#pragma endregion
 
-#pragma region LightDirectionSphere
-	//光の向き
-	ComPtr<ID3D12Resource> materialResourceDirectionSphere = createBufferResouces(device.Get(), sizeof(DirectionalLight));
+#pragma region LightDirectionSphere // 球体用ライト設定
 
+	ComPtr<ID3D12Resource> materialResourceDirectionSphere =
+		createBufferResouces(device.Get(), sizeof(DirectionalLight));
 	DirectionalLight* directionalLightDataSphere = nullptr;
 	materialResourceDirectionSphere->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDataSphere));
 
 	directionalLightDataSphere->color = { 1.0f,1.0f,1.0f,1.0f };
 	directionalLightDataSphere->direction = { 0.0f,-1.0f,0.0f };
 	directionalLightDataSphere->intensity = 1.0f;
+
 #pragma endregion
 
-#pragma region LightDirectionOBJ
+#pragma region LightDirectionOBJ // OBJモデル用ライト設定
 
-	//光の向き
-	ComPtr<ID3D12Resource> materialResourceDirectionOBJ = createBufferResouces(device.Get(), sizeof(DirectionalLight));
-
+	ComPtr<ID3D12Resource> materialResourceDirectionOBJ =
+		createBufferResouces(device.Get(), sizeof(DirectionalLight));
 	DirectionalLight* directionalLightDataOBJ = nullptr;
 	materialResourceDirectionOBJ->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightDataOBJ));
 
@@ -2084,43 +2055,88 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	directionalLightDataOBJ->direction = { 0.0f,-1.0f,0.0f };
 	directionalLightDataOBJ->intensity = 1.0f;
 
-#pragma endregion 
+#pragma endregion
 
-#pragma region UVTransform
+#pragma region UVTransform // 各描画対象のUV変換行列を初期化
 
 	materialDataSprite->uvTransform = makeIdentity4x4();
 	materialDataSphere->uvTransform = makeIdentity4x4();
 	materialDataOBJ->uvTransform = makeIdentity4x4();
 
 #pragma endregion
-	//初期化
 
-	Transform cameraTransformSprite = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
-	Transform cameraTransformSphere = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
-	Transform cameraTransformOBJ = { {1.0f, 1.0f, 1.0f},{0.0f, 0.0f, 0.0f},{0.0f, 0.0f, -10.0f} };
-	//Sprite用のを作成
-
-	Transform transformSprite{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-	Transform transformSphere{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-	Transform transformOBJ{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-
-	Transform uvTransformSprite{
-		{1.0f,1.0f,1.0f},
-		{0.0f,1.0f,0.0f},
-		{0.0f,0.0f,0.0f},
+	//================================================================//
+	//=== 各カメラTransform（カメラの位置・回転・スケール）初期化 ===//
+	//===============================================================//
+	Transform cameraTransformSprite = {
+		{1.0f, 1.0f, 1.0f},    // Scale
+		{0.0f, 0.0f, 0.0f},    // Rotate
+		{0.0f, 0.0f, -10.0f}   // Translate（カメラをZ方向に引く）
 	};
 
-	//音声読み込み
-	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav");
+	Transform cameraTransformSphere = {
+		{1.0f, 1.0f, 1.0f},
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 0.0f, -10.0f}
+	};
 
-	SoundPlayWave(xAudio2.Get(), soundData1);
+	Transform cameraTransformOBJ = {
+		{1.0f, 1.0f, 1.0f},
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 0.0f, -10.0f}
+	};
 
-	bool isSphereActive = true;
-	bool isSpriteActive = true;
-	bool isOBJActive = false;
+	//===========================================================//
+	//=== 各描画対象のTransform（位置・回転・スケール）初期化 ===//
+	//===========================================================//
 
 
-	//メインループ
+	Transform transformSprite = {
+		{1.0f, 1.0f, 1.0f},
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 0.0f, 0.0f}
+	};
+
+	Transform transformSphere = {
+		{1.0f, 1.0f, 1.0f},
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 0.0f, 0.0f}
+	};
+
+	Transform transformOBJ = {
+		{1.0f, 1.0f, 1.0f},
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 0.0f, 0.0f}
+	};
+
+	//=======================================================================//
+	//=== スプライト用のUV変換行列（テクスチャUVの回転・スケーリングなど）===//
+	//=======================================================================//
+
+	Transform uvTransformSprite = {
+		{1.0f, 1.0f, 1.0f},    // スケール
+		{0.0f, 1.0f, 0.0f},    // 回転（ここは疑似的な使用？）
+		{0.0f, 0.0f, 0.0f}     // 平行移動
+	};
+
+	//==============================//
+	//=== サウンド読み込みと再生 ===//
+	//==============================//
+
+	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav"); // WAVファイル読み込み
+	SoundPlayWave(xAudio2.Get(), soundData1);                      // サウンドを再生
+
+
+	//==============================//
+	//=== 各描画対象の有効フラグ ===//
+	//==============================//
+
+	bool isSphereActive = true;  // 球体を描画するか
+	bool isSpriteActive = true;  // スプライトを描画するか
+	bool isOBJActive = false;    // OBJモデルを描画するか（初期状態ではOFF）
+
+
+	//============メインループ==========//
 
 	//windowの×ボタンが押されるまでループ
 	while (msg.message != WM_QUIT)
@@ -2162,219 +2178,245 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma endregion                                     
 
-
+			// マテリアルのライティング有効状態を一時変数に保存（チェックボックス表示などに使用）
 			bool temp_enableLightingSprite = (materialDataSprite->enableLighting != 0);
 			bool temp_enableLightingSphere = (materialDataSphere->enableLighting != 0);
 			bool temp_enableLightingOBJ = (materialDataOBJ->enableLighting != 0);
 
+			//=== ImGui 新フレーム開始 ===//
+			ImGui_ImplDX12_NewFrame();     // DX12用ImGui新フレーム
+			ImGui_ImplWin32_NewFrame();    // Win32用ImGui新フレーム
+			ImGui::NewFrame();             // ImGuiの描画準備
+			ImGui::ShowDemoWindow();       // デモ用ウィンドウを表示（デバッグ・確認用）
 
-
-
-			ImGui_ImplDX12_NewFrame();
-			ImGui_ImplWin32_NewFrame();
-			ImGui::NewFrame();
-			ImGui::ShowDemoWindow();
-
-
+			//=== ライトの方向ベクトルを正規化（方向ベクトルは常に正規化されている必要がある）===//
 			directionalLightDataSprite->direction = Normalize(directionalLightDataSprite->direction);
 			directionalLightDataSphere->direction = Normalize(directionalLightDataSphere->direction);
 			directionalLightDataOBJ->direction = Normalize(directionalLightDataOBJ->direction);
 
-			//球体の回転
-			/*transform.rotate.y += 0.03f;*/
+			//=== 球体の回転（デバッグ用）===//
+			// transform.rotate.y += 0.03f;
 
-#pragma region CameraSprite
-			//カメラの処理
+#pragma region CameraSprite // スプライト用のカメラとWVP行列設定
 
-			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
+// スプライトのワールド行列作成（スケール・回転・位置）
+			Matrix4x4 worldMatrixSprite = MakeAffineMatrix(
+				transformSprite.scale,
+				transformSprite.rotate,
+				transformSprite.translate);
 
+			// カメラ行列（スプライトは基本的に2D扱いなので使わないが形式上用意）
+			Matrix4x4 cameraMatrixSprite = MakeAffineMatrix(
+				cameraTransformSprite.scale,
+				cameraTransformSprite.rotate,
+				cameraTransformSprite.translate);
 
-			Matrix4x4 cameraMatrixSprite = MakeAffineMatrix(cameraTransformSprite.scale, cameraTransformSprite.rotate, cameraTransformSprite.translate);
+			// ビュー行列（今回は2D描画のため単位行列）
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
-			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(0.0f, 0.0f, float(kClientWidth), float(kClientHeight), 0.0f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
+
+			// 正射影行列（2Dスプライト描画用）
+			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(
+				0.0f, 0.0f,
+				float(kClientWidth),
+				float(kClientHeight),
+				0.0f, 100.0f);
+
+			// WVP行列（ワールド × ビュー × プロジェクション）
+			Matrix4x4 worldViewProjectionMatrixSprite = Multiply(
+				worldMatrixSprite,
+				Multiply(viewMatrixSprite, projectionMatrixSprite));
+
+			// スプライト用定数バッファに設定
 			transformationMatrixDataSprite->WVP = worldViewProjectionMatrixSprite;
 			transformationMatrixDataSprite->World = worldMatrixSprite;
+
 #pragma endregion
 
-#pragma region CameraSphere
-			Matrix4x4 worldMatrixSphere = MakeAffineMatrix(transformSphere.scale, transformSphere.rotate, transformSphere.translate);
+#pragma region CameraSphere // 球体用のカメラとWVP行列設定
 
+			// 球体のワールド行列作成
+			Matrix4x4 worldMatrixSphere = MakeAffineMatrix(
+				transformSphere.scale,
+				transformSphere.rotate,
+				transformSphere.translate);
 
-			Matrix4x4 cameraMatrixSphere = MakeAffineMatrix(cameraTransformSphere.scale, cameraTransformSphere.rotate, cameraTransformSphere.translate);
+			// カメラ行列作成（球体は3Dなのでビュー行列のために逆行列を使う）
+			Matrix4x4 cameraMatrixSphere = MakeAffineMatrix(
+				cameraTransformSphere.scale,
+				cameraTransformSphere.rotate,
+				cameraTransformSphere.translate);
+
+			// ビュー行列（カメラの逆行列）
 			Matrix4x4 viewMatrixSphere = Inverse(cameraMatrixSphere);
-			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixSphere = Multiply(worldMatrixSphere, Multiply(viewMatrixSphere, projectionMatrixSphere));
+
+			// 透視投影行列（3Dの見え方に遠近感をつける）
+			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(
+				0.45f,                              // 視野角（FOV）
+				float(kClientWidth) / float(kClientHeight), // アスペクト比
+				0.1f, 100.0f);                      // 近クリップ面・遠クリップ面
+
+			// WVP行列
+			Matrix4x4 worldViewProjectionMatrixSphere = Multiply(
+				worldMatrixSphere,
+				Multiply(viewMatrixSphere, projectionMatrixSphere));
+
+			// 球体用定数バッファに設定
 			transformationMatrixDataSphere->WVP = worldViewProjectionMatrixSphere;
 			transformationMatrixDataSphere->World = worldMatrixSphere;
+
 #pragma endregion
 
-#pragma region CameraOBJ
-			Matrix4x4 worldMatrixOBJ = MakeAffineMatrix(transformOBJ.scale, transformOBJ.rotate, transformOBJ.translate);
+#pragma region CameraOBJ // OBJモデル用のカメラとWVP行列設定
 
+			// OBJモデルのワールド行列作成
+			Matrix4x4 worldMatrixOBJ = MakeAffineMatrix(
+				transformOBJ.scale,
+				transformOBJ.rotate,
+				transformOBJ.translate);
 
-			Matrix4x4 cameraMatrixOBJ = MakeAffineMatrix(cameraTransformOBJ.scale, cameraTransformOBJ.rotate, cameraTransformOBJ.translate);
+			// カメラ行列作成
+			Matrix4x4 cameraMatrixOBJ = MakeAffineMatrix(
+				cameraTransformOBJ.scale,
+				cameraTransformOBJ.rotate,
+				cameraTransformOBJ.translate);
+
+			// ビュー行列（カメラの逆行列）
 			Matrix4x4 viewMatrixOBJ = Inverse(cameraMatrixOBJ);
-			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(0.45f, float(kClientWidth) / float(kClientHeight), 0.1f, 100.0f);
-			Matrix4x4 worldViewProjectionMatrixOBJ = Multiply(worldMatrixOBJ, Multiply(viewMatrixOBJ, projectionMatrixOBJ));
+
+			// 透視投影行列
+			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(
+				0.45f,
+				float(kClientWidth) / float(kClientHeight),
+				0.1f, 100.0f);
+
+			// WVP行列
+			Matrix4x4 worldViewProjectionMatrixOBJ = Multiply(
+				worldMatrixOBJ,
+				Multiply(viewMatrixOBJ, projectionMatrixOBJ));
+
+			// OBJ用定数バッファに設定
 			transformationMatrixDataOBJ->WVP = worldViewProjectionMatrixOBJ;
 			transformationMatrixDataOBJ->World = worldMatrixOBJ;
+
 #pragma endregion
 
 
+#pragma region ▼ ImGui入力処理 ▼
 
-
-
-
-
-#pragma region ImGui
-
-			//=== [描画対象の選択] ===//
+			//=== 描画対象の選択 ===//
 			ImGui::Begin("Control Panel");
-			ImGui::Checkbox("Enable Sphere", &isSphereActive);
-			ImGui::Checkbox("Enable Sprite", &isSpriteActive);
-			ImGui::Checkbox("Enable OBJ", &isOBJActive);
+			static const char* drawTargetNames[] = { "Sphere", "Sprite", "OBJ" };
+			static int drawTargetIndex = 0; // 0: Sphere, 1: Sprite, 2: OBJ
+			ImGui::Combo("Draw Target", &drawTargetIndex, drawTargetNames, IM_ARRAYSIZE(drawTargetNames));
 			ImGui::Checkbox("Use Monster Ball", &useMonsterBall);
 			ImGui::End();
 
-
-
-			//=== [トランスフォーム] ===//
+			//=== Transform ===//
 			ImGui::Begin("Transform Settings");
-			if (ImGui::CollapsingHeader("Sphere Transform", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				ImGui::DragFloat3("PositionSphere", &transformSphere.translate.x, 0.1f);
-				ImGui::DragFloat3("RotationSphere", &transformSphere.rotate.x, 0.1f);
-				ImGui::DragFloat3("ScaleSphere", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
+			switch (drawTargetIndex) {
+			case 0:
+				ImGui::Text("Sphere Transform");
+				ImGui::DragFloat3("Position", &transformSphere.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &transformSphere.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale", &transformSphere.scale.x, 0.1f, 0.0f, 10.0f);
+				break;
+			case 1:
+				ImGui::Text("Sprite Transform");
+				ImGui::DragFloat3("Position", &transformSprite.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &transformSprite.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
+				break;
+			case 2:
+				ImGui::Text("OBJ Transform");
+				ImGui::DragFloat3("Position", &transformOBJ.translate.x, 0.1f);
+				ImGui::DragFloat3("Rotation", &transformOBJ.rotate.x, 0.1f);
+				ImGui::DragFloat3("Scale", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
+				break;
 			}
-
-			if (ImGui::CollapsingHeader("Sprite Transform", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				ImGui::DragFloat3("PositionSprite", &transformSprite.translate.x, 0.1f);
-				ImGui::DragFloat3("RotationSprite", &transformSprite.rotate.x, 0.1f);
-				ImGui::DragFloat3("ScaleSprite", &transformSprite.scale.x, 0.1f, 0.0f, 10.0f);
-			}
-
-
-			if (ImGui::CollapsingHeader("OBJ Transform", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				ImGui::DragFloat3("PositionOBJ", &transformOBJ.translate.x, 0.1f);
-				ImGui::DragFloat3("RotationOBJ", &transformOBJ.rotate.x, 0.1f);
-				ImGui::DragFloat3("ScaleOBJ", &transformOBJ.scale.x, 0.1f, 0.0f, 10.0f);
-			}
-
 			ImGui::End();
 
-			//=== [マテリアル・ライト] ===//
+			//=== Material & Light ===//
 			ImGui::Begin("Material & Lighting");
-
-			if (ImGui::CollapsingHeader("Sphere Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit4("ColorSphere", &materialDataSphere->color.x);
-				ImGui::Checkbox("Enable Lighting Sphere", &temp_enableLightingSphere);
+			switch (drawTargetIndex) {
+			case 0:
+				ImGui::Text("Sphere Material");
+				ImGui::ColorEdit4("Color", &materialDataSphere->color.x);
+				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSphere);
 				materialDataSphere->enableLighting = temp_enableLightingSphere ? 1 : 0;
-			}
 
-			if (ImGui::CollapsingHeader("Sprite Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit4("ColorSprite", &materialDataSprite->color.x);
+				ImGui::Text("Sphere Light");
+				ImGui::ColorEdit3("Light Color", &directionalLightDataSphere->color.x);
+				ImGui::SliderFloat3("Direction", &directionalLightDataSphere->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity", &directionalLightDataSphere->intensity);
+				break;
+
+			case 1:
+				ImGui::Text("Sprite Material");
+				ImGui::ColorEdit4("Color", &materialDataSprite->color.x);
 				ImGui::Checkbox("Enable Lighting", &temp_enableLightingSprite);
 				materialDataSprite->enableLighting = temp_enableLightingSprite ? 1 : 0;
-			}
 
-			if (ImGui::CollapsingHeader("OBJ Material", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit4("ColorOBJ", &materialDataOBJ->color.x);
-				ImGui::Checkbox("Enable Lighting OBJ", &temp_enableLightingOBJ);
+				ImGui::Text("Sprite Light");
+				ImGui::ColorEdit3("Light Color", &directionalLightDataSprite->color.x);
+				ImGui::SliderFloat3("Direction", &directionalLightDataSprite->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity", &directionalLightDataSprite->intensity);
+				break;
+
+			case 2:
+				ImGui::Text("OBJ Material");
+				ImGui::ColorEdit4("Color", &materialDataOBJ->color.x);
+				ImGui::Checkbox("Enable Lighting", &temp_enableLightingOBJ);
 				materialDataOBJ->enableLighting = temp_enableLightingOBJ ? 1 : 0;
-			}
 
-			if (ImGui::CollapsingHeader("Directional LightSprite", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit3("Light Color Sprite", &directionalLightDataSprite->color.x);
-				ImGui::SliderFloat3("Light Direction Sprite", &directionalLightDataSprite->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity Sprite", &directionalLightDataSprite->intensity);
+				ImGui::Text("OBJ Light");
+				ImGui::ColorEdit3("Light Color", &directionalLightDataOBJ->color.x);
+				ImGui::SliderFloat3("Direction", &directionalLightDataOBJ->direction.x, -1.0f, 1.0f);
+				ImGui::DragFloat("Intensity", &directionalLightDataOBJ->intensity);
+				break;
 			}
-
-			if (ImGui::CollapsingHeader("Directional LightSphere", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit3("Light Color Sphere", &directionalLightDataSphere->color.x);
-				ImGui::SliderFloat3("Light Direction Sphere", &directionalLightDataSphere->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity Sphere", &directionalLightDataSphere->intensity);
-			}
-
-			if (ImGui::CollapsingHeader("Directional LightOBJ", ImGuiTreeNodeFlags_DefaultOpen)) {
-				ImGui::ColorEdit3("Light Color OBJ", &directionalLightDataOBJ->color.x);
-				ImGui::SliderFloat3("Light Direction OBJ", &directionalLightDataOBJ->direction.x, -1.0f, 1.0f);
-				ImGui::DragFloat("Intensity OBJ", &directionalLightDataOBJ->intensity);
-			}
-
 			ImGui::End();
 
+			//=== UV Transform (Sprite専用) ===//
+			if (drawTargetIndex == 1) {
+				ImGui::Begin("Sprite UV Transform");
+				ImGui::DragFloat2("Translate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
+				ImGui::DragFloat2("Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
+				ImGui::SliderAngle("Rotate", &uvTransformSprite.rotate.z);
+				ImGui::End();
+			}
 
+#pragma endregion ▲ ImGui入力処理 終了 ▲
 
+#pragma region ▼ 描画準備処理 ▼
 
-			//=== [UV設定（Sprite）] ===//
-			ImGui::Begin("Sprite UV Transform");
-
-			ImGui::Text("UV Transform");
-			ImGui::DragFloat2("Translate", &uvTransformSprite.translate.x, 0.01f, -10.0f, 10.0f);
-			ImGui::DragFloat2("Scale", &uvTransformSprite.scale.x, 0.01f, -10.0f, 10.0f);
-			ImGui::SliderAngle("Rotate", &uvTransformSprite.rotate.z);
-
-			ImGui::End();
-
-
-
-
-#pragma endregion
-
-
-			//画面のクリア処理
-			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
-
-			//UVTransform
-
+			//--- UVTransformの行列計算 ---
 			Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
 			uvTransformMatrix = Multiply(uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
-			//確実に書き込む
-
-			//スプライト用
 			materialDataSprite->uvTransform = uvTransformMatrix;
+			materialDataSphere->uvTransform = makeIdentity4x4(); // Sphereは無効
 
-			//球体用
-			materialDataSphere->uvTransform = makeIdentity4x4();
+			//--- バックバッファの取得 ---
+			UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
-
-			//TransitonBarrierの設定
+			//--- リソースバリア（Present → RenderTarget）---
 			D3D12_RESOURCE_BARRIER barrier{};
-
-			//今回のバリアはtransition
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-
-			//Noneにしておく
 			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-			//バリアを張る対象のリソース現在のバックバッファに対して行う
 			barrier.Transition.pResource = swapChainResouces[backBufferIndex].Get();
-
-			//転移前の(現在)のResoucesStare
 			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-
-			//転移後のResourceState
 			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-
-			//transSitiionBarrierを張る
 			commandList->ResourceBarrier(1, &barrier);
 
-			//描画先のRTVとDSVを設定する
+			//--- 描画ターゲット・クリア ---
 			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-
-
-			//画面先のrtvを設定する
 			commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false, &dsvHandle);
 
 			float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
-
 			commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor, 0, nullptr);
-			//描画用のDscriptorHeapの設定
-
 			commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+
+
 
 			ID3D12DescriptorHeap* descriptorHeaps[] = { srvDescrriptorHeap.Get() };
 			commandList->SetDescriptorHeaps(1, descriptorHeaps);
@@ -2384,50 +2426,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			commandList->RSSetScissorRects(1, &scissorRect);
 
 
-			if (isSphereActive) {
-				//球体のIASet
-				//rootsignaltrueを設定　psoに設定しているけど別途設定が必要
+
+
+			//=== 描画処理 ===//
+			switch (drawTargetIndex) {
+			case 0: // Sphere
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
-				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);//VBVを設定する
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSphere);
 				commandList->IASetIndexBuffer(&indexBufferViewSphere);
-
-				//形状を設定psoに設定しているものとはまた別　同じものを設定するトロ考えておけば良い
 				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-				//マテリアルcBufferの場所設定
 				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesSphere->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSphere->GetGPUVirtualAddress());
-
-				//作画
 				commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
+				break;
 
-				//SpriteTransformationMatrixCBufferの場所を設定
-				//6-00にてIndexに変更
-			}
-
-#pragma region OBJ
-			if (isOBJActive)
-			{
-				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
-				commandList->SetPipelineState(graphicsPipelineState.Get());
-				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceOBJ->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionOBJ->GetGPUVirtualAddress());
-
-				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
-			}
-
-#pragma endregion
-
-#pragma region UVSprite
-			if (isSpriteActive)
-			{
+			case 1: // Sprite
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
 				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2437,11 +2453,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
 				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSprite->GetGPUVirtualAddress());
-
 				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-			}
-#pragma endregion 
+				break;
 
+			case 2: // OBJ
+				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
+				commandList->SetPipelineState(graphicsPipelineState.Get());
+				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
+				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceOBJ->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionOBJ->GetGPUVirtualAddress());
+				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
+				break;
+			}
 
 
 
