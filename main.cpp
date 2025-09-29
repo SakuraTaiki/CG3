@@ -1953,7 +1953,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// 頂点数を取得して格納（頂点バッファ作成などで使用）
 	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
-
+	
 	// 頂点用のリソース（バッファ）を作成
 	ComPtr<ID3D12Resource> vertexResourceModel =
 		createBufferResouces(device.Get(), sizeof(VertexData) * modelData.vertices.size());
