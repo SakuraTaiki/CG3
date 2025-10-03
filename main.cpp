@@ -1361,8 +1361,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	blendDescs.RenderTarget[0].RenderTargetWriteMask =D3D12_COLOR_WRITE_ENABLE_ALL;
 	blendDescs.RenderTarget[0].BlendEnable = TRUE;
 	blendDescs.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	blendDescs.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-	blendDescs.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	blendDescs.RenderTarget[0].BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
+	blendDescs.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
 
 	//========ALPHA値のBlendの設定(基本的に使わない)
 	blendDescs.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
