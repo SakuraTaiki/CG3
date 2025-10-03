@@ -1355,10 +1355,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
 
-	//BlendStateの設定
+	//=======CG3_00_01 Blendの設定の追加============//
+
 	D3D12_BLEND_DESC blendDescs{};
-	blendDescs.RenderTarget[0].RenderTargetWriteMask =
-		D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDescs.RenderTarget[0].RenderTargetWriteMask =D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDescs.RenderTarget[0].BlendEnable = TRUE;
+	blendDescs.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
+	blendDescs.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
+	blendDescs.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+
+	//========ALPHA値のBlendの設定(基本的に使わない)
+	blendDescs.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
+	blendDescs.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
+	blendDescs.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
+
+	
+
 
 	//rasiterzerstateの設定
 	D3D12_RASTERIZER_DESC rasterizerDesc{};
