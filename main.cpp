@@ -1961,7 +1961,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma region ModelData // OBJモデルの読み込みとバッファ設定
 
 	// モデルデータ（バニー.obj）を読み込む
-	ModelData modelData = LoadObjFile("resources", "fence.obj");
+	ModelData modelData = LoadObjFile("resources/fence", "fence.obj");
 
 	// 頂点数を取得して格納（頂点バッファ作成などで使用）
 	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
