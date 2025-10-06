@@ -2136,7 +2136,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//=== サウンド読み込みと再生 ===//
 	//==============================//
 
-	SoundData soundData1 = SoundLoadWave("resources/Alarm01.wav"); // WAVファイル読み込み
+	SoundData soundData1 = SoundLoadWave("resources/wav/Alarm01.wav"); // WAVファイル読み込み
 	SoundPlayWave(xAudio2.Get(), soundData1);                      // サウンドを再生
 
 
