@@ -1384,10 +1384,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	//shaderをコンパイルする
-	ComPtr<IDxcBlob> vertexShaderBlob = CompileShander(L"Object3d.VS.hlsl",
+	ComPtr<IDxcBlob> vertexShaderBlob = CompileShander(L"resources/shaders/Object3d.VS.hlsl",
 		L"vs_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
 	assert(vertexShaderBlob != nullptr);
-	ComPtr<IDxcBlob> pixelShaderBlob = CompileShander(L"Object3d.PS.hlsl", L"ps_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
+	ComPtr<IDxcBlob> pixelShaderBlob = CompileShander(L"resources/shaders/Object3d.PS.hlsl", L"ps_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
 	assert(pixelShaderBlob != nullptr);
 
 	//psoを作成する
