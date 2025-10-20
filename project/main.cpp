@@ -2388,6 +2388,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				ImGui::DragFloat("Intensity##OBJ", &directionalLightDataOBJ->intensity);
 			}
 
+			//コミット用
 			ImGui::End();
 			if (drawTargetFlags[1]) {
 				ImGui::Begin("Sprite UV Transform");
