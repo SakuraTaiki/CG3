@@ -2149,6 +2149,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	bool isOBJActive = false;    // OBJモデルを描画するか（初期状態ではOFF）
 
 
+	//コメントアウト確認
+
 	//============メインループ==========//
 
 	//windowの×ボタンが押されるまでループ
