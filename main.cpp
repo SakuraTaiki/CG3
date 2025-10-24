@@ -1236,8 +1236,40 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	descriptionRootSignatrue.Flags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-
+#pragma region OBJ用rootParameter
 	//descriptorRangeによる一括設定
+	D3D12_DESCRIPTOR_RANGE descriptorRangeOBJ[1] = {};
+	descriptorRangeOBJ[0].BaseShaderRegister = 0;//0から始まる
+	descriptorRangeOBJ[0].NumDescriptors = 1;//数は一つ
+	descriptorRangeOBJ[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;//srvを使う
+	descriptorRangeOBJ[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;//自動計算
+
+	//Rootparameter作成　複数設定できるので配列 今回は結果が一つだけなので長さが1の配列
+
+	D3D12_ROOT_PARAMETER rootParmetersOBJ[4] = {};
+	rootParmetersOBJ[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+	rootParmetersOBJ[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
+	rootParmetersOBJ[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
+
+	rootParmetersOBJ[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CVBを使う
+	rootParmetersOBJ[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//vertexShaerで使う
+	rootParmetersOBJ[1].Descriptor.ShaderRegister = 0;//レジスタ番号0を使う
+
+	rootParmetersOBJ[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
+	rootParmetersOBJ[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParmetersOBJ[2].DescriptorTable.pDescriptorRanges = descriptorRangeOBJ;
+	rootParmetersOBJ[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeOBJ);//tableで利用する数
+
+	//05_00で追加
+
+	rootParmetersOBJ[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+	rootParmetersOBJ[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderを使う
+	rootParmetersOBJ[3].Descriptor.ShaderRegister = 1;//レジスタ番号1を使う
+	
+
+#pragma endregion
+
+#pragma region Particle用rootParameter
 
 	D3D12_DESCRIPTOR_RANGE descriptorRangeForInstancing[1] = {};
 	descriptorRangeForInstancing[0].BaseShaderRegister = 0;//0から始まる
@@ -1247,30 +1279,32 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//Rootparameter作成　複数設定できるので配列 今回は結果が一つだけなので長さが1の配列
 
-	D3D12_ROOT_PARAMETER rootParmeters[4] = {};
-	rootParmeters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
-	rootParmeters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
-	rootParmeters[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
+	D3D12_ROOT_PARAMETER rootParmetersInstance[4] = {};
+	rootParmetersInstance[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+	rootParmetersInstance[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
+	rootParmetersInstance[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
 
-	rootParmeters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CVBを使う
-	rootParmeters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//vertexShaerで使う
-	rootParmeters[1].Descriptor.ShaderRegister = 0;//レジスタ番号0を使う
+	rootParmetersInstance[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
+	rootParmetersInstance[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+	rootParmetersInstance[1].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing;
+	rootParmetersInstance[1].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing);//tableで利用する数
 
-	rootParmeters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
-	rootParmeters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	rootParmeters[2].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing;
-	rootParmeters[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing);//tableで利用する数
+	rootParmetersInstance[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
+	rootParmetersInstance[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParmetersInstance[2].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancing;
+	rootParmetersInstance[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancing);//tableで利用する数
 
-	//05_00で追加
+	rootParmetersInstance[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
+	rootParmetersInstance[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderを使う
+	rootParmetersInstance[3].Descriptor.ShaderRegister = 1;//レジスタ番号1を使う
+	
 
-	rootParmeters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
-	rootParmeters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderを使う
-	rootParmeters[3].Descriptor.ShaderRegister = 1;//レジスタ番号1を使う
+	descriptionRootSignatrue.pParameters = rootParmetersInstance;//ルートパラメーターへのポインタ
+	descriptionRootSignatrue.NumParameters = _countof(rootParmetersInstance);//配列の長さ
 
+#pragma endregion
 
-	descriptionRootSignatrue.pParameters = rootParmeters;//ルートパラメーターへのポインタ
-	descriptionRootSignatrue.NumParameters = _countof(rootParmeters);//配列の長さ
-
+#pragma region Sampler
 	//samplerの設定お行う
 	D3D12_STATIC_SAMPLER_DESC staticSamplers[1] = {};
 	staticSamplers[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;//バイリニアフィルター
@@ -1283,8 +1317,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	staticSamplers[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	descriptionRootSignatrue.pStaticSamplers = staticSamplers;
 	descriptionRootSignatrue.NumStaticSamplers = _countof(staticSamplers);
+#pragma endregion
 
-
+#pragma region Sampler Instance用
+	//samplerの設定お行う
+	D3D12_STATIC_SAMPLER_DESC staticSamplersInstance[1] = {};
+	staticSamplersInstance[0].Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;//バイリニアフィルター
+	staticSamplersInstance[0].AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;//0 ~1の範囲外をリピート 
+	staticSamplersInstance[0].AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	staticSamplersInstance[0].AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	staticSamplersInstance[0].ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;//比較
+	staticSamplersInstance[0].MaxLOD = D3D12_FLOAT32_MAX;
+	staticSamplersInstance[0].ShaderRegister = 0;
+	staticSamplersInstance[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	descriptionRootSignatrue.pStaticSamplers = staticSamplersInstance;
+	descriptionRootSignatrue.NumStaticSamplers = _countof(staticSamplersInstance);
+#pragma endregion 
 	//シアライズしてばいなりにする
 	ComPtr<ID3DBlob> signatureBlob = nullptr;
 	ComPtr<ID3DBlob> errorBlob = nullptr;
@@ -1301,7 +1349,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&rootsignatrue));
 	assert(SUCCEEDED(hr));
 
-	//inputLayout
+#pragma region InputElement
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
 	inputElementDescs[0].SemanticName = "POSITION";
 	inputElementDescs[0].SemanticIndex = 0;
@@ -1318,13 +1366,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	inputElementDescs[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	inputElementDescs[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
 
+#pragma endregion 
 
+#pragma region inputElementInstance
+	D3D12_INPUT_ELEMENT_DESC inputElementDescsInstance[3] = {};
+	inputElementDescsInstance[0].SemanticName = "POSITION";
+	inputElementDescsInstance[0].SemanticIndex = 0;
+	inputElementDescsInstance[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	inputElementDescsInstance[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+	inputElementDescsInstance[1].SemanticName = "TEXCOORD";
+	inputElementDescsInstance[1].SemanticIndex = 0;
+	inputElementDescsInstance[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+	inputElementDescsInstance[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+	inputElementDescsInstance[2].SemanticName = "NORMAL";
+	inputElementDescsInstance[2].SemanticIndex = 0;
+	inputElementDescsInstance[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElementDescsInstance[2].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+
+#pragma endregion 
+
+#pragma region InputLayout
 	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
 	inputLayoutDesc.pInputElementDescs = inputElementDescs;
 	inputLayoutDesc.NumElements = _countof(inputElementDescs);
-
+#pragma endregion 
 	//=======CG3_00_01 Blendの設定の追加============//
 
+#pragma region InputLayoutInstance
+	D3D12_INPUT_LAYOUT_DESC inputLayoutDesc{};
+	inputLayoutDesc.pInputElementDescs = inputElementDescs;
+	inputLayoutDesc.NumElements = _countof(inputElementDescs);
+#pragma endregion 
 	D3D12_BLEND_DESC blendDescs{};
 	blendDescs.RenderTarget[0].RenderTargetWriteMask =D3D12_COLOR_WRITE_ENABLE_ALL;
 	blendDescs.RenderTarget[0].BlendEnable = TRUE;
@@ -1421,6 +1495,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 #pragma endregion
+
+
 
 #pragma region Sprite
 
@@ -1832,7 +1908,53 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma endregion
 
+
+	
+
+
 #pragma region Instancing
+
+	// 頂点用のリソース（バッファ）を作成
+	ComPtr<ID3D12Resource> vertexResourceInstance =
+		createBufferResouces(device.Get(), sizeof(VertexData) * modelData.vertices.size());
+
+	// 頂点バッファビュー（バッファの先頭アドレスやサイズなどを設定）
+	D3D12_VERTEX_BUFFER_VIEW vertexBufferInstance{};
+	vertexBufferInstance.BufferLocation = vertexResourceInstance->GetGPUVirtualAddress(); // GPU仮想アドレスの取得
+	vertexBufferViewModel.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size()); // バッファ全体のサイズ
+	vertexBufferViewModel.StrideInBytes = sizeof(VertexData); // 頂点1つ分のサイズ
+
+	// 頂点リソースへCPUからデータを書き込む
+	VertexData* vertexDataModelInstance = nullptr;
+	vertexResourceInstance->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataModelInstance));
+	std::memcpy(vertexDataModelInstance, modelData.vertices.data(), sizeof(VertexData)* vertexCountObj);
+
+	ModelData vertexDataModelInstance;
+	vertexDataModelInstance[0].position = { 1.0f,1.0f,0.0f,1.0f };//左上
+	vertexDataModelInstance[0].texcoord = { 0.0f,0.0f };
+	vertexDataModelInstance[0].normal = { 0.0f,0.0f,1.0f };
+
+	vertexDataModelInstance[1].position = { -1.0f,1.0f,0.0f,1.0f };//右上
+	vertexDataModelInstance[1].texcoord = { 1.0f,0.0f };
+	vertexDataModelInstance[1].normal = { 0.0f,0.0f,1.0f };
+
+	vertexDataModelInstance[2].position = { 1.0f,-1.0f,0.0f,1.0f };//左下
+	vertexDataModelInstance[2].texcoord = { 0.0f,1.0f };
+	vertexDataModelInstance[2].normal = { 0.0f,0.0f,1.0f };
+
+	vertexDataModelInstance[3].position = { 1.0f,-1.0f,0.0f,1.0f };//左下
+	vertexDataModelInstance[3].texcoord = { 0.0f,1.0f };
+	vertexDataModelInstance[3].normal = { 0.0f,0.0f,1.0f };
+
+	vertexDataModelInstance[4].position = { -1.0f,1.0f,0.0f,1.0f };//右上
+	vertexDataModelInstance[4].texcoord = { 1.0f,0.0f };
+	vertexDataModelInstance[4].normal = { 0.0f,0.0f,1.0f };
+
+	vertexDataModelInstance[5].position = { -1.0f,-1.0f,0.0f,1.0f };//右下
+	vertexDataModelInstance[5].texcoord = { 1.0f,0.0f };
+	vertexDataModelInstance[5].normal = { 0.0f,0.0f,1.0f };
+	
+
 	const uint32_t kNumInstance = 10;//インスタンス数
 	//Instancing用のTransformationMatrixリソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource>instancingResource =
@@ -1845,7 +1967,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		instancingData[index].WVP = makeIdentity4x4();
 		instancingData[index].World = makeIdentity4x4();
 	}
-
+	
 	//シェーダー設定
 	D3D12_SHADER_RESOURCE_VIEW_DESC instancingSrvDesc{};
 	instancingSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
