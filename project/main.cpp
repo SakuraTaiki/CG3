@@ -25,6 +25,7 @@
 #include <xaudio2.h>
 #define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 #include <dinput.h>
+#include"Input.h"
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -738,22 +739,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ComPtr<ID3D12DescriptorHeap> 
 }
 
 
-//////全mipdataについて
-////for (size_t mipLevel = 0; mipLevel < metadata.mipLevels; mipLevel++)
-////{
-////	const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
-////	//textureに転送
-////	HRESULT hr = texture->WriteToSubresource
-////	(
-////		UINT(mipLevel),//全領域へコピー
-////		nullptr,
-////		img->pixels,//元データアドレス
-////		UINT(img->rowPitch),//1ラインサイズ
-////		UINT(img->slicePitch)//1枚サイズ
-////
-////	);
-////	assert(SUCCEEDED(hr));
-//}
+
 
 #pragma region MaterialData
 
@@ -1390,7 +1376,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ComPtr<IDxcBlob> pixelShaderBlob = CompileShander(L"resources/shaders/Object3d.PS.hlsl", L"ps_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
 	assert(pixelShaderBlob != nullptr);
 
-	//psoを作成する
+	//=========psoを作成する==========
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
 	graphicsPipelineStateDesc.pRootSignature = rootsignatrue.Get();
 	graphicsPipelineStateDesc.InputLayout = inputLayoutDesc;
@@ -1435,24 +1421,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-	//DirectInputの初期化
-	IDirectInput8* directInput = nullptr;
-	result = DirectInput8Create(wc.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
-	assert(SUCCEEDED(result));
+	//クラス分け後のInputポインタ
+	Input* input = nullptr;
 
-	IDirectInputDevice8* keyboard = nullptr;
-	result = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
-	assert(SUCCEEDED(result));
+	//入力処理の初期化
+	input = new Input();
+	input->Initialize(wc.hInstance, hwnd);
 
-	//入力データ形式のセット
-	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
-	assert(SUCCEEDED(result));
-
-	//排他制御レベルのセット
-	result = keyboard->SetCooperativeLevel(hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
-	assert(SUCCEEDED(result));
-
-	keyboard->Acquire();
 
 
 #pragma endregion
