@@ -16,16 +16,16 @@
 #include <dxcapi.h>
 #include<vector>
 #include "externals/imgui/imgui.h"
-#include"externals/imgui/imgui_impl_dx12.h"
+#include "externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/DirectXTex/DirectXTex.h"
-#include"externals/DirectXTex/d3dx12.h"
+#include "externals/DirectXTex/d3dx12.h"
 #include <numbers>
 #include<wrl.h>
 #include <xaudio2.h>
 #define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
-#include <dinput.h>
-#include"Input.h"
+
+#include "Input.h"
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -739,7 +739,22 @@ D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescriptorHandle(ComPtr<ID3D12DescriptorHeap> 
 }
 
 
-
+//////全mipdataについて
+////for (size_t mipLevel = 0; mipLevel < metadata.mipLevels; mipLevel++)
+////{
+////	const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
+////	//textureに転送
+////	HRESULT hr = texture->WriteToSubresource
+////	(
+////		UINT(mipLevel),//全領域へコピー
+////		nullptr,
+////		img->pixels,//元データアドレス
+////		UINT(img->rowPitch),//1ラインサイズ
+////		UINT(img->slicePitch)//1枚サイズ
+////
+////	);
+////	assert(SUCCEEDED(hr));
+//}
 
 #pragma region MaterialData
 
@@ -1344,7 +1359,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//=======CG3_00_01 Blendの設定の追加============//
 
 	D3D12_BLEND_DESC blendDescs{};
-	blendDescs.RenderTarget[0].RenderTargetWriteMask =D3D12_COLOR_WRITE_ENABLE_ALL;
+	blendDescs.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 	blendDescs.RenderTarget[0].BlendEnable = TRUE;
 	blendDescs.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
 	blendDescs.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
@@ -1355,7 +1370,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	blendDescs.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
 	blendDescs.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
 
-	
+
 
 
 	//rasiterzerstateの設定
@@ -1376,7 +1391,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ComPtr<IDxcBlob> pixelShaderBlob = CompileShander(L"resources/shaders/Object3d.PS.hlsl", L"ps_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
 	assert(pixelShaderBlob != nullptr);
 
-	//=========psoを作成する==========
+	//psoを作成する
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC graphicsPipelineStateDesc{};
 	graphicsPipelineStateDesc.pRootSignature = rootsignatrue.Get();
 	graphicsPipelineStateDesc.InputLayout = inputLayoutDesc;
@@ -1421,13 +1436,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-	//クラス分け後のInputポインタ
-	Input* input = nullptr;
-
-	//入力処理の初期化
-	input = new Input();
-	input->Initialize(wc.hInstance, hwnd);
-
+	
 
 
 #pragma endregion
@@ -1940,7 +1949,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// 頂点数を取得して格納（頂点バッファ作成などで使用）
 	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
-	
+
 	// 頂点用のリソース（バッファ）を作成
 	ComPtr<ID3D12Resource> vertexResourceModel =
 		createBufferResouces(device.Get(), sizeof(VertexData) * modelData.vertices.size());
@@ -2445,7 +2454,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 			}
 
-			if(drawTargetFlags[2]){
+			if (drawTargetFlags[2]) {
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
 				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
