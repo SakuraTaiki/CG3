@@ -1,6 +1,5 @@
 
 #include <windows.h>
-#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <chrono>
@@ -14,7 +13,6 @@
 #include <strsafe.h>
 #include <dxgidebug.h>
 #include <dxcapi.h>
-#include "Input.h"
 #include<vector>
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
@@ -24,6 +22,8 @@
 #include <numbers>
 #include<wrl.h>
 #include <xaudio2.h>
+#include "Input.h"
+#include"WinApp.h"
 #define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 
 
@@ -536,30 +536,6 @@ void ShowSRTWindow(Transform& transform)
 }
 
 
-
-
-
-
-LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg,
-	WPARAM wparam, LPARAM lparam)
-{
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
-	{
-		return true;
-	}
-
-	//メッセージに応じてゲーム固有の処理を行う
-	switch (msg)
-	{
-		//windowsが放棄された
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		return 0;
-	}
-	//標準メッセージを行う
-	return DefWindowProc(hwnd, msg, wparam, lparam);
-}
-
 ComPtr<IDxcBlob> CompileShander(
 	const std::wstring& filePath,
 	const wchar_t* profile,
@@ -993,7 +969,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	SetUnhandledExceptionFilter(ExportDump);
 
 	//comの初期化
-	CoInitializeEx(0, COINIT_MULTITHREADED);
+	HRESULT hr=CoInitializeEx(0, COINIT_MULTITHREADED);
 
 	
 
@@ -1004,7 +980,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	IXAudio2MasteringVoice* masterVoice;
 
 	Input* input = nullptr;
-
+	WinApp* winApp = nullptr;
 
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
@@ -1158,6 +1134,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	input = new Input();
 	input->Initialize(w.hInstance, hwnd);
+
+	winApp = new WinApp();
+	winApp->Initialize();
 
 #ifdef _DEBUG
 
@@ -2419,6 +2398,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//Input用
 	delete input;
+	delete winApp;
 
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
