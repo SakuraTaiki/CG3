@@ -14,9 +14,6 @@
 #include <dxgidebug.h>
 #include <dxcapi.h>
 #include<vector>
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
 #include "externals/DirectXTex/DirectXTex.h"
 #include "externals/DirectXTex/d3dx12.h"
 #include <numbers>
@@ -24,9 +21,11 @@
 #include <xaudio2.h>
 #include "Input.h"
 #include"WinApp.h"
-#define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
-
-
+#include "externals/imgui/imgui.h"
+#include "externals/imgui/imgui_impl_dx12.h"
+#include "externals/imgui/imgui_impl_win32.h"
+#include "externals/imgui/imgui_impl_win32.cpp"
+//#define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
@@ -969,7 +968,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	SetUnhandledExceptionFilter(ExportDump);
 
 	//comの初期化
-	HRESULT hr=CoInitializeEx(0, COINIT_MULTITHREADED);
+	CoInitializeEx(0, COINIT_MULTITHREADED);
 
 	
 
@@ -1001,42 +1000,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//ファイル名
 	std::string  logFilePath = std::format("logs/") + dateStrings + "log";
 	std::ofstream logStrem(logFilePath);
-	WNDCLASS wc{};
+	//WNDCLASS wc{};
 
-	//windowプロシージャ
-	wc.lpfnWndProc = WindowProc;
+	////windowプロシージャ
+	//wc.lpfnWndProc = WindowProc;
 
-	//windowクラス名
-	wc.lpszClassName = L"CG2WindowClass";
+	////windowクラス名
+	//wc.lpszClassName = L"CG2WindowClass";
 
-	//インスタンスハンドル
-	wc.hInstance = GetModuleHandle(nullptr);
+	////インスタンスハンドル
+	//wc.hInstance = GetModuleHandle(nullptr);
 
-	//カーソル
-	wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	////カーソル
+	//wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 
-	//windowクラスを登録する
-	RegisterClass(&wc);
+	////windowクラスを登録する
+	//RegisterClass(&wc);
 
-	const int32_t kClientWidth = 1280;
-	const int32_t kClientHeight = 720;
-	RECT wrc = { 0, 0, kClientWidth, kClientHeight };
-	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
-	//windowsの生成
-	HWND hwnd = CreateWindow(
-		wc.lpszClassName, // 利用するクラス名
-		L"CG2", // タイトルバーの文字
-		WS_OVERLAPPEDWINDOW, // よく見るウィンドウタイトル
-		CW_USEDEFAULT, // 表示X座標
-		CW_USEDEFAULT, // 表示Y座標
-		wrc.right - wrc.left, // ウィンドウ横幅
-		wrc.bottom - wrc.top, // ウィンドウ縦幅
-		nullptr, // 親ウィンドウハンドル
-		nullptr, // メニューハンドル
-		wc.hInstance, // インスタンスハンドル
-		nullptr); // オプション
+	//const int32_t kClientWidth = 1280;
+	//const int32_t kClientHeight = 720;
+	//RECT wrc = { 0, 0, kClientWidth, kClientHeight };
+	//AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
+	////windowsの生成
+	//HWND hwnd = CreateWindow(
+	//	wc.lpszClassName, // 利用するクラス名
+	//	L"CG2", // タイトルバーの文字
+	//	WS_OVERLAPPEDWINDOW, // よく見るウィンドウタイトル
+	//	CW_USEDEFAULT, // 表示X座標
+	//	CW_USEDEFAULT, // 表示Y座標
+	//	wrc.right - wrc.left, // ウィンドウ横幅
+	//	wrc.bottom - wrc.top, // ウィンドウ縦幅
+	//	nullptr, // 親ウィンドウハンドル
+	//	nullptr, // メニューハンドル
+	//	wc.hInstance, // インスタンスハンドル
+	//	nullptr); // オプション
 
-	ShowWindow(hwnd, SW_SHOW);
+	//ShowWindow(hwnd, SW_SHOW);
 
 	//xAudio2インスタンス生成
 	HRESULT result;
@@ -1117,23 +1116,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Log(logStrem, "complate crate D3D12Device!!!\n");//初期化ログを出す
 
 
-	WNDCLASS w{};
+	//WNDCLASS w{};
 
-	//windowプロシージャ
-	w.lpfnWndProc = WindowProc;
+	////windowプロシージャ
+	//w.lpfnWndProc = WindowProc;
 
-	//windowクラス名
-	w.lpszClassName = L"CG2WindowClass";
+	////windowクラス名
+	//w.lpszClassName = L"CG2WindowClass";
 
-	//インスタンスハンドル
-	w.hInstance = GetModuleHandle(nullptr);
+	////インスタンスハンドル
+	//w.hInstance = GetModuleHandle(nullptr);
 
-	//カーソル
-	w.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	////カーソル
+	//w.hCursor = LoadCursor(nullptr, IDC_ARROW);
 
 
 	input = new Input();
-	input->Initialize(w.hInstance, hwnd);
+	input->Initialize(winApp);
 
 	winApp = new WinApp();
 	winApp->Initialize();
@@ -1191,15 +1190,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	ComPtr<IDXGISwapChain4> swapChain = nullptr;
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-	swapChainDesc.Width = kClientWidth;//画面幅
-	swapChainDesc.Height = kClientHeight;//画面高さ
+	swapChainDesc.Width = WinApp::kClientWidth;//画面幅
+	swapChainDesc.Height = WinApp::kClientHeight;//画面高さ
 	swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;//色の形式
 	swapChainDesc.SampleDesc.Count = 1;//マルチサンプルしない
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.BufferCount = 2;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
-	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), hwnd, &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
+	hr = dxgiFactory->CreateSwapChainForHwnd(commandQueue.Get(), winApp->GetHwnd(), &swapChainDesc, nullptr, nullptr, reinterpret_cast<IDXGISwapChain1**>(swapChain.GetAddressOf()));
 	assert(SUCCEEDED(hr));
 
 
@@ -1724,8 +1723,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// ビューポート設定（画面全体）
 	D3D12_VIEWPORT viewport{};
-	viewport.Width = kClientWidth;
-	viewport.Height = kClientHeight;
+	viewport.Width = WinApp::kClientWidth;
+	viewport.Height = WinApp::kClientHeight;
 	viewport.TopLeftX = 0;
 	viewport.TopLeftY = 0;
 	viewport.MinDepth = 0.0f;
@@ -1734,15 +1733,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// シザー矩形（切り抜き範囲）も画面全体に設定
 	D3D12_RECT scissorRect{};
 	scissorRect.left = 0;
-	scissorRect.right = kClientWidth;
+	scissorRect.right = WinApp::kClientWidth;
 	scissorRect.top = 0;
-	scissorRect.bottom = kClientHeight;
+	scissorRect.bottom = WinApp::kClientHeight;
 
 	//=== ImGuiの初期化 ===//
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext(); // コンテキスト作成
 	ImGui::StyleColorsDark(); // ダークテーマ使用
-	ImGui_ImplWin32_Init(hwnd); // Win32プラットフォーム用初期化
+	ImGui_ImplWin32_Init(winApp->GetHwnd()); // Win32プラットフォーム用初期化
 	ImGui_ImplDX12_Init(
 		device.Get(),                          // デバイス
 		swapChainDesc.BufferCount,            // スワップチェインバッファ数
@@ -1761,7 +1760,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ComPtr<ID3D12Resource> intermediateResource = UploadTextureData(textureResource.Get(), mipImages, device.Get(), commandList.Get());
 
 	// ウィンドウサイズでDepthStencil用テクスチャを作成
-	ComPtr<ID3D12Resource> depthStencilResource = CreateDepthStencilTextureResource(device.Get(), kClientWidth, kClientHeight);
+	ComPtr<ID3D12Resource> depthStencilResource = CreateDepthStencilTextureResource(device.Get(), WinApp::kClientWidth, WinApp::kClientHeight);
 
 	// SRVの設定（テクスチャをシェーダーに渡すビューを作成）
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -2005,20 +2004,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//============メインループ==========//
 
 	//windowの×ボタンが押されるまでループ
-	while (msg.message != WM_QUIT)
+	while (true)
 	{
-
-		
-
-
-
-		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		if (winApp->ProcessMessage())
 		{
-
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		} else
-		{
+			break;
+		} 
 
 #pragma region グラフィックスコマンド
 
@@ -2074,8 +2065,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// 正射影行列（2Dスプライト描画用）
 			Matrix4x4 projectionMatrixSprite = MakeOrthographicMatrix(
 				0.0f, 0.0f,
-				float(kClientWidth),
-				float(kClientHeight),
+				float(WinApp::kClientWidth),
+				float(WinApp::kClientHeight),
 				0.0f, 100.0f);
 
 			// WVP行列（ワールド × ビュー × プロジェクション）
@@ -2109,7 +2100,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// 透視投影行列（3Dの見え方に遠近感をつける）
 			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(
 				0.45f,                              // 視野角（FOV）
-				float(kClientWidth) / float(kClientHeight), // アスペクト比
+				float(WinApp::kClientWidth) / float(WinApp::kClientHeight), // アスペクト比
 				0.1f, 100.0f);                      // 近クリップ面・遠クリップ面
 
 			// WVP行列
@@ -2143,7 +2134,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// 透視投影行列
 			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(
 				0.45f,
-				float(kClientWidth) / float(kClientHeight),
+				float(WinApp::kClientWidth) / float(WinApp::kClientHeight),
 				0.1f, 100.0f);
 
 			// WVP行列
@@ -2374,18 +2365,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 
-	}
+	
 
 
-	Log(logStrem, "Hello,DirectX!\n");
-	Log(logStrem,
-		ConvertString(
-			std::format(
-				L"clientSize:{} {}\n",
-				kClientWidth,
-				kClientHeight)));
 
-	CloseWindow(hwnd);
+
+	
 
 	//解放処理
 	CloseHandle(fenceEvent);
@@ -2403,8 +2388,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
-	//comの終了時
-	CoUninitialize();
+	winApp->Finalize();
 
 	return 0;
 }

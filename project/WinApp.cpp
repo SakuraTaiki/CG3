@@ -1,10 +1,9 @@
 #include"WinApp.h"
-#include <cstdint>
+
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/imgui/imgui_impl_win32.cpp"
-
 
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg,
 	WPARAM wparam, LPARAM lparam)
@@ -48,14 +47,12 @@ void WinApp::Initialize() {
 	//windowクラスを登録する
 	RegisterClass(&wc);
 
-	const int32_t kClientWidth = 1280;
-	const int32_t kClientHeight = 720;
+	
 	RECT wrc = { 0, 0, kClientWidth, kClientHeight };
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
 	//windowsの生成
-	HWND hwnd = CreateWindow(
-		wc.lpszClassName, // 利用するクラス名
-		L"CG2", // タイトルバーの文字
+	
+	L"CG2", // タイトルバーの文字
 		WS_OVERLAPPEDWINDOW, // よく見るウィンドウタイトル
 		CW_USEDEFAULT, // 表示X座標
 		CW_USEDEFAULT, // 表示Y座標
@@ -64,11 +61,28 @@ void WinApp::Initialize() {
 		nullptr, // 親ウィンドウハンドル
 		nullptr, // メニューハンドル
 		wc.hInstance, // インスタンスハンドル
-		nullptr); // オプション
+		nullptr; // オプション
 
 	ShowWindow(hwnd, SW_SHOW);
 
 }
 void WinApp::Update() {
 
+}
+void WinApp::Finalize() {
+	CloseWindow(hwnd);
+	//comの終了時
+	CoUninitialize();
+}
+bool WinApp::ProcessMessage() {
+	MSG msg{};
+	if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	if (msg.message == WM_QUIT) 
+	{
+		return true;
+	}
+	return false;
 }
