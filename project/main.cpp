@@ -2047,7 +2047,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			
 
 			input->Update();
-				if (input->PushKey(DIK_0)) {
+				if (input->TriggerKey(DIK_0)) {
 					OutputDebugStringA("Hit 0\n");
 				}
 
@@ -2391,8 +2391,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			assert(SUCCEEDED(hr));
 
 
-			//Input用
-			delete input;
+			
 		}
 
 
@@ -2417,6 +2416,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//音声データ解放
 	SoundUnLoad(&soundData1);
+
+	//Input用
+	delete input;
 
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
