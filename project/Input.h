@@ -1,32 +1,45 @@
 #pragma once
-#include"dinput.h"
+#define DIRECTINPUT_VERSION 0x0800
+#include <dinput.h>
+#include<wrl.h>
+#include<cassert>
+#include <Windows.h>
+
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
 
+using namespace Microsoft::WRL;
 
 //入力
-class Input {
+class Input
+{
 public:
+	template<class T>using ComPtr = Microsoft::WRL::ComPtr<T>;
+public: 
+	
 
-	HRESULT result;
 
-
+	//HRESULT result;
 	//初期化
 	void Initialize(HINSTANCE hinstance,HWND hwnd);
 	//更新
 	void Update();
-	//キーが押されているか判定
-	bool IsKeyPressed(BYTE keyCode) const;
+	
 
-	//終了処理
-	void Finalize();
+	bool PushKey(BYTE keyNumber);
+
+	bool TriggerKey(BYTE keyNumber);
 
 private: 
-	IDirectInput8* directInput_ = nullptr;
-	IDirectInput8* keyboard_ = nullptr;
-
-	BYTE key_[256] = {};
-
 	
+	IDirectInput8* directInput = nullptr;
+
+	BYTE key[256] = {};
+
+	BYTE keyPre[256] = {};
+
+	ComPtr<IDirectInputDevice8>keyboard;
+
+
 
 };

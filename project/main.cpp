@@ -14,6 +14,7 @@
 #include <strsafe.h>
 #include <dxgidebug.h>
 #include <dxcapi.h>
+#include "Input.h"
 #include<vector>
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_dx12.h"
@@ -25,7 +26,6 @@
 #include <xaudio2.h>
 #define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 
-#include "Input.h"
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -40,6 +40,8 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #pragma comment(lib,"dxguid.lib")
 
 using Microsoft::WRL::ComPtr;
+
+
 
 struct Vector2
 {
@@ -993,13 +995,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//comの初期化
 	CoInitializeEx(0, COINIT_MULTITHREADED);
 
+	
+
 	D3DResourceLeakChecker leakCheck;
 	Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory;
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
 	ComPtr<IXAudio2>xAudio2;
 	IXAudio2MasteringVoice* masterVoice;
 
-
+	Input* input = nullptr;
 
 
 	//ログのフォルダ作成
@@ -1135,6 +1139,25 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 	assert(device != nullptr);
 	Log(logStrem, "complate crate D3D12Device!!!\n");//初期化ログを出す
+
+
+	WNDCLASS w{};
+
+	//windowプロシージャ
+	w.lpfnWndProc = WindowProc;
+
+	//windowクラス名
+	w.lpszClassName = L"CG2WindowClass";
+
+	//インスタンスハンドル
+	w.hInstance = GetModuleHandle(nullptr);
+
+	//カーソル
+	w.hCursor = LoadCursor(nullptr, IDC_ARROW);
+
+
+	input = new Input();
+	input->Initialize(w.hInstance, hwnd);
 
 #ifdef _DEBUG
 
@@ -1546,145 +1569,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma endregion 
 
-#pragma region BeforeSphere
 
-
-	////Spehere用の頂点情報
-	//const uint32_t kSubdivision = 16;
-	//const uint32_t sphereVertexNum = kSubdivision * kSubdivision * 6;
-
-	////Sphere用の頂点リソースを作る
-	//ID3D12Resource* vertexResourceSphere = createBufferResouces(device, sizeof(VertexData) * sphereVertexNum);
-
-	////Sphereバッファビューを作成する
-	//D3D12_VERTEX_BUFFER_VIEW vertexBufferViewSphere{};
-
-	//// リソースの先端アドレスから使う
-	//vertexBufferViewSphere.BufferLocation = vertexResourceSphere->GetGPUVirtualAddress();
-
-	////使用するリソースのサイズは頂点3つ分サイズ
-	//vertexBufferViewSphere.SizeInBytes = sizeof(VertexData) * sphereVertexNum;
-
-	////1頂点当たりのサイズ
-	//vertexBufferViewSphere.StrideInBytes = sizeof(VertexData);
-
-	////球体リソースサイズデータに書き込む
-	//VertexData* vertexDataSphere = nullptr;
-
-	////書き込むためのアドレスの取得
-	//vertexResourceSphere->Map(0, nullptr, reinterpret_cast<VOID**>(&vertexDataSphere));
-
-	////Sprite用のTransformationMatrix用のリソースを作る Matrix4x4
-	//ID3D12Resource* transformationMatrixResourceSphere = createBufferResouces(device, sizeof(Matrix4x4));
-
-	////	データを書き込む
-	//Matrix4x4* transformationMatrixDataSphere = nullptr;
-
-	////書き込むアドレスを取得
-	//transformationMatrixResourceSphere->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataSphere));
-
-	////単位行列を書き込んでおく
-	//*transformationMatrixDataSphere = makeIdentity4x4();
-
-	////緯度分割1つ分の角度
-	//const float kLonEvery = std::numbers::pi_v<float>*2.0f / float(kSubdivision);
-	////緯度分割1つ分の角度θ
-	//const float kLatEvery = std::numbers::pi_v<float> / float(kSubdivision);
-
-
-
-	////緯度の方向に分割
-	//for (uint32_t latIndex = 0; latIndex < kSubdivision; ++latIndex) {
-	//	float lat = -std::numbers::pi_v<float> / 2.0f + kLatEvery * latIndex;//0
-	//	//緯度の方向に分割しながら線を引く
-	//	for (uint32_t lonIndex = 0; lonIndex < kSubdivision; ++lonIndex) {
-	//		uint32_t start = (latIndex * kSubdivision + lonIndex) * 6;
-	//		float lon = lonIndex * kLonEvery;
-
-	//		VertexData VertA = {
-	//	{
-	//	std::cosf(lat) * std::cosf(lon),
-	//	std::sinf(lat),
-	//	std::cosf(lat) * std::sinf(lon),
-	//	1.0f
-	//	},
-	//{
-	//	float(lonIndex) / float(kSubdivision),
-	//	1.0f - float(latIndex) / float(kSubdivision)
-	//},
-	//	{
-	//		//normal
-	//	std::cosf(lat) * std::cosf(lon),
-	//	std::sinf(lat),
-	//	std::cosf(lat) * std::sinf(lon),
-	//	}
-
-	//		};
-	//		VertexData VertB = {
-	//			{
-	//			std::cosf(lat + kLatEvery) * std::cosf(lon),
-	//			std::sinf(lat + kLatEvery),
-	//			std::cosf(lat + kLatEvery) * std::sinf(lon),
-	//			1.0f
-	//			},
-	//			{
-	//				float(lonIndex) / float(kSubdivision),
-	//				1.0f - float(latIndex + 1.0f) / float(kSubdivision)
-	//			},
-	//			{
-	//				//normal
-	//			std::cosf(lat + kLatEvery) * std::cosf(lon),
-	//			std::sinf(lat + kLatEvery),
-	//			std::cosf(lat + kLatEvery) * std::sinf(lon),
-	//			}
-	//		};
-	//		VertexData VertC = {
-	//			{
-	//			std::cosf(lat) * std::cosf(lon + kLonEvery),
-	//			std::sinf(lat),
-	//			std::cosf(lat) * std::sinf(lon + kLonEvery),
-	//			1.0f
-	//			},
-	//			{
-	//				float(lonIndex + 1.0f) / float(kSubdivision),
-	//				1.0f - float(latIndex) / float(kSubdivision)
-	//			},
-	//			//normal
-	//			{
-	//			std::cosf(lat) * std::cosf(lon + kLonEvery),
-	//			std::sinf(lat),
-	//			std::cosf(lat) * std::sinf(lon + kLonEvery),
-	//			}
-	//		};
-	//		VertexData VertD = {
-	//			{
-	//			std::cosf(lat + kLatEvery) * std::cosf(lon + kLonEvery),
-	//			std::sinf(lat + kLatEvery),
-	//			std::cosf(lat + kLatEvery) * std::sinf(lon + kLonEvery),
-	//			1.0f
-	//			},
-	//			{
-	//				float(lonIndex + 1.0f) / float(kSubdivision),
-	//				1.0f - float(latIndex + 1.0f) / float(kSubdivision)
-	//			},
-	//			//normal
-	//			{std::cosf(lat + kLatEvery) * std::cosf(lon + kLonEvery),
-	//			std::sinf(lat + kLatEvery),
-	//			std::cosf(lat + kLatEvery) * std::sinf(lon + kLonEvery),
-	//			}
-	//		};
-	//		vertexDataSphere[start + 0] = VertA;
-	//		vertexDataSphere[start + 1] = VertB;
-	//		vertexDataSphere[start + 2] = VertC;
-	//		vertexDataSphere[start + 3] = VertC;
-	//		vertexDataSphere[start + 4] = VertB;
-	//		vertexDataSphere[start + 5] = VertD;
-	//	}
-	//}
-
-
-
-#pragma endregion 
 
 
 #pragma region AfterSphere
@@ -2116,6 +2001,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		{0.0f, 0.0f, 0.0f}     // 平行移動
 	};
 
+	
 	//==============================//
 	//=== サウンド読み込みと再生 ===//
 	//==============================//
@@ -2132,6 +2018,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	bool isSpriteActive = true;  // スプライトを描画するか
 	bool isOBJActive = false;    // OBJモデルを描画するか（初期状態ではOFF）
 
+	
+
 
 	//コメントアウト確認
 
@@ -2141,7 +2029,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	while (msg.message != WM_QUIT)
 	{
 
-
+		
 
 
 
@@ -2155,25 +2043,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region グラフィックスコマンド
 
-			BYTE key[256] = {};
-			HRESULT result = keyboard->GetDeviceState(sizeof(key), key);
-			if (FAILED(result)) {
-				// 再Acquireしてリトライ
-				keyboard->Acquire();
-				result = keyboard->GetDeviceState(sizeof(key), key);
-				if (FAILED(result)) {
-					OutputDebugStringA("キー状態の取得に失敗しました\n");
-				}
-			}
 
-			// キー判定（成功した場合のみ）
-			if (SUCCEEDED(result)) {
-				if (key[DIK_SPACE] & 0x80) {
+			
+
+			input->Update();
+				if (input->PushKey(DIK_0)) {
 					OutputDebugStringA("Hit 0\n");
 				}
-			}
 
-			/*	memcpy(prevKey, key, sizeof(key));*/
+
+			
 
 #pragma endregion                                     
 
@@ -2512,7 +2391,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			assert(SUCCEEDED(hr));
 
 
-
+			//Input用
+			delete input;
 		}
 
 
