@@ -4,6 +4,7 @@ void Input::Initialize(WinApp*winApp) {
 	//DirectInputの初期化
 
 	//HRESULT result;
+	this->winApp = winApp;
 
 	directInput = nullptr;
 	HRESULT result = DirectInput8Create(winApp->GetHInstance(), DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
@@ -21,7 +22,6 @@ void Input::Initialize(WinApp*winApp) {
 	result = keyboard->SetCooperativeLevel(winApp->GetHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
 	assert(SUCCEEDED(result));
 
-	this->winApp = winApp;
 };
 void Input::Update() 
 {

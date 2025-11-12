@@ -16,18 +16,17 @@
 #include<vector>
 #include "externals/DirectXTex/DirectXTex.h"
 #include "externals/DirectXTex/d3dx12.h"
+#include "externals/imgui/imgui_impl_dx12.h"
+#include "externals/imgui/imgui_impl_win32.h"
 #include <numbers>
 #include<wrl.h>
 #include <xaudio2.h>
 #include "Input.h"
 #include"WinApp.h"
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
-#include "externals/imgui/imgui_impl_win32.cpp"
+
 //#define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -981,6 +980,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Input* input = nullptr;
 	WinApp* winApp = nullptr;
 
+	winApp = new WinApp();
+	winApp->Initialize();
+
+	input = new Input();
+	input->Initialize(winApp);
+
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
 
@@ -1129,13 +1134,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	////カーソル
 	//w.hCursor = LoadCursor(nullptr, IDC_ARROW);
+	
 
-
-	input = new Input();
-	input->Initialize(winApp);
-
-	winApp = new WinApp();
-	winApp->Initialize();
+	
 
 #ifdef _DEBUG
 
@@ -2016,10 +2017,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			
 
-			input->Update();
-				if (input->TriggerKey(DIK_0)) {
-					OutputDebugStringA("Hit 0\n");
-				}
+			//input->Update();
+			//	if (input->TriggerKey(DIK_0)) {
+			//		OutputDebugStringA("Hit 0\n");
+			//	}
 
 
 			
@@ -2383,12 +2384,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//Input用
 	delete input;
-	delete winApp;
-
+	
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+
 	winApp->Finalize();
+	delete winApp;
 
 	return 0;
 }
