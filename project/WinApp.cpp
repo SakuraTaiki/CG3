@@ -27,7 +27,7 @@ void WinApp::Initialize() {
 
 	//comの初期化
 	HRESULT hr = CoInitializeEx(0, COINIT_MULTITHREADED);
-	WNDCLASS wc{};
+	//WNDCLASS wc{};
 
 	//windowプロシージャ
 	wc.lpfnWndProc = WindowProc;

@@ -7,6 +7,7 @@ void Input::Initialize(WinApp*winApp) {
 	this->winApp = winApp;
 
 	directInput = nullptr;
+	HINSTANCE hInstance = winApp->GetHInstance();
 	HRESULT result = DirectInput8Create(winApp->GetHInstance(), DIRECTINPUT_VERSION, IID_IDirectInput8, (void**)&directInput, nullptr);
 	assert(SUCCEEDED(result));
 
