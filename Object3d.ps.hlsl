@@ -1,24 +1,5 @@
 #include"Object3d.hlsli"
 
-struct Material
-{
-    float4 color;
-    int32_t enableLighting;
-    float32_t4x4 uvTransform;
-};
-
-struct TransformationMatrix
-{
-    float32_t4x4 WVP;
-    float32_t4x4 World;
-};
-
-struct DirectionalLight
-{
-    float4 color;
-    float32_t3 direction;
-    float intencity;
-};
 
 ConstantBuffer<Material> gMaterial : register(b0);
 
