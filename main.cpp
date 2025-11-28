@@ -2415,7 +2415,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			for (uint32_t index = 0; index < kNumInstance; ++index) {
 				Matrix4x4 worldMatrixParticle =
 					MakeAffineMatrix(transforms[index].scale, transforms[index].rotate, transforms[index].translate);
-				Matrix4x4 worldViewProjectionMatrixParticle = Multiply(worldMatrixParticle, worldViewProjectionMatrixParticle);
+				Matrix4x4 worldViewProjectionMatrixParticle = Multiply(viewMatrixOBJ, projectionMatrixOBJ);
 				instancingData[index].WVP = worldViewProjectionMatrixParticle;
 				instancingData[index].World = worldMatrixParticle;
 
