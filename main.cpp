@@ -1018,7 +1018,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//windowsの生成
 	HWND hwnd = CreateWindow(
 		wc.lpszClassName, // 利用するクラス名
-		L"CG2", // タイトルバーの文字
+		L"LE2C_15_サクラ_タイキ", // タイトルバーの文字
 		WS_OVERLAPPEDWINDOW, // よく見るウィンドウタイトル
 		CW_USEDEFAULT, // 表示X座標
 		CW_USEDEFAULT, // 表示Y座標
@@ -1985,7 +1985,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//パーティクル用
 	D3D12_VERTEX_BUFFER_VIEW vertexBufferViewParticle{};
 	vertexBufferViewParticle.BufferLocation = vertexResourceParticle->GetGPUVirtualAddress(); // GPU仮想アドレスの取得
-	vertexBufferViewParticle.SizeInBytes = UINT(sizeof(VertexData) * modelData.vertices.size()); // バッファ全体のサイズ
+	vertexBufferViewParticle.SizeInBytes = UINT(sizeof(VertexData) * 6); // バッファ全体のサイズ
 	vertexBufferViewParticle.StrideInBytes = sizeof(VertexData); // 頂点1つ分のサイズ
 
 	VertexData* vertexDataParticle = nullptr;
@@ -2014,16 +2014,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDataParticle[4].normal = { 0.0f,0.0f,1.0f };
 
 	vertexDataParticle[5].position = { -1.0f,-1.0f,0.0f,1.0f };//右下
-	vertexDataParticle[5].texcoord = { 1.0f,0.0f };
+	vertexDataParticle[5].texcoord = { 1.0f,1.0f };
 	vertexDataParticle[5].normal = { 0.0f,0.0f,1.0f };
-
-
-
-
-
-
-
-
 
 	// OBJモデル用のWVP行列バッファ（Transform用定数バッファ）を作成
 	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ =createBufferResouces(device.Get(), sizeof(TransformationMatrix));
@@ -2180,22 +2172,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//================================================================//
 	//=== 各カメラTransform（カメラの位置・回転・スケール）初期化 ===//
 	//===============================================================//
-	Transform cameraTransformSprite = {
-		{1.0f, 1.0f, 1.0f},    // Scale
-		{0.0f, 0.0f, 0.0f},    // Rotate
-		{0.0f, 0.0f, -10.0f}   // Translate（カメラをZ方向に引く）
-	};
-
-	Transform cameraTransformSphere = {
+	
+	Transform cameraTransform = {
 		{1.0f, 1.0f, 1.0f},
-		{0.0f, 0.0f, 0.0f},
-		{0.0f, 0.0f, -10.0f}
-	};
-
-	Transform cameraTransformOBJ = {
-		{1.0f, 1.0f, 1.0f},
-		{0.0f, 0.0f, 0.0f},
-		{0.0f, 0.0f, -10.0f}
+		{0.3f, 3.14f, 0.0f},
+		{0.0f, 4.0f, 10.0f}
 	};
 
 	//===========================================================//
@@ -2316,11 +2297,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				transformSprite.rotate,
 				transformSprite.translate);
 
-			// カメラ行列（スプライトは基本的に2D扱いなので使わないが形式上用意）
-			Matrix4x4 cameraMatrixSprite = MakeAffineMatrix(
-				cameraTransformSprite.scale,
-				cameraTransformSprite.rotate,
-				cameraTransformSprite.translate);
 
 			// ビュー行列（今回は2D描画のため単位行列）
 			Matrix4x4 viewMatrixSprite = makeIdentity4x4();
@@ -2352,13 +2328,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				transformSphere.translate);
 
 			// カメラ行列作成（球体は3Dなのでビュー行列のために逆行列を使う）
-			Matrix4x4 cameraMatrixSphere = MakeAffineMatrix(
-				cameraTransformSphere.scale,
-				cameraTransformSphere.rotate,
-				cameraTransformSphere.translate);
+			Matrix4x4 cameraMatrix = MakeAffineMatrix(
+				cameraTransform.scale,
+				cameraTransform.rotate,
+				cameraTransform.translate);
 
 			// ビュー行列（カメラの逆行列）
-			Matrix4x4 viewMatrixSphere = Inverse(cameraMatrixSphere);
+			Matrix4x4 viewMatrix = Inverse(cameraMatrix);
 
 			// 透視投影行列（3Dの見え方に遠近感をつける）
 			Matrix4x4 projectionMatrixSphere = MakePerspectiveFovMatrix(
@@ -2369,7 +2345,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// WVP行列
 			Matrix4x4 worldViewProjectionMatrixSphere = Multiply(
 				worldMatrixSphere,
-				Multiply(viewMatrixSphere, projectionMatrixSphere));
+				Multiply(viewMatrix, projectionMatrixSphere));
 
 			// 球体用定数バッファに設定
 			transformationMatrixDataSphere->WVP = worldViewProjectionMatrixSphere;
@@ -2385,14 +2361,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				transformOBJ.rotate,
 				transformOBJ.translate);
 
-			// カメラ行列作成
-			Matrix4x4 cameraMatrixOBJ = MakeAffineMatrix(
-				cameraTransformOBJ.scale,
-				cameraTransformOBJ.rotate,
-				cameraTransformOBJ.translate);
+			
 
-			// ビュー行列（カメラの逆行列）
-			Matrix4x4 viewMatrixOBJ = Inverse(cameraMatrixOBJ);
+			
 
 			// 透視投影行列
 			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(
@@ -2403,7 +2374,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// WVP行列
 			Matrix4x4 worldViewProjectionMatrixOBJ = Multiply(
 				worldMatrixOBJ,
-				Multiply(viewMatrixOBJ, projectionMatrixOBJ));
+				Multiply(viewMatrix, projectionMatrixOBJ));
 
 			// OBJ用定数バッファに設定
 			transformationMatrixDataOBJ->WVP = worldViewProjectionMatrixOBJ;
@@ -2415,7 +2386,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			for (uint32_t index = 0; index < kNumInstance; ++index) {
 				Matrix4x4 worldMatrixParticle =
 					MakeAffineMatrix(transforms[index].scale, transforms[index].rotate, transforms[index].translate);
-				Matrix4x4 worldViewProjectionMatrixParticle = Multiply(viewMatrixOBJ, projectionMatrixOBJ);
+				Matrix4x4 worldViewProjectionMatrixParticle = Multiply(worldMatrixParticle, Multiply(viewMatrix, projectionMatrixOBJ));
 				instancingData[index].WVP = worldViewProjectionMatrixParticle;
 				instancingData[index].World = worldMatrixParticle;
 
@@ -2496,6 +2467,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				ImGui::DragFloat("Intensity##OBJ", &directionalLightDataOBJ->intensity);
 			}
 
+			ImGui::Begin("Camera");
+
+			ImGui::DragFloat3("Camera Position", &cameraTransform.translate.x, 0.1f);
+			ImGui::DragFloat3("Camera Rotation", &cameraTransform.rotate.x, 0.1f);
+
+			ImGui::End();
+
 			ImGui::End();
 			if (drawTargetFlags[1]) {
 				ImGui::Begin("Sprite UV Transform");
@@ -2504,6 +2482,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				ImGui::SliderAngle("Rotate", &uvTransformSprite.rotate.z);
 				ImGui::End();
 			}
+
+			
 
 #pragma endregion  ImGui入力処理 終了 
 
@@ -2581,15 +2561,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
 			}
 
-			//Instancing用のコマンドリスト
-			commandList->SetGraphicsRootSignature(rootsignatrueParticle.Get());
-			commandList->SetPipelineState(graphicsPipelineStateParticle.Get());
-			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewParticle);
-			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
-			commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
-			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			commandList->DrawInstanced(UINT(modelData.vertices.size()), kNumInstance, 0, 0);
+			
+				//Instancing用のコマンドリスト
+				commandList->SetGraphicsRootSignature(rootsignatrueParticle.Get());
+				commandList->SetPipelineState(graphicsPipelineStateParticle.Get());
+				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewParticle);
+				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
+				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+				commandList->DrawInstanced(6, kNumInstance, 0, 0);
 
 			ImGui::Render();
 
