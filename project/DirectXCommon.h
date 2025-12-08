@@ -7,6 +7,7 @@
 #include "Logger.h"
 #include <dxcapi.h>
 #include "externals/DirectXTex/DirectXTex.h"
+#include<chrono>
 
 class DirectXCommon {
 public:
@@ -17,6 +18,37 @@ public:
 
     void PreDraw();
     void PostDraw();
+
+    //リソース生成関数
+    Microsoft::WRL::ComPtr<ID3D12Resource>CreateBufferResource(size_t sizeInBytes);
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metadata);
+    Microsoft::WRL::ComPtr<ID3D12Resource>CreateTextureResource(const DirectX::TexMetadata& metadata);
+    Microsoft::WRL::ComPtr<ID3D12Resource>UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
+    static DirectX::ScratchImage LoadTexture(const std::string& filePath);
+
+    ID3D12Device* GetDevice()const { return device.Get(); }
+    ID3D12GraphicsCommandList* GetCommandList()const { return commandList.Get(); }
+
+    static D3D12_CPU_DESCRIPTOR_HANDLE
+        GetCPUDescriptorHandle(const Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& heap,
+            uint32_t descriptorSize, uint32_t index);
+
+    static D3D12_GPU_DESCRIPTOR_HANDLE
+        GetGPUDescriptorHandle(const Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& heap,
+            uint32_t descriptorSize, uint32_t index);
+
+    Microsoft::WRL::ComPtr<ID3D12Resource>
+        CreateDepthStencilTextureResource(Microsoft::WRL::ComPtr<ID3D12Device> device,
+            int32_t width, int32_t height);
+
+    //========================
+    // Descriptor Heap
+    //========================
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;
+
+    Microsoft::WRL::ComPtr<IDxcBlob>CompileShander(const std::wstring& filePath, const wchar_t* profile);
 
 private:
     //========================
@@ -32,13 +64,7 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain;
     Microsoft::WRL::ComPtr<ID3D12Resource> swapChainResources[2];
 
-    //========================
-    // Descriptor Heap
-    //========================
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srvDescriptorHeap;
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap;
-
+    
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles[2];
 
     UINT descriptorSizeSRV = 0;
@@ -63,16 +89,11 @@ private:
 
     WinApp* winApp = nullptr;
 
-    //=======================
-    //Getter
-    //=(======================
-    ID3D12Device* GetDevice()const { return device.Get(); }
-    ID3D12GraphicsCommandList* GetCommandList()const { return commandList.Get(); }
-
+  
     //========================
     //SghaderCompile
     //========================
-    Microsoft::WRL::ComPtr<IDxcBlob>CompileShander(const std::wstring& filePath, const wchar_t* profile);
+    
 
     Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils;
     Microsoft::WRL::ComPtr<IDxcCompiler3> dxCompiler;
@@ -81,11 +102,7 @@ private:
     // Logger 用
     std::ostream logFile;
 
-    //リソース生成関数
-    Microsoft::WRL::ComPtr<ID3D12Resource>CreateBufferResource(size_t sizeInBytes);
-    Microsoft::WRL::ComPtr<ID3D12Resource>CreateTextureResource(const DirectX::TexMetadata& metadata);
-    void UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
-    static DirectX::ScratchImage LoadTexture(const std::string& filePath);
+   
 
 private:
     //========================
@@ -94,15 +111,16 @@ private:
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>
         CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE heapType, UINT numDescriptors, bool shaderVisible);
 
-    static D3D12_CPU_DESCRIPTOR_HANDLE
-        GetCPUDescriptorHandle(const Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& heap,
-            uint32_t descriptorSize, uint32_t index);
+    
 
-    static D3D12_GPU_DESCRIPTOR_HANDLE
-        GetGPUDescriptorHandle(const Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>& heap,
-            uint32_t descriptorSize, uint32_t index);
+   
+private:
+   //FPS固定化関数
+    void InitializeFixFPS();
+    //FPS固定更新
+    void UpdateFixFPS();
 
-    Microsoft::WRL::ComPtr<ID3D12Resource>
-        CreateDepthStencilTextureResource(Microsoft::WRL::ComPtr<ID3D12Device> device,
-            int32_t width, int32_t height);
+    //記録時間(FPS固定用)
+    std::chrono::steady_clock::time_point reference_;
+
 };
