@@ -1,5 +1,11 @@
 #pragma once
 #include <string>
+#include <fstream>
+
 namespace Logger {
-	void Log(const std::string& message);
-};
+
+    extern std::ofstream logStream;
+
+    void Log(std::ofstream& stream, const std::string& message);
+
+}
