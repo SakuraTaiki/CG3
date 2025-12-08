@@ -10,6 +10,7 @@
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 #include "externals/DirectXTex/d3dx12.h"
+#include <thread>
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -206,6 +207,9 @@ void DirectXCommon::Initialize(WinApp* winApp) {
         srvDescriptorHeap.Get(),
         srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
         srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+    //FPS固定初期化
+    InitializeFixFPS();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetSRVCPUDescriptorHandle(uint32_t index)
@@ -287,19 +291,22 @@ void DirectXCommon::PostDraw() {
     commandQueue->ExecuteCommandLists(1, commandLists);
     swapChain->Present(1, 0);
 
+    UpdateFixFPS();
 
-    //Fenceの更新
-    fenceValue++;
 
     //GPUがそこまでたどり着いた時に Fenceの値を指定した値に代入するようにsignalを送る
-    commandQueue->Signal(fence.Get(), fenceValue);
+    commandQueue->Signal(fence.Get(), ++fenceValue);
 
-    if (fence->GetCompletedValue() < fenceValue)
+    if (fence->GetCompletedValue() != fenceValue)
     {
+
+        HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+
         //指定したsignal似たとりついていないのでたどり着くまでに待つようにイベントを指定する
-        fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        fence->SetEventOnCompletion(fenceValue,event);
         //イベントを待つ
-        WaitForSingleObject(fenceEvent, INFINITE);
+        WaitForSingleObject(event, INFINITE);
+        CloseHandle(event);
     }
 
 
@@ -418,7 +425,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateTextureResource(cons
     return resouce;
 }
 
-void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages)
+Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages)
 {
     std::vector<D3D12_SUBRESOURCE_DATA>subresources;
 	DirectX::PrepareUpload(device.Get(), mipImages.GetImages(), mipImages.GetImageCount(), mipImages.GetMetadata(), subresources);
@@ -520,4 +527,31 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
     assert(SUCCEEDED(hr));
 
     return resource;
+}
+
+void DirectXCommon::InitializeFixFPS()
+{
+    reference_ = std::chrono::steady_clock::now();
+}
+
+void DirectXCommon::UpdateFixFPS()
+{
+    //60/1秒ピッタリな時間
+    const std::chrono::microseconds kMinTime(uint64_t(1000000.0f / 60.0f));
+
+    const std::chrono::microseconds kMinCheckTime(uint64_t(1000000.0f / 65.0f));
+
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+
+    std::chrono::microseconds elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - reference_);
+
+    if (elapsed < kMinCheckTime) {
+        //1/60秒経過するまで微小なスリープを繰り返す
+        while (std::chrono::steady_clock::now() - reference_ < kMinTime) {
+            //1秒マイクロスリープ
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+
+        }
+    }
+    reference_ = std::chrono::steady_clock::now();
 }

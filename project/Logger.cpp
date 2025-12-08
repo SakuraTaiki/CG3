@@ -1,4 +1,5 @@
 #include "Logger.h"
+#include <debugapi.h>
 
 namespace Logger {
 
@@ -9,6 +10,13 @@ namespace Logger {
         if (!logStream.is_open()) {
             throw std::runtime_error("Failed to open log file.");
         }
+    }
+
+    void Log(std::ostream& os, const std::string& message)
+    {
+        os << message << std::endl;
+        OutputDebugStringA(message.c_str());
+
     }
 
 }
