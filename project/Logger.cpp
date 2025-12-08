@@ -1,6 +1,14 @@
 #include "Logger.h"
+
 namespace Logger {
-	void Log(const std::string& message) {
-		
-	}
+
+    std::ofstream logStream;
+
+    void InitializeLog() {
+        logStream.open("log.txt", std::ios::out | std::ios::trunc);
+        if (!logStream.is_open()) {
+            throw std::runtime_error("Failed to open log file.");
+        }
+    }
+
 }
