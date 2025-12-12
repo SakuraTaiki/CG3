@@ -25,6 +25,7 @@
 #include <xaudio2.h>
 #define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 #include <dinput.h>
+#include<random>
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
@@ -37,6 +38,11 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 #pragma comment(lib,"xaudio2.lib")
 #pragma comment(lib,"dinput8.lib")
 #pragma comment(lib,"dxguid.lib")
+
+std::random_device seedGenerator;
+std::mt19937 randomEngine(seedGenerator());
+
+
 
 using Microsoft::WRL::ComPtr;
 
@@ -53,6 +59,23 @@ struct Vector3
 	float z;
 };
 
+// Vector3 + Vector3
+inline Vector3 operator+(const Vector3& a, const Vector3& b) {
+	return { a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
+// Vector3 += Vector3
+inline Vector3& operator+=(Vector3& a, const Vector3& b) {
+	a.x += b.x;
+	a.y += b.y;
+	a.z += b.z;
+	return a;
+}
+
+// Vector3 * float
+inline Vector3 operator*(const Vector3& v, float s) {
+	return { v.x * s, v.y * s, v.z * s };
+}
 
 struct Vector4
 {
@@ -149,6 +172,24 @@ struct  SoundData
 	//バッファのサイズ
 	unsigned int bufferSize;
 
+};
+
+//パーティクル
+struct Particle
+{
+	Transform transform;
+	Vector3 velocity;
+	Vector4 color;
+	float lifeTime;
+	float currentTime;
+};
+
+//Particleを受け取る用の構造体
+struct ParticleForGPU
+{
+	Matrix4x4 WVP;
+	Matrix4x4 World;
+	Vector4 color;
 };
 
 struct D3DResourceLeakChecker {
@@ -415,6 +456,29 @@ Vector3 Normalize(const Vector3& v) {
 	if (length == 0.0f)
 		return { 0.0f, 0.0f, 0.0f };
 	return { v.x / length, v.y / length, v.z / length };
+}
+
+Particle MakeNewParticle(std::mt19937& randomEngine) 
+{
+	std::uniform_real_distribution<float> distribution(-1.0f, 1.0f);
+
+	Particle particle;
+
+	particle.transform.scale = { 1.0f,1.0f,1.0f };
+	particle.transform.rotate = { 0.0f,0.0f,0.0f };
+	particle.transform.translate = { distribution(randomEngine),distribution(randomEngine),distribution(randomEngine) };
+
+	//真上への速度
+	particle.velocity = { distribution(randomEngine),distribution(randomEngine),distribution(randomEngine) };
+
+	std::uniform_real_distribution<float> distColor(0.0f, 1.0f);
+	particle.color = { distColor(randomEngine),distColor(randomEngine),distColor(randomEngine),1.0f };
+
+	//Particle生存時間
+	std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
+	particle.lifeTime = distTime(randomEngine);
+	particle.currentTime=0;
+	return particle;
 }
 
 
@@ -1255,17 +1319,17 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParmetersParticle[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 	rootParmetersParticle[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
 	rootParmetersParticle[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
-				 
+
 	rootParmetersParticle[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
 	rootParmetersParticle[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 	rootParmetersParticle[1].DescriptorTable.pDescriptorRanges = descriptorRangeForInstancingParticle;
 	rootParmetersParticle[1].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeForInstancingParticle);//tableで利用する数
-				 
+
 	rootParmetersParticle[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;//descriptorTableを使う
 	rootParmetersParticle[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 	rootParmetersParticle[2].DescriptorTable.pDescriptorRanges = descriptorRangeParticle;
 	rootParmetersParticle[2].DescriptorTable.NumDescriptorRanges = _countof(descriptorRangeParticle);//tableで利用する数
-				 
+
 	rootParmetersParticle[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 	rootParmetersParticle[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderを使う
 	rootParmetersParticle[3].Descriptor.ShaderRegister = 1;//レジスタ番号1を使う
@@ -1292,9 +1356,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 
-	
 
-	
+
+
 
 #pragma endregion
 
@@ -1366,7 +1430,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		L"vs_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
 	assert(vertexShaderBlobParticle != nullptr);
 
-	ComPtr<IDxcBlob> pixelShaderBlobParticle =  CompileShander(L"Particle.PS.hlsl", 
+	ComPtr<IDxcBlob> pixelShaderBlobParticle = CompileShander(L"Particle.PS.hlsl",
 		L"ps_6_0", dxcUtils.Get(), dxcCompiler.Get(), includeHander.Get(), logStrem);
 	assert(pixelShaderBlobParticle != nullptr);
 
@@ -1398,7 +1462,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//Depthの機能を無効化する
 	depthStencilDescParticle.DepthEnable = true;
 	//書き込みします
-	depthStencilDescParticle.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	depthStencilDescParticle.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	//比較関係はLessEqual　つまり透ければ描画される
 	depthStencilDescParticle.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
@@ -1466,7 +1530,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	descriptionRootSignatrue.NumStaticSamplers = _countof(staticSamplers);
 #pragma endregion
 
-	
+
 
 	//シアライズしてばいなりにする
 	ComPtr<ID3DBlob> signatureBlob = nullptr;
@@ -1486,7 +1550,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(hr));
 
 
-	
+
 #pragma region InputElement
 	D3D12_INPUT_ELEMENT_DESC inputElementDescs[3] = {};
 	inputElementDescs[0].SemanticName = "POSITION";
@@ -1855,7 +1919,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma region LightOBJ // OBJモデル用マテリアルリソースの初期化
 
-	
+
 
 #pragma endregion
 
@@ -1960,7 +2024,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// 頂点数を取得して格納（頂点バッファ作成などで使用）
 	uint32_t vertexCountObj = static_cast<uint32_t>(modelData.vertices.size());
-	
+
 	// 頂点用のリソース（バッファ）を作成
 	ComPtr<ID3D12Resource> vertexResourceModel =
 		createBufferResouces(device.Get(), sizeof(VertexData) * modelData.vertices.size());
@@ -1990,9 +2054,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	VertexData* vertexDataParticle = nullptr;
 	vertexResourceParticle->Map(0, nullptr, reinterpret_cast<void**>(&vertexDataParticle));
-	std::memcpy(vertexDataParticle, modelData.vertices.data(), sizeof(VertexData)* modelData.vertices.size());
+	std::memcpy(vertexDataParticle, modelData.vertices.data(), sizeof(VertexData) * modelData.vertices.size());
 
-	
+
 	vertexDataParticle[0].position = { 1.0f,1.0f,0.0f,1.0f };//左上
 	vertexDataParticle[0].texcoord = { 0.0f,0.0f };
 	vertexDataParticle[0].normal = { 0.0f,0.0f,1.0f };
@@ -2018,7 +2082,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vertexDataParticle[5].normal = { 0.0f,0.0f,1.0f };
 
 	// OBJモデル用のWVP行列バッファ（Transform用定数バッファ）を作成
-	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ =createBufferResouces(device.Get(), sizeof(TransformationMatrix));
+	ComPtr<ID3D12Resource> transformationMatrixResourceOBJ = createBufferResouces(device.Get(), sizeof(TransformationMatrix));
 	TransformationMatrix* transformationMatrixDataOBJ = nullptr;
 	transformationMatrixResourceOBJ->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixDataOBJ));
 	transformationMatrixDataOBJ->WVP = makeIdentity4x4(); // 初期値として単位行列を設定
@@ -2063,28 +2127,29 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 
-	
+
 
 
 #pragma region Instancing
 
 
-	
-	
+
+
 
 	const uint32_t kNumInstance = 10;//インスタンス数
 	//Instancing用のTransformationMatrixリソースを作る
 	Microsoft::WRL::ComPtr<ID3D12Resource>instancingResource =
-	createBufferResouces(device, sizeof(TransformationMatrix) * kNumInstance);
+		createBufferResouces(device, sizeof(ParticleForGPU) * kNumInstance);
 	//書き込むためのアドレスを取得
-	TransformationMatrix* instancingData = nullptr;
+	ParticleForGPU* instancingData = nullptr;
 	instancingResource->Map(0, nullptr, reinterpret_cast<void**>(&instancingData));
 	//単位行列を書き込んでおく
 	for (uint32_t index = 0; index < kNumInstance; ++index) {
 		instancingData[index].WVP = makeIdentity4x4();
 		instancingData[index].World = makeIdentity4x4();
+		instancingData[index].color = Vector4(2.0f, 2.0f, 2.0f, 2.0f);
 	}
-	
+
 	//シェーダー設定
 	D3D12_SHADER_RESOURCE_VIEW_DESC instancingSrvDesc{};
 	instancingSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
@@ -2093,18 +2158,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	instancingSrvDesc.Buffer.FirstElement = 0;
 	instancingSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
 	instancingSrvDesc.Buffer.NumElements = kNumInstance;
-	instancingSrvDesc.Buffer.StructureByteStride = sizeof(TransformationMatrix);
-	D3D12_CPU_DESCRIPTOR_HANDLE instancingSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV,3);
+	instancingSrvDesc.Buffer.StructureByteStride = sizeof(ParticleForGPU);
+	D3D12_CPU_DESCRIPTOR_HANDLE instancingSrvHandleCPU = GetCPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 3);
 	D3D12_GPU_DESCRIPTOR_HANDLE instancingSrvHandleGPU = GetGPUDescriptorHandle(srvDescrriptorHeap, descriptorSizeSRV, 3);
 	device->CreateShaderResourceView(instancingResource.Get(), &instancingSrvDesc, instancingSrvHandleCPU);
 
 	//Transform作成
-	Transform transforms[kNumInstance];
+	Particle particles[kNumInstance];
 	for (uint32_t index = 0; index < kNumInstance; ++index) {
-		transforms[index].scale = { 1.0f,1.0f,1.0f };
-		transforms[index].translate = { index * 0.1f,index * 0.1f,index * 0.1f };
+		particles[index] = MakeNewParticle(randomEngine);
+		instancingData[index].color = particles[index].color;
 	}
-	
+
 #pragma endregion
 
 	//=======================================//
@@ -2172,7 +2237,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//================================================================//
 	//=== 各カメラTransform（カメラの位置・回転・スケール）初期化 ===//
 	//===============================================================//
-	
+
 	Transform cameraTransform = {
 		{1.0f, 1.0f, 1.0f},
 		{0.3f, 3.14f, 0.0f},
@@ -2361,9 +2426,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				transformOBJ.rotate,
 				transformOBJ.translate);
 
-			
 
-			
+
+
 
 			// 透視投影行列
 			Matrix4x4 projectionMatrixOBJ = MakePerspectiveFovMatrix(
@@ -2383,12 +2448,42 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 #pragma region Instancing用WVP
+
+
+			uint32_t numInstance = 0;
+
+			const float deltaTime = 1.0f / 60.0f;
+
+			
+
 			for (uint32_t index = 0; index < kNumInstance; ++index) {
+
+				float alpha = 1.0f - (particles[index].currentTime / particles[index].lifeTime);
+
+				// 生存時間を超えたら描画しない
+				if (particles[index].currentTime >= particles[index].lifeTime) {
+					continue;
+				}
+
+				particles[index].transform.translate += particles[index].velocity * deltaTime;
+				// 時間を進める
+				particles[index].currentTime += deltaTime;
+
+
 				Matrix4x4 worldMatrixParticle =
-					MakeAffineMatrix(transforms[index].scale, transforms[index].rotate, transforms[index].translate);
+					MakeAffineMatrix(
+						particles[index].transform.scale,
+						particles[index].transform.rotate,
+						particles[index].transform.translate);
+
 				Matrix4x4 worldViewProjectionMatrixParticle = Multiply(worldMatrixParticle, Multiply(viewMatrix, projectionMatrixOBJ));
-				instancingData[index].WVP = worldViewProjectionMatrixParticle;
-				instancingData[index].World = worldMatrixParticle;
+				// GPU にコピー（生存している順に詰める）
+				instancingData[numInstance].WVP = worldViewProjectionMatrixParticle;
+				instancingData[numInstance].World = worldMatrixParticle;
+				instancingData[numInstance].color.w = alpha;
+
+				numInstance++;   // 生存している particle 数を加算
+				
 
 			}
 #pragma endregion
@@ -2483,7 +2578,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				ImGui::End();
 			}
 
-			
+
 
 #pragma endregion  ImGui入力処理 終了 
 
@@ -2549,7 +2644,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 			}
 
-			if(drawTargetFlags[2]){
+			if (drawTargetFlags[2]) {
 				commandList->SetGraphicsRootSignature(rootsignatrue.Get());
 				commandList->SetPipelineState(graphicsPipelineState.Get());
 				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -2561,16 +2656,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->DrawInstanced(vertexCountObj, 1, 0, 0);
 			}
 
-			
-				//Instancing用のコマンドリスト
-				commandList->SetGraphicsRootSignature(rootsignatrueParticle.Get());
-				commandList->SetPipelineState(graphicsPipelineStateParticle.Get());
-				commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-				commandList->IASetVertexBuffers(0, 1, &vertexBufferViewParticle);
-				commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
-				commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
-				commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-				commandList->DrawInstanced(6, kNumInstance, 0, 0);
+
+			//Instancing用のコマンドリスト
+			commandList->SetGraphicsRootSignature(rootsignatrueParticle.Get());
+			commandList->SetPipelineState(graphicsPipelineStateParticle.Get());
+			commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			commandList->IASetVertexBuffers(0, 1, &vertexBufferViewParticle);
+			commandList->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
+			commandList->SetGraphicsRootDescriptorTable(1, instancingSrvHandleGPU);
+			commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+			commandList->DrawInstanced(6, numInstance, 0, 0);
 
 			ImGui::Render();
 
