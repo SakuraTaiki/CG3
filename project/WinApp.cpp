@@ -1,6 +1,6 @@
 #include"WinApp.h"
 #include "externals/imgui/imgui.h"
-#pragma comment(lib,"winmm.lid")
+#pragma comment(lib,"winmm.lib")
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg,
