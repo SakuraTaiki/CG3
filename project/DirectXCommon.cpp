@@ -25,30 +25,30 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 
     
 
-    //Command
-    this->commandAllocator = commandAllocator;
-    this->commandList = commandList;
+    ////Command
+    //this->commandAllocator = commandAllocator;
+    //this->commandList = commandList;
 
-    //SwapChain
-    this->swapChain = swapChain;
-    this->swapChainResources[0] = swapChainResources[0];
-    this->swapChainResources[1] = swapChainResources[1];
+    ////SwapChain
+    //this->swapChain = swapChain;
+    //this->swapChainResources[0] = swapChainResources[0];
+    //this->swapChainResources[1] = swapChainResources[1];
 
-    this->rtvDescriptorHeap = rtvDescriptorHeap;
-    this->srvDescriptorHeap = srvDescriptorHeap;
-    this->dsvDescriptorHeap = dsvDescriptorHeap;
+    //this->rtvDescriptorHeap = rtvDescriptorHeap;
+    //this->srvDescriptorHeap = srvDescriptorHeap;
+    //this->dsvDescriptorHeap = dsvDescriptorHeap;
 
-    this->rtvHandles[0] = rtvHandles[0];
-    this->rtvHandles[1] = rtvHandles[1];
+    //this->rtvHandles[0] = rtvHandles[0];
+    //this->rtvHandles[1] = rtvHandles[1];
 
-    this->depthStencilResource = depthStencilResource;
+    //this->depthStencilResource = depthStencilResource;
 
-    this->fence = fence;
-    this->fenceEvent = fenceEvent;
-    this->fenceValue = fenceValue;
+    //this->fence = fence;
+    //this->fenceEvent = fenceEvent;
+    //this->fenceValue = fenceValue;
 
-    this->viewport = viewport;
-    this->scissorRect = scissorRect;
+    //this->viewport = viewport;
+    //this->scissorRect = scissorRect;
 
 #ifdef _DEBUG
     ComPtr<ID3D12Debug1> debugController = nullptr;
@@ -446,6 +446,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::UploadTextureData(const Mi
 
 	commandList->ResourceBarrier(1, &barrier);
 	
+    return intermediateResource;
 }
 
 DirectX::ScratchImage DirectXCommon::LoadTexture(const std::string& filePath)
