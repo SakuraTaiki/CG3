@@ -24,6 +24,8 @@
 #include "Input.h"
 #include"WinApp.h"
 #include"DirectXCommon.h"
+#include"Sprite.h"
+#include"SpriteCommon.h"
 
 //#define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 
@@ -714,6 +716,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Input* input = nullptr;
 	WinApp* winApp = nullptr;
 	DirectXCommon* dxCommon = nullptr;
+	SpriteCommon* spriteCommon = nullptr;
+	Sprite* sprite = nullptr;
+	
 
 	winApp = new WinApp();
 	winApp->Initialize();
@@ -723,6 +728,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	dxCommon = new DirectXCommon();
 	dxCommon->Initialize(winApp);
+
+	spriteCommon = new SpriteCommon;
+	spriteCommon->Initialize();
+
+	sprite = new Sprite;
+	sprite->Initialize();
 
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
@@ -1780,6 +1791,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	winApp->Finalize();
 	delete winApp;
 	delete dxCommon;
-
+	delete spriteCommon;
+	delete sprite;
 	return 0;
 }
