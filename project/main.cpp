@@ -1712,30 +1712,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			dxCommon->GetCommandList()->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 		}
 
-		if (drawTargetFlags[1]) {
-			dxCommon->GetCommandList()->SetGraphicsRootSignature(rootsignatrue.Get());
-			dxCommon->GetCommandList()->SetPipelineState(graphicsPipelineState.Get());
-			dxCommon->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-			dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferViewSprite);
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-			dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSprite->GetGPUVirtualAddress());
-			dxCommon->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
-		}
+		//if (drawTargetFlags[1]) {
+		//	dxCommon->GetCommandList()->SetGraphicsRootSignature(rootsignatrue.Get());
+		//	dxCommon->GetCommandList()->SetPipelineState(graphicsPipelineState.Get());
+		//	dxCommon->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		//	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+		//	dxCommon->GetCommandList()->IASetIndexBuffer(&indexBufferViewSprite);
+		//	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourcesSprite->GetGPUVirtualAddress());
+		//	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+		//	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+		//	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSprite->GetGPUVirtualAddress());
+		//	dxCommon->GetCommandList()->DrawIndexedInstanced(6, 1, 0, 0, 0);
+		//}
 
-		if (drawTargetFlags[2]) {
-			dxCommon->GetCommandList()->SetGraphicsRootSignature(rootsignatrue.Get());
-			dxCommon->GetCommandList()->SetPipelineState(graphicsPipelineState.Get());
-			dxCommon->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceOBJ->GetGPUVirtualAddress());
-			dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-			dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, materialResourceDirectionOBJ->GetGPUVirtualAddress());
-			dxCommon->GetCommandList()->DrawInstanced(vertexCountObj, 1, 0, 0);
-		}
+		//if (drawTargetFlags[2]) {
+		//	dxCommon->GetCommandList()->SetGraphicsRootSignature(rootsignatrue.Get());
+		//	dxCommon->GetCommandList()->SetPipelineState(graphicsPipelineState.Get());
+		//	dxCommon->GetCommandList()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		//	dxCommon->GetCommandList()->IASetVertexBuffers(0, 1, &vertexBufferViewModel);
+		//	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(0, materialResourcesOBJ->GetGPUVirtualAddress());
+		//	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceOBJ->GetGPUVirtualAddress());
+		//	dxCommon->GetCommandList()->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+		//	dxCommon->GetCommandList()->SetGraphicsRootConstantBufferView(3, materialResourceDirectionOBJ->GetGPUVirtualAddress());
+		//	dxCommon->GetCommandList()->DrawInstanced(vertexCountObj, 1, 0, 0);
+		//}
 
 
 
