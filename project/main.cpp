@@ -1302,6 +1302,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma region model Texture // OBJモデル用テクスチャの読み込みとSRV作成
 
 	// モデルのマテリアルに指定されたテクスチャを読み込む
+	modelData.material.textureFilePath = "resources/uvChecker.png";
 	DirectX::ScratchImage mipImages3 = DirectXCommon::LoadTexture(modelData.material.textureFilePath);
 	const DirectX::TexMetadata& metadata3 = mipImages3.GetMetadata();
 
