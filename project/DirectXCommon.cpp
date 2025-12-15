@@ -101,6 +101,18 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     }
     assert(device != nullptr);
 
+    fenceValue = 0;
+
+     hr = device->CreateFence(
+        fenceValue,
+        D3D12_FENCE_FLAG_NONE,
+        IID_PPV_ARGS(fence.GetAddressOf())
+    );
+    assert(SUCCEEDED(hr));
+
+    fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    assert(fenceEvent != nullptr);
+
     //=== INFO QUEUE ===//
 #ifdef _DEBUG
     ComPtr<ID3D12InfoQueue> infoqueue = nullptr;
@@ -117,7 +129,7 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     assert(SUCCEEDED(hr));
 
     //=== コマンドアロケータ ===//
-    ComPtr<ID3D12CommandAllocator> commandAllocator;
+    
     hr = device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&commandAllocator));
@@ -269,102 +281,143 @@ void DirectXCommon::PostDraw() {
 
     UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
-    // Present → RenderTarget
+    //==============================
+    // RenderTarget → Present
+    //==============================
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Transition.pResource = swapChainResources[backBufferIndex].Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    commandList->ResourceBarrier(1, &barrier);
-
-    //renderTarGetからPresentにする
     barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
     barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 
-    //transSitiionBarrierを張る
     commandList->ResourceBarrier(1, &barrier);
 
+    //==============================
+    // Close & Execute
+    //==============================
     HRESULT hr = commandList->Close();
     assert(SUCCEEDED(hr));
 
-    ID3D12CommandList* commandLists[] = { commandList.Get() };
-    commandQueue->ExecuteCommandLists(1, commandLists);
+    ID3D12CommandList* lists[] = { commandList.Get() };
+    commandQueue->ExecuteCommandLists(1, lists);
+
     swapChain->Present(1, 0);
 
     UpdateFixFPS();
 
-
-    //GPUがそこまでたどり着いた時に Fenceの値を指定した値に代入するようにsignalを送る
+    //==============================
+    // Fence 同期
+    //==============================
     commandQueue->Signal(fence.Get(), ++fenceValue);
 
-    if (fence->GetCompletedValue() != fenceValue)
-    {
-
-        HANDLE event = CreateEvent(nullptr, false, false, nullptr);
-
-        //指定したsignal似たとりついていないのでたどり着くまでに待つようにイベントを指定する
-        fence->SetEventOnCompletion(fenceValue,event);
-        //イベントを待つ
-        WaitForSingleObject(event, INFINITE);
-        CloseHandle(event);
+    if (fence->GetCompletedValue() < fenceValue) {
+        fence->SetEventOnCompletion(fenceValue, fenceEvent);
+        WaitForSingleObject(fenceEvent, INFINITE);
     }
 
-
+    //==============================
+    // 次フレーム準備
+    //==============================
     hr = commandAllocator->Reset();
     assert(SUCCEEDED(hr));
+
     hr = commandList->Reset(commandAllocator.Get(), nullptr);
     assert(SUCCEEDED(hr));
 }
 
-Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShander(const std::wstring& filePath, const wchar_t* profile)
+Microsoft::WRL::ComPtr<IDxcBlob>
+DirectXCommon::CompileShander(const std::wstring& filePath, const wchar_t* profile)
 {
-
     std::ofstream os("log.txt", std::ios::app);
-    //hlslファイルを読み込む
-    Logger::Log(os,StringUtility::ConvertString(std::format(L"Begin CompileShader,path:{}, profile:{}\n", filePath, profile)));
-    ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
-    HRESULT hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, &shaderSource);
+
+    Logger::Log(os,
+        StringUtility::ConvertString(
+            std::format(L"Begin CompileShader,path:{}, profile:{}\n", filePath, profile)));
+
+    HRESULT hr;
+
+    //==============================
+    // DXC Utils
+    //==============================
+    ComPtr<IDxcUtils> dxcUtils;
+    hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(dxcUtils.GetAddressOf()));
     assert(SUCCEEDED(hr));
 
-    DxcBuffer shaderSoucesBuffer;
-    shaderSoucesBuffer.Ptr = shaderSource->GetBufferPointer();
-    shaderSoucesBuffer.Size = shaderSource->GetBufferSize();
-    shaderSoucesBuffer.Encoding = DXC_CP_UTF8;
-    //complieする
-    LPCWSTR argument[] = { filePath.c_str(),
-    L"-E",L"main",
-    L"-T", profile,
-    L"-Zi", L"-Qembed_debug",
-    L"-Od",
-    L"-Zpr" };
+    //==============================
+    // DXC Compiler
+    //==============================
+    ComPtr<IDxcCompiler3> dxCompiler;
+    hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(dxCompiler.GetAddressOf()));
+    assert(SUCCEEDED(hr));
 
-    ComPtr<IDxcResult> shaderResult = nullptr;
+    //==============================
+    // Include Handler
+    //==============================
+    ComPtr<IDxcIncludeHandler> includeHandler;
+    hr = dxcUtils->CreateDefaultIncludeHandler(includeHandler.GetAddressOf());
+    assert(SUCCEEDED(hr));
+
+    //==============================
+    // Load HLSL
+    //==============================
+    ComPtr<IDxcBlobEncoding> shaderSource;
+    hr = dxcUtils->LoadFile(filePath.c_str(), nullptr, shaderSource.GetAddressOf());
+    assert(SUCCEEDED(hr));
+
+    DxcBuffer sourceBuffer{};
+    sourceBuffer.Ptr = shaderSource->GetBufferPointer();
+    sourceBuffer.Size = shaderSource->GetBufferSize();
+    sourceBuffer.Encoding = DXC_CP_UTF8;
+
+    //==============================
+    // Compile arguments
+    //==============================
+    std::wstring shaderDir = L"resources/shaders/";
+
+    LPCWSTR arguments[] = {
+        filePath.c_str(),
+        L"-E", L"main",
+        L"-T", profile,
+        L"-Zi", L"-Qembed_debug",
+        L"-Od",
+        L"-I", shaderDir.c_str(),
+    };
+
+    //==============================
+    // Compile
+    //==============================
+    ComPtr<IDxcResult> shaderResult;
     hr = dxCompiler->Compile(
-        &shaderSoucesBuffer,
-        argument,
-        _countof(argument),
+        &sourceBuffer,
+        arguments,
+        _countof(arguments),
         includeHandler.Get(),
-        IID_PPV_ARGS(&shaderResult));
-
+        IID_PPV_ARGS(shaderResult.GetAddressOf()));
     assert(SUCCEEDED(hr));
-    //警告エラーが出てないか確認する
-    ComPtr<IDxcBlobUtf8> shanderError = nullptr;
-    shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shanderError), nullptr);
-    if (shanderError != nullptr && shanderError->GetStringLength() != 0)
-    {
-        Logger::Log(os, shanderError->GetStringPointer());
+
+    //==============================
+    // Error check
+    //==============================
+    ComPtr<IDxcBlobUtf8> errors;
+    shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(errors.GetAddressOf()), nullptr);
+    if (errors && errors->GetStringLength() != 0) {
+        Logger::Log(os, errors->GetStringPointer());
         assert(false);
-
     }
-    //Compile結果を受けて返す
-    ComPtr<IDxcBlob> shaderBlob = nullptr;
-    hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+
+    //==============================
+    // Get compiled shader
+    //==============================
+    ComPtr<IDxcBlob> shaderBlob;
+    hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(shaderBlob.GetAddressOf()), nullptr);
     assert(SUCCEEDED(hr));
-    Logger::Log(os, StringUtility::ConvertString(std::format(L"Compile Succeeded, path:{}, profile:{}\n", filePath, profile)));
+
+    Logger::Log(os,
+        StringUtility::ConvertString(
+            std::format(L"Compile Succeeded, path:{}, profile:{}\n", filePath, profile)));
 
     return shaderBlob;
 }
-
 Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateBufferResource(size_t sizeInBytes)
 {
     //頂点とリソース用のヒープ設定
