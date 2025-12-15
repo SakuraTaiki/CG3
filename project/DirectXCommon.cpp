@@ -372,7 +372,6 @@ DirectXCommon::CompileShander(const std::wstring& filePath, const wchar_t* profi
     //==============================
     // Compile arguments
     //==============================
-    std::wstring shaderDir = L"resources/shaders/";
 
     LPCWSTR arguments[] = {
         filePath.c_str(),
@@ -380,7 +379,7 @@ DirectXCommon::CompileShander(const std::wstring& filePath, const wchar_t* profi
         L"-T", profile,
         L"-Zi", L"-Qembed_debug",
         L"-Od",
-        L"-I", shaderDir.c_str(),
+        L"-Zpr"
     };
 
     //==============================
