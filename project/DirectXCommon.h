@@ -1,5 +1,5 @@
 #pragma once
-
+#include<Windows.h>
 #include "WinApp.h"
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -22,7 +22,6 @@ public:
     //リソース生成関数
     Microsoft::WRL::ComPtr<ID3D12Resource>CreateBufferResource(size_t sizeInBytes);
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateTextureResource(const DirectX::TexMetadata& metadata);
-    Microsoft::WRL::ComPtr<ID3D12Resource>CreateTextureResource(const DirectX::TexMetadata& metadata);
     Microsoft::WRL::ComPtr<ID3D12Resource>UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resource>& texture, const DirectX::ScratchImage& mipImages);
     static DirectX::ScratchImage LoadTexture(const std::string& filePath);
 
@@ -99,9 +98,7 @@ private:
     Microsoft::WRL::ComPtr<IDxcCompiler3> dxCompiler;
     Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler;
 
-    // Logger 用
-    std::ostream logFile;
-
+   
    
 
 private:

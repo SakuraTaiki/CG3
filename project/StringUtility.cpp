@@ -1,6 +1,5 @@
-#include "StringUtility.h"
 #include <Windows.h>
-
+#include "StringUtility.h"
 namespace StringUtility
 {
     // std::string → std::wstring
