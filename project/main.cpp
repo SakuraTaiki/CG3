@@ -716,7 +716,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	dxCommon->Initialize(winApp);
 
 	spriteCommon = new SpriteCommon;
-	spriteCommon->Initialize();
+	spriteCommon->Initialize(dxCommon);
 
 	sprite = new Sprite;
 	sprite->Initialize();
