@@ -110,6 +110,7 @@ struct Material
 	int32_t enableLighting;
 	float padding[3];
 	Matrix4x4 uvTransform;
+	float shininess = 10.0f;
 };
 
 struct TransformationMatrix
@@ -137,6 +138,12 @@ struct ModelData
 {
 	std::vector<VertexData>vertices;
 	MaterialData material;
+	
+};
+
+struct CameraForGPU
+{
+	Vector3 worldPosition;
 };
 
 //07-00で追加
@@ -1493,7 +1500,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//Rootparameter作成　複数設定できるので配列 今回は結果が一つだけなので長さが1の配列
 
 
-	D3D12_ROOT_PARAMETER rootParmetersOBJ[4] = {};
+	D3D12_ROOT_PARAMETER rootParmetersOBJ[5] = {};
 	rootParmetersOBJ[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 	rootParmetersOBJ[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//pixeShaderで使う
 	rootParmetersOBJ[0].Descriptor.ShaderRegister = 0;//レジスタ番号と0バインド
@@ -1510,6 +1517,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	rootParmetersOBJ[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;//CBVを使う
 	rootParmetersOBJ[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;//PixelShaderを使う
 	rootParmetersOBJ[3].Descriptor.ShaderRegister = 1;//レジスタ番号1を使う
+
+	rootParmetersOBJ[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParmetersOBJ[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParmetersOBJ[4].Descriptor.ShaderRegister = 2; 
 
 	descriptionRootSignatrue.pParameters = rootParmetersOBJ;
 	descriptionRootSignatrue.NumParameters = _countof(rootParmetersOBJ);
@@ -1901,6 +1912,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// スプライトはライティングを使わない
 	materialDataSprite->enableLighting = false;
 
+	materialDataSprite->shininess = 0.0f;
+
 #pragma endregion
 
 #pragma region LightSphere // 球体用マテリアルリソースの初期化
@@ -1914,6 +1927,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	// 球体はライティングを有効にする
 	materialDataSphere->enableLighting = true;
+
+	materialDataSphere->shininess = 10.0f;
 
 #pragma endregion
 
@@ -2098,6 +2113,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// OBJモデルはライティングを有効にする
 	materialDataOBJ->enableLighting = true;
 
+	materialDataOBJ->shininess = 10.0f;
+
 #pragma endregion
 
 #pragma region model Texture // OBJモデル用テクスチャの読み込みとSRV作成
@@ -2243,6 +2260,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		{0.3f, 3.14f, 0.0f},
 		{0.0f, 4.0f, 10.0f}
 	};
+
+	ComPtr<ID3D12Resource> cameraResource = createBufferResouces(device.Get(), sizeof(CameraForGPU));
+	CameraForGPU* CameraData = nullptr;
+	cameraResource->Map(0, nullptr, reinterpret_cast<void**>(&CameraData));
+
+	CameraData->worldPosition = cameraTransform.translate;
 
 	//===========================================================//
 	//=== 各描画対象のTransform（位置・回転・スケール）初期化 ===//
@@ -2628,6 +2651,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSphere->GetGPUVirtualAddress());
 				commandList->SetGraphicsRootDescriptorTable(2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
 				commandList->SetGraphicsRootConstantBufferView(3, materialResourceDirectionSphere->GetGPUVirtualAddress());
+				commandList->SetGraphicsRootConstantBufferView(4, cameraResource->GetGPUVirtualAddress());
 				commandList->DrawIndexedInstanced(indexCount, 1, 0, 0, 0);
 			}
 
