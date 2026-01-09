@@ -719,7 +719,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	spriteCommon->Initialize(dxCommon);
 
 	sprite = new Sprite;
-	sprite->Initialize();
+	sprite->Initialize(spriteCommon);
 
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
