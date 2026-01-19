@@ -8,6 +8,17 @@ void SpriteCommon::Initialize(DirectXCommon* dxCommon)
 
 	CreateRootSignature();
 	CreateGraphicsPipeline();
+
+	viewMatrix_ = MyMath::Matrix4x4::MakeIdentity();
+
+	// 画面サイズに合わせた正射影
+	projectionMatrix_ =
+		MyMath::Matrix4x4::OrthographicLH(
+			1280.0f,   // 画面幅
+			720.0f,    // 画面高さ
+			0.0f,
+			100.0f
+		);
 }
 
 
@@ -188,6 +199,7 @@ void SpriteCommon::CreateGraphicsPipeline()
 	assert(SUCCEEDED(hr));
 	
 }
+
 
 void SpriteCommon::Draw()
 {
