@@ -52,6 +52,15 @@ private:
     D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
     D3D12_GPU_DESCRIPTOR_HANDLE textureSrvHandleGPU_{};
 
+    MyMath::Vector2 position = { 0.0f,0.0f };
+
+    const MyMath::Vector2& GetPosition()const { return position; }
+    void SetPosition(const MyMath::Vector2& position) { this->position = position; }
+
+    float rotation = 0.0f;
+    float GetRotation()const { return rotation; }
+    void SetRotation(float rotation) { this->rotation = rotation; }
+
 private:
     void CreateVertexResource();
     void CreateIndexResource();

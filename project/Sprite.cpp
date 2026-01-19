@@ -137,8 +137,8 @@ void Sprite::Update()
 	// =========================
 	MyMath::Transform transform{};
 	transform.scale = { 1.0f, 1.0f, 1.0f };
-	transform.rotate = { 0.0f, 0.0f, 0.0f };
-	transform.translate = { 0.0f, 0.0f, 0.0f };
+	transform.rotate = { 0.0f, 0.0f,rotation };
+	transform.translate = {position.x,position.y, 0.0f };
 
 	// =========================
 	// WorldMatrix 作成
@@ -166,6 +166,9 @@ void Sprite::Update()
 	transformationMatrixData_->World = worldMatrix;
 }
 void Sprite::Draw() {
+
+	spriteCommon_->Draw();
+
 	// コマンドリスト取得
 	auto commandList = spriteCommon_->GetDxCommon()->GetCommandList();
 
