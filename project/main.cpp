@@ -27,6 +27,7 @@
 #include"Sprite.h"
 #include"SpriteCommon.h"
 #include "D3DResourceLeakChecker.h"
+#include "TextureManager.h"
 
 //#define DIRECTINPUT_VERSION 0x0800//DirectInputのバージョン指定
 
@@ -720,6 +721,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	sprite = new Sprite;
 	sprite->Initialize(spriteCommon);
+
+	TextureManager::GetInstance()->Initialize();
 
 	//ログのフォルダ作成
 	std::filesystem::create_directory("logs");
@@ -1774,7 +1777,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
-
+	TextureManager::GetInstance()->Finalize();
 	winApp->Finalize();
 	delete winApp;
 	delete dxCommon;

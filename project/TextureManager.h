@@ -11,6 +11,11 @@ private:
 	TextureManager& operator=(TextureManager&) = delete;
 
 public:
+
+	void Initialize();
+
+	void LoadTexture(const std::string& filePath);
+
 	static TextureManager* GetInstance();
 	void Finalize();
 private:

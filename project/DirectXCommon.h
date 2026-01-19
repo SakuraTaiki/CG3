@@ -49,6 +49,9 @@ public:
 
     Microsoft::WRL::ComPtr<IDxcBlob>CompileShander(const std::wstring& filePath, const wchar_t* profile);
 
+    //最大SRV数
+    static const uint32_t kMaxSRVCount;
+
 private:
     //========================
     // DirectX 基本オブジェクト
@@ -119,5 +122,7 @@ private:
 
     //記録時間(FPS固定用)
     std::chrono::steady_clock::time_point reference_;
+
+    
 
 };
