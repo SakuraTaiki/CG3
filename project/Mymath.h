@@ -52,7 +52,7 @@ public:
         struct Matrix4x4 {
             float m[4][4]{};
 
-            static Matrix4x4 Identity();
+            static Matrix4x4 MakeIdentity();
             static Matrix4x4 Scale(const Vector3& s);
             static Matrix4x4 RotateX(float rad);
             static Matrix4x4 RotateY(float rad);
@@ -60,6 +60,27 @@ public:
             static Matrix4x4 Translate(const Vector3& t);
 
             static Matrix4x4 Multiply(const Matrix4x4& a, const Matrix4x4& b);
+
+            // ===== 追加 =====
+            static Matrix4x4 LookAtLH(
+                const Vector3& eye,
+                const Vector3& target,
+                const Vector3& up
+            );
+
+            static Matrix4x4 PerspectiveFovLH(
+                float fovY,
+                float aspectRatio,
+                float nearZ,
+                float farZ
+            );
+
+            static Matrix4x4 OrthographicLH(
+                float width,
+                float height,
+                float nearZ,
+                float farZ
+            );
         };
 
         // ==========================
