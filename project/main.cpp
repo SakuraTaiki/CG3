@@ -1774,10 +1774,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//Input用
 	delete input;
 
+	TextureManager::GetInstance()->Finalize();
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
-	TextureManager::GetInstance()->Finalize();
+	
 	winApp->Finalize();
 	delete winApp;
 	delete dxCommon;
