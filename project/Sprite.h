@@ -12,7 +12,9 @@ public:
     uint32_t textureIndex = 0;
 
     void Initialize(SpriteCommon* spriteCommon,std::string textureFilePath );
+
     void Update();
+
     void Draw(ID3D12GraphicsCommandList* commandList);
 
     const Math::Vector2& GetPosition() const { return position_; }
@@ -39,6 +41,20 @@ public:
 
     void SetAnchorPoint(const Math::Vector2& anchorPoint) { this->anchorPoint_ = anchorPoint; }
 
+    bool GetFlipX()const { return isFlipX_; }
+    void SetFlipX(bool isFlipX) { isFlipX_ = isFlipX; }
+
+    // 上下フリップのGetter/Setter
+    bool GetFlipY() const { return isFlipY_; }
+    void SetFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
+
+    const Math::Vector2& GetTextureLeftTop() const { return textureLeftTop_; }
+    void SetTextureLeftTop(const Math::Vector2& textureLeftTop) { textureLeftTop_ = textureLeftTop; }
+
+    // テクスチャ切り出しサイズのGetter/Setter
+    const Math::Vector2& GetTextureSize() const { return textureSize_; }
+    void SetTextureSize(const Math::Vector2& textureSize) { textureSize_ = textureSize; }
+
 private:
     SpriteCommon* spriteCommon_ = nullptr;
 
@@ -51,10 +67,9 @@ private:
 
     // ===== Vertex
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-    VertexData* vertexData_ = nullptr;
-
-    // ===== Index
     Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
+
+    VertexData* vertexData_ = nullptr;
     uint32_t* indexData_ = nullptr;
 
   
@@ -100,4 +115,19 @@ private:
     Math::Vector2 size_ = { 100.0f, 100.0f };
 
     Math::Vector2 anchorPoint_ = { 0.5f, 0.5f };
+
+    // 左右フリップ
+    bool isFlipX_ = false;
+    // 上下フリップ
+    bool isFlipY_ = false;
+
+
+    // テクスチャ左上座標
+    Math::Vector2 textureLeftTop_ = { 0.0f, 0.0f };
+
+    // テクスチャ切り出しサイズ
+    Math::Vector2 textureSize_ = { 512.0f, 512.0f };
+
+    //  テクスチャサイズをイメージに合わせる
+    void AdjustTextureSize();
 };
