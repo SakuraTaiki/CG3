@@ -76,7 +76,7 @@ void SpriteCommon::CreateGraphicsPipelineState() {
 
 	// RasterizerState
 	D3D12_RASTERIZER_DESC rastrizeDesc{};
-	rastrizeDesc.CullMode = D3D12_CULL_MODE_BACK;
+	rastrizeDesc.CullMode = D3D12_CULL_MODE_NONE;
 	rastrizeDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	// Shader Compile (dxCommon_を利用してシェーダーコンパイルを呼び出す)

@@ -16,6 +16,8 @@ void Sprite::Initialize(SpriteCommon* spriteCommon,std::string textureFilePath) 
 	CreateMaterial();
 
 	CreateTransformationMatrix();
+
+	AdjustTextureSize();
 }
 
 void Sprite::CreateVertexData()
@@ -130,6 +132,16 @@ void Sprite::Update()
 	float top = 0.0f - anchorPoint_.y;
 	float bottom = 1.0f - anchorPoint_.y;
 
+	if (isFlipX_) {
+		left = -left;
+		right = -right;
+	}
+
+	if (isFlipY_) {
+		top = -top;
+		bottom = -bottom;
+	}
+
 	vertexData_[0].position = { left, bottom, 0.0f, 1.0f };
 
 	vertexData_[1].position = { left, top, 0.0f, 1.0f };
@@ -137,6 +149,19 @@ void Sprite::Update()
 	vertexData_[2].position = { right, bottom, 0.0f, 1.0f };
 
 	vertexData_[3].position = { right, top, 0.0f, 1.0f };
+
+	const DirectX::TexMetadata& metadata =
+		TextureManager::GetInstance()->GetMetaData(textureIndex);
+
+	float tex_left = textureLeftTop_.x / metadata.width;
+	float tex_right = (textureLeftTop_.x + textureSize_.x) / metadata.width;
+	float tex_top = textureLeftTop_.y / metadata.height;
+	float tex_bottom = (textureLeftTop_.y + textureSize_.y) / metadata.height;
+
+	vertexData_[0].texcoord = { tex_left, tex_bottom }; // 左下
+	vertexData_[1].texcoord = { tex_left, tex_top };    // 左上
+	vertexData_[2].texcoord = { tex_right, tex_bottom };// 右下
+	vertexData_[3].texcoord = { tex_right, tex_top };   // 右上
 
 	transform_.translate = { position_.x,position_.y,0.0f };
 
@@ -152,4 +177,14 @@ void Sprite::Draw(ID3D12GraphicsCommandList* commandList) {
 	commandList->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(textureIndex));
 	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
+void Sprite::AdjustTextureSize() {
+	// テクスチャメタデータを取得
+	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetaData(textureIndex);
 
+	// テクスチャサイズをスプライトのサイズに設定する
+	textureSize_.x = static_cast<float>(metadata.width);
+	textureSize_.y = static_cast<float>(metadata.height);
+
+	// 画像サイズをテクスチャサイズに合わせる
+	size_ = textureSize_;
+}
