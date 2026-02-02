@@ -1,11 +1,10 @@
 #pragma once
 #include <string>
-#include <fstream>
+#include <Windows.h> 
+#include "StringUtility.h"
+
 
 namespace Logger {
-
-    extern std::ofstream logStream;
-
-    void Log(std::ostream& os, const std::string& message);
+    void Log(const std::string& message);
 
 }

@@ -1,22 +1,10 @@
 #include "Logger.h"
-#include <Windows.h>
 
+#include <format>
+// ログ出力のための名前空間
 namespace Logger {
 
-    std::ofstream logStream;
-
-    void InitializeLog() {
-        logStream.open("log.txt", std::ios::out | std::ios::trunc);
-        if (!logStream.is_open()) {
-            throw std::runtime_error("Failed to open log file.");
-        }
-    }
-
-    void Log(std::ostream& os, const std::string& message)
-    {
-        os << message << std::endl;
-        OutputDebugStringA(message.c_str());
-
-    }
-
+	void Log(const std::string& message) {
+		OutputDebugStringA(message.c_str());
+	}
 }

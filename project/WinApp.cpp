@@ -1,8 +1,10 @@
 #include"WinApp.h"
+#include<cstdint>
+#include<d3d12.h>
 #include "externals/imgui/imgui.h"
-#pragma comment(lib,"winmm.lib")
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg,
 	WPARAM wparam, LPARAM lparam)
 {
@@ -23,13 +25,24 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg,
 	return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
+bool WinApp::ProcessMessage() {
+	MSG msg{};
+	if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+	if (msg.message == WM_QUIT)
+	{
+		return true;
+	}
+	return false;
+}
 
 void WinApp::Initialize() {
 
 	//comの初期化
 	HRESULT hr = CoInitializeEx(0, COINIT_MULTITHREADED);
-	//WNDCLASS wc{};
-
+	
 	//windowプロシージャ
 	wc.lpfnWndProc = WindowProc;
 
@@ -45,7 +58,6 @@ void WinApp::Initialize() {
 	//windowクラスを登録する
 	RegisterClass(&wc);
 
-	
 	RECT wrc = { 0, 0, kClientWidth, kClientHeight };
 	AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
 	//windowsの生成
@@ -62,28 +74,21 @@ void WinApp::Initialize() {
 		wc.hInstance, // インスタンスハンドル
 		nullptr); // オプション
 
+#ifdef _DEBUG
+	ID3D12Debug1* debugController = nullptr;
+	if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
+		debugController->EnableDebugLayer();
+		debugController->SetEnableGPUBasedValidation(TRUE);
+	}
+
+#endif // _DEBUG
+
 	ShowWindow(hwnd, SW_SHOW);
-
-	timeBeginPeriod(1);
-
 }
 void WinApp::Update() {
-
 }
 void WinApp::Finalize() {
 	CloseWindow(hwnd);
 	//comの終了時
 	CoUninitialize();
-}
-bool WinApp::ProcessMessage() {
-	MSG msg{};
-	if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-	}
-	if (msg.message == WM_QUIT) 
-	{
-		return true;
-	}
-	return false;
 }
