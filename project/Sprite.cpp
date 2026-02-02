@@ -188,3 +188,5 @@ void Sprite::AdjustTextureSize() {
 	// 画像サイズをテクスチャサイズに合わせる
 	size_ = textureSize_;
 }
+
+
