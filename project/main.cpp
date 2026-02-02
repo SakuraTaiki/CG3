@@ -1355,6 +1355,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// 【スプライト描画の準備】
 			// --------------------------------------------------------------------------------------
 			// スプライト描画の共通設定を積む
+
+			sprite->SetTextureSize({ 334,510 });
+
 			spriteCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
 
 			// [NEW] Sprite::Draw() を呼び出し、個別の描画コマンドを積む
