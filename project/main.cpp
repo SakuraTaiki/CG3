@@ -653,7 +653,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Object3dCommon* object3dCommon = nullptr;
 	//3Dオブジェクト共通部の初期化
 	object3dCommon = new Object3dCommon;
-	object3dCommon->Initialize();
+	object3dCommon->Initialize(dxCommon);
 
 	Object3d* object3d = new Object3d();
 	object3d->Initialize();
@@ -1379,6 +1379,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				sprite->Draw(dxCommon->GetCommandList());
 			}
 
+			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
 
 			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
