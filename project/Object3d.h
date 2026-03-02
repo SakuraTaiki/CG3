@@ -8,6 +8,8 @@ public://メンバ関数
 
 	Object3dCommon* object3dCommon = nullptr;
 	void Initialize(Object3dCommon*object3dCommon);
+	void Update();
+	void Draw();
 private:
 
 	struct VertexData
@@ -27,6 +29,7 @@ private:
 	struct MaterialData
 	{
 		std::string textureFilePath;
+		uint32_t textureIndex = 0;
 	};
 
 	struct ModelData
@@ -64,6 +67,21 @@ private:
 	void CreateTransformationMatrix();
 
 	void UpdateTransformationMatrix();
+
+	struct DirectionalLight
+	{
+		Math::Vector4 color; // xyz = color, w = intensity
+		Math::Vector3 direction;  // 向き
+		float padding;            // 16byte alignment
+	};
+
+	Microsoft::WRL::ComPtr<ID3D12Resource>directionalLightResource_;
+	DirectionalLight* directionalLightData_ = nullptr;
+
+	void CreateDirectionalLight();
+
+	Math::Transform transform;
+	Math::Transform cameraTransform;
 
 	//mtlファイルの読み取り
 	static MaterialData LoadMaterialTemplateFile(const std::string& directoryPath, const std::string& filename);

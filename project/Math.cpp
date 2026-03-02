@@ -208,4 +208,50 @@ namespace Math {
 	}
 
 
+	// =========================
+// スケール行列
+// =========================
+	Matrix4x4 MakeScaleMatrix(const Vector3& scale)
+	{
+		Matrix4x4 result = MakeIdentity4x4();
+		result.m[0][0] = scale.x;
+		result.m[1][1] = scale.y;
+		result.m[2][2] = scale.z;
+		return result;
+	}
+
+	// =========================
+	// 平行移動行列
+	// =========================
+	Matrix4x4 MakeTranslateMatrix(const Vector3& translate)
+	{
+		Matrix4x4 result = MakeIdentity4x4();
+		result.m[3][0] = translate.x;
+		result.m[3][1] = translate.y;
+		result.m[3][2] = translate.z;
+		return result;
+	}
+
+	// =========================
+	// XYZ回転合成行列
+	// =========================
+	Matrix4x4 MakeRotateXYZMatrix(const Vector3& rotate)
+	{
+		return Multiply(
+			Multiply(
+				MakeRotateXMatrix(rotate.x),
+				MakeRotateYMatrix(rotate.y)),
+			MakeRotateZMatrix(rotate.z)
+		);
+	}
+
+	// =========================
+	// 演算子オーバーロード
+	// =========================
+	Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2)
+	{
+		return Multiply(m1, m2);
+	}
+
+
 } // namespace Math の終わり
