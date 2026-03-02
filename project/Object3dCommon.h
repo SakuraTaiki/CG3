@@ -14,6 +14,8 @@ public:
 	ID3D12PipelineState* GetPipelineState() const { return graphicsPipelineState_.Get(); }
 
 	DirectXCommon* GetDxCommon() const { return dxCommon_; }
+
+	
 private:
 	void CreateRootSignature();
 	void CreateGraphicsPipelineState();
