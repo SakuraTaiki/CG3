@@ -1,14 +1,17 @@
-#include "object3d.hlsli"
+#include "Sprite.hlsli"
 
-
-struct Material
+// マテリアル
+cbuffer Material : register(b0)
 {
     float32_t4 color;
+    float32_t4x4 uvTransform;
 };
-ConstantBuffer<Material> gMaterial : register(b1);
+
+// テクスチャ
 Texture2D<float32_t4> gTexture : register(t0);
 SamplerState gSampler : register(s0);
 
+// 出力
 struct PixelShaderOutput
 {
     float32_t4 color : SV_TARGET0;
@@ -17,8 +20,11 @@ struct PixelShaderOutput
 PixelShaderOutput main(VertexShaderOutput input)
 {
     PixelShaderOutput output;
+
     float32_t4 textureColor = gTexture.Sample(gSampler, input.texcoord);
-    output.color = gMaterial.color * textureColor;
- 
+
+    // ★ここ修正
+    output.color = color * textureColor;
+
     return output;
 }

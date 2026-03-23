@@ -1,5 +1,11 @@
 #pragma once
 #include "Math.h"
+
+#include <d3d12.h>
+#include <wrl.h>
+#include <string>
+#include <vector>
+
 class Sprite;
 class Object3dCommon;
 class Object3d
