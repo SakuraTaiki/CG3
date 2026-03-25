@@ -126,6 +126,11 @@ void Object3dCommon::SetCommonDrawSettings(ID3D12GraphicsCommandList* commandLis
 	// 2. グラフィックスパイプラインステートをセットするコマンド
 	commandList->SetPipelineState(graphicsPipelineState_.Get());
 
+    ID3D12DescriptorHeap* descriptorHeaps[] = {
+        dxCommon_->GetSRVDescriptorHeap()
+    };
+    commandList->SetDescriptorHeaps(1, descriptorHeaps);
+
 	// 3. プリミティブトポロジーをセットするコマンド
 	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
