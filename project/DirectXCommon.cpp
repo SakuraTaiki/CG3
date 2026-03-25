@@ -255,7 +255,8 @@ D3D12_CPU_DESCRIPTOR_HANDLE DirectXCommon::GetSRVCPUDescriptorHandle(uint32_t in
 D3D12_GPU_DESCRIPTOR_HANDLE DirectXCommon::GetSRVGPUDescriptorHandle(uint32_t index) const
 {
 	// 汎用的な静的関数を呼び出し、SRV用のメンバ変数を渡す
-	return GetGPUDescriptorHandle(srvDescriptorHeap_, srvDescriptorSize_, index);
+	return GetGPUDescriptorHandle
+(srvDescriptorHeap_, srvDescriptorSize_, index);
 }
 
 // --- DirectXCommon::InitializeDevice の実装 ---
@@ -568,6 +569,20 @@ void DirectXCommon::UpdateFixFPS()
 
 }
 
+void DirectXCommon::WaitForGPU() {
+	// フェンス値をインクリメント
+	fenceValue_++;
+
+	// GPUにシグナルを送る
+	commandQueue_->Signal(fence_.Get(), fenceValue_);
+
+	// GPUがまだ終わってなければ待機
+	if (fence_->GetCompletedValue() < fenceValue_) {
+		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+		WaitForSingleObject(fenceEvent_, INFINITE);
+	}
+}
+
 void DirectXCommon::Initialize(WinApp* winApp)
 {
 	assert(winApp);
@@ -706,6 +721,10 @@ void DirectXCommon::PostDraw()
 	// FPS固定
 	UpdateFixFPS();
 
-	
+	if (fenceEvent_) {
+		CloseHandle(fenceEvent_);
+		fenceEvent_ = nullptr;
+	}
 }
+
 

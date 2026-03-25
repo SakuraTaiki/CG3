@@ -77,8 +77,6 @@ void TextureManager::LoadTexture(const std::string& filePath) {
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels =UINT(textureData.metadata.mipLevels);
 
-    dxCommon_->GetDevice()->CreateShaderResourceView(textureData.resource.Get(), &srvDesc, textureData.srvHandleCPU);
-
     dxCommon->GetDevice()->CreateShaderResourceView(
         textureData.resource.Get(),
         &srvDesc,

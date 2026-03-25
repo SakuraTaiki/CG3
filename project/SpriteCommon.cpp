@@ -21,12 +21,30 @@ void SpriteCommon::CreateRootSignature() {
 	descriptorRange[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	descriptorRange[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	D3D12_ROOT_PARAMETER rootParameters[4] = {};
-	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL; rootParameters[0].Descriptor.ShaderRegister = 0;
-	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV; rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX; rootParameters[1].Descriptor.ShaderRegister = 0;
-	rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;rootParameters[2].ShaderVisibility=D3D12_SHADER_VISIBILITY_PIXEL; rootParameters[2].Descriptor.ShaderRegister = 1;
-	rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	rootParameters[3].DescriptorTable.pDescriptorRanges = descriptorRange; rootParameters[3].DescriptorTable.NumDescriptorRanges = _countof(descriptorRange);
+	D3D12_ROOT_PARAMETER rootParameters[3] = {};
+
+	// =========================
+	// 0 : WVP (VS) → b0
+	// =========================
+	rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+	rootParameters[0].Descriptor.ShaderRegister = 0;
+
+	// =========================
+	// 1 : Material (PS) → b0
+	// =========================
+	rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[1].Descriptor.ShaderRegister = 0;
+
+
+	// =========================
+	// 2 : Texture (t0)
+	// =========================
+	rootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	rootParameters[2].DescriptorTable.pDescriptorRanges = descriptorRange;
+	rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
 
 	descriptionRootSignature.pParameters = rootParameters;
 	descriptionRootSignature.NumParameters = _countof(rootParameters);
@@ -81,9 +99,9 @@ void SpriteCommon::CreateGraphicsPipelineState() {
 	rastrizeDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
 	// Shader Compile (dxCommon_を利用してシェーダーコンパイルを呼び出す)
-	ComPtr<IDxcBlob> vertexShaderBlob = dxCommon_->CompileShader(L"resources/shaders/Object3d.vs.hlsl", L"vs_6_0");
+	ComPtr<IDxcBlob> vertexShaderBlob = dxCommon_->CompileShader(L"resources/shaders/Sprite.VS.hlsl", L"vs_6_0");
 	assert(vertexShaderBlob != nullptr);
-	ComPtr<IDxcBlob> pixelShaderBlob = dxCommon_->CompileShader(L"resources/shaders/Object3d.ps.hlsl", L"ps_6_0");
+	ComPtr<IDxcBlob> pixelShaderBlob = dxCommon_->CompileShader(L"resources/shaders/Sprite.PS.hlsl", L"ps_6_0");
 	assert(pixelShaderBlob != nullptr);
 
 	// DepthStencilState 

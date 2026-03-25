@@ -5,7 +5,7 @@
 class Object3dCommon
 {
 public:
-	void Initialize(DirectXCommon* dxCommon);
+	void Initialize(DirectXCommon);
 
 	void SetCommonDrawSettings(ID3D12GraphicsCommandList* commandList);
 

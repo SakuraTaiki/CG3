@@ -55,6 +55,8 @@ public:
 	ID3D12DescriptorHeap* GetSRVDescriptorHeap() const { return srvDescriptorHeap_.Get(); }
 	void PreDraw();
 	void PostDraw();
+
+	void WaitForGPU();
 private:
 
 	WinApp* winApp_ = nullptr;
@@ -117,5 +119,7 @@ private:
 	void InitializeFixFPS();
 	// FPS固定更新
 	void UpdateFixFPS();
+
+	
 
 };

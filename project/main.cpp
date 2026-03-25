@@ -1220,6 +1220,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				sprite->Update();
 			}
 
+			//objectを呼び出す
+
+			object3d->Update();
 
 			/*Matrix4x4 worldMatrixSprite = Math::MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = Math::MakeIdentity4x4();
@@ -1381,6 +1384,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
 
+			object3d->Draw();
+
 			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
 			//commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
@@ -1420,9 +1425,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 
 			dxCommon->PostDraw();
+
+
 		}
 
 	}
+
+
+	
 
 	//変数から型を推測する
 
@@ -1433,8 +1443,20 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//出力ウィンドウへの文字出力
 	OutputDebugStringA("Hello,DirectX!\n");
 
-	delete sprite;
+	// Sprite（配列）
+	for (Sprite* sprite : sprites) {
+		delete sprite;
+	}
+	sprites.clear();
 
+	// 単体オブジェクト
+	delete object3d;
+	delete object3dCommon;
+
+	// Common
+	delete spriteCommon;
+
+	// 入力
 	delete input;
 
 
@@ -1460,10 +1482,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//vertexResource->Release();
 	//graphicsPipelineState->Release();
-	signatureBlob->Release();
-	if (errorBlob) {
-		errorBlob->Release();
-	}
 	//rootSignature->Release();
 	//pixelShaderBlob->Release();
 	//vertexShaderBlob->Release();
@@ -1483,27 +1501,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//useAdapter->Release();
 	//dxgiFactory->Release();
 
-	//delete spriteCommon;
-
-	// スプライトの解放
-	for (Sprite* sprite : sprites) {
-		if (sprite) {
-			delete sprite; // newしたオブジェクトを解放
-		}
-	}
 
 	//windowsAPIの終了処理
-	winApp->Finalize();
+	
+	// GPU処理が終わるまで待つ
+	dxCommon->WaitForGPU();
 
 	TextureManager::GetInstance()->Finalize();
 
 	delete dxCommon;
 
+	winApp->Finalize();
+
 	delete winApp;
 	winApp = nullptr;
 
-	delete object3d;
-	delete object3dCommon;
+	
 
 	/*IDXGIDebug1* debug;
 	if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&debug)))) {
