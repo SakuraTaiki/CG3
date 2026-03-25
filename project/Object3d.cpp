@@ -279,6 +279,9 @@ void Object3d::Update() {
 	// =========================
 	transformationMatrixData_->World = worldMatrix;
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
+
+	transform.rotate.y += 0.02f;
+	transform.translate = { 0.0f,0.0f,0.0f };
 }
 
 void Object3d::Draw()

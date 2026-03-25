@@ -1364,6 +1364,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//dxCommon->GetCommandList()->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 
+			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
+
+			object3d->Draw();
+
 			// --------------------------------------------------------------------------------------
 			// 【スプライト描画の準備】
 			// --------------------------------------------------------------------------------------
@@ -1382,9 +1386,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				sprite->Draw(dxCommon->GetCommandList());
 			}
 
-			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
-
-			object3d->Draw();
+			
 
 			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 
