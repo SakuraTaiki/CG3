@@ -27,6 +27,8 @@
 #include "TextureManager.h"
 #include"Object3d.h"
 #include"Object3dCommon.h"
+#include"ModelCommon.h"
+#include"Model.h"
 
 using namespace Microsoft::WRL;
 
@@ -645,6 +647,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	TextureManager::GetInstance()->Initialize();
 
+	ModelCommon* modelCommon = nullptr;
+	modelCommon = new ModelCommon;
+	modelCommon->Intialize(dxCommon);
+
 	SpriteCommon* spriteCommon = nullptr;
 	//スプライト共通部の初期化
 	spriteCommon = new SpriteCommon;
@@ -656,7 +662,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	object3dCommon->Initialize(dxCommon);
 
 	Object3d* object3d = new Object3d();
-	object3d->Initialize(object3dCommon);
+	object3d->Initialize(object3dCommon,modelCommon);
 
 	////DXGIファクトリーの作成
 	IDXGIFactory7* dxgiFactory = nullptr;
@@ -1364,6 +1370,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			//dxCommon->GetCommandList()->DrawInstanced(UINT(modelData.vertices.size()), 1, 0, 0);
 
+			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
+
+			object3d->Draw();
+
 			// --------------------------------------------------------------------------------------
 			// 【スプライト描画の準備】
 			// --------------------------------------------------------------------------------------
@@ -1382,9 +1392,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 				sprite->Draw(dxCommon->GetCommandList());
 			}
 
-			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
-
-			object3d->Draw();
+			
 
 			//commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
 

@@ -108,13 +108,13 @@ private:
 
     void UpdateTransformationMatrix();
 
-    Math::Vector2 position_ = { 500.0f, 400.0f };
+    Math::Vector2 position_ = { 0.0f, 0.0f };
 
     float rotation = 0.0f;
 
     Math::Vector2 size_ = { 100.0f, 100.0f };
 
-    Math::Vector2 anchorPoint_ = { 0.5f, 0.5f };
+    Math::Vector2 anchorPoint_ = { 0.0f, 0.0f };
 
     // 左右フリップ
     bool isFlipX_ = false;
