@@ -19,6 +19,9 @@ void Object3d::Initialize(Object3dCommon* object3dCommon, ModelCommon* modelComm
 	model = new Model();
 	model->Initialize(modelCommon,"resources/plane", "plane.obj");
 
+	transform = { {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
+	cameraTransform = { {1.0f,1.0f,1.0f},{0.3f,0.0f,0.0f},{0.0f,4.0f,-10.0f} };
+
 	// 行列・ライトだけ作る
 	CreateTransformationMatrix();
 	CreateDirectionalLight();
