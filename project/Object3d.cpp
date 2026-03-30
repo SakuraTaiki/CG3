@@ -11,13 +11,12 @@
 #include<sstream>
 
 
-void Object3d::Initialize(Object3dCommon* object3dCommon, ModelCommon* modelCommon)
-{
-	object3dCommon_ = object3dCommon;
+Model* Object3d::model = nullptr;
 
-	// ★ Model生成
-	model = new Model();
-	model->Initialize(modelCommon,"resources/plane", "plane.obj");
+void Object3d::Initialize(Object3dCommon* object3dCommon)
+{
+
+	object3dCommon_ = object3dCommon;
 
 	transform = { {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
 	cameraTransform = { {1.0f,1.0f,1.0f},{0.3f,0.0f,0.0f},{0.0f,4.0f,-10.0f} };
@@ -26,6 +25,17 @@ void Object3d::Initialize(Object3dCommon* object3dCommon, ModelCommon* modelComm
 	CreateTransformationMatrix();
 	CreateDirectionalLight();
 }
+
+void Object3d::LoadModel(ModelCommon* modelCommon,
+	const std::string& dir,
+	const std::string& file)
+{
+	if (model != nullptr) return; // すでにロード済み
+
+	model = new Model();
+	model->Initialize(modelCommon, dir, file);
+}
+
 void Object3d::CreateTransformationMatrix() {
 	transformationMatrixResource_ = object3dCommon_->GetDxCommon()->CreateBufferResource(sizeof(TransformationMatrix));
 	transformationMatrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
@@ -98,7 +108,6 @@ void Object3d::Update() {
 	transformationMatrixData_->WVP = worldViewProjectionMatrix;
 
 	transform.rotate.y += 0.02f;
-	transform.translate = { 0.0f,0.0f,0.0f };
 }
 
 void Object3d::Draw()

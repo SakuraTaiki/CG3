@@ -29,6 +29,7 @@
 #include"Object3dCommon.h"
 #include"ModelCommon.h"
 #include"Model.h"
+#include"Object3dManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -662,7 +663,19 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	object3dCommon->Initialize(dxCommon);
 
 	Object3d* object3d = new Object3d();
-	object3d->Initialize(object3dCommon,modelCommon);
+	object3d->Initialize(object3dCommon);
+
+	Object3dManager* manager = new Object3dManager();
+
+	// 初期化
+	manager->Initialize(object3dCommon, modelCommon);
+
+	// 複数生成
+	manager->CreateObject({ 0,0,0 });
+	manager->CreateObject({ 2,0,0 });
+	manager->CreateObject({ -2,0,0 });
+	manager->CreateObject({ 0,2,0 });
+
 
 	////DXGIファクトリーの作成
 	IDXGIFactory7* dxgiFactory = nullptr;
@@ -1230,6 +1243,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			object3d->Update();
 
+			manager->Update();
+
 			/*Matrix4x4 worldMatrixSprite = Math::MakeAffineMatrix(transformSprite.scale, transformSprite.rotate, transformSprite.translate);
 			Matrix4x4 viewMatrixSprite = Math::MakeIdentity4x4();
 			Matrix4x4 projectionMatrixSprite = MakeOrthorgraphicMatrix(0.0f, 0.0f, float(WinApp::kClientWidth), float(WinApp::kClientHeight), 0.0f, 100.0f);
@@ -1373,6 +1388,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
 
 			object3d->Draw();
+
+			manager->Draw();
 
 			// --------------------------------------------------------------------------------------
 			// 【スプライト描画の準備】
