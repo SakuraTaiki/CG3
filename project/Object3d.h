@@ -13,12 +13,14 @@ class Object3dCommon;
 class Object3d
 {
 public:
-    void Initialize(Object3dCommon* object3dCommon, ModelCommon* modelCommon);
+    void Initialize(Object3dCommon* object3dCommon);
     void Update();
     void Draw();
 private:
     Object3dCommon* object3dCommon_ = nullptr;
-    Model* model = nullptr;
+    static Model* model;
+
+   
 
     // ===== 行列
     struct TransformationMatrix {
@@ -43,11 +45,18 @@ private:
 
     void CreateDirectionalLight();
 
-    // ===== Transform
-    Math::Transform transform;
-    Math::Transform cameraTransform;
+    
 
 public:
     //setter
     void SetModel(Model* model) { this->model = model; }
+
+    static void LoadModel(ModelCommon* modelCommon,
+        const std::string& dir,
+        const std::string& file);
+
+    // ===== Transform
+    Math::Transform transform;
+    Math::Transform cameraTransform;
+
 };
