@@ -51,7 +51,9 @@ void ModelManager::Finalize() {
 
 Model* ModelManager::FindModel(const std::string& filePath)
 {
-    if(models_.contains(filePath))
-
+    if (models_.contains(filePath)) {
+        //読み込みモデルを戻り値としてreturn
+        return models_.at(filePath).get();
+    }
     return nullptr;
 }
