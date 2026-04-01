@@ -1,9 +1,9 @@
 #pragma once
-#include <unordered_map>
 #include <string>
 #include "Model.h"
+#include <map>
 
-class ModelCommon;
+class DirectXCommon;
 
 class ModelManager
 {
@@ -12,11 +12,14 @@ public:
     static ModelManager* GetInstance();
 
     // 初期化
-    void Initialize(ModelCommon* modelCommon);
+    void Initialize(DirectXCommon*dxCommon);
 
     // モデル読み込み
-    Model* LoadModel(const std::string& dir, const std::string& file);
+    void LoadModel(const std::string&filePath);
 
+    void Finalize();
+
+    Model* FindModel(const std::string& filePath);
 private:
     ModelManager() = default;
     ~ModelManager() = default;
@@ -25,7 +28,7 @@ private:
     ModelManager(const ModelManager&) = delete;
     ModelManager& operator=(const ModelManager&) = delete;
 
-    void Finalize();
+   
 
 private:
     static ModelManager* instance_;
@@ -33,7 +36,7 @@ private:
     ModelCommon* modelCommon_ = nullptr;
 
     // ★ モデル管理
-    std::unordered_map<std::string, Model*> models_;
+    std::map<std::string, std::unique_ptr<Model>>models_;
 
     
 };

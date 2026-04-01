@@ -30,6 +30,7 @@
 #include"ModelCommon.h"
 #include"Model.h"
 #include"Object3dManager.h"
+#include"ModelManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -670,11 +671,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// 初期化
 	manager->Initialize(object3dCommon, modelCommon);
 
+	//モデル描画初期位置
+	
 	// 複数生成
 	manager->CreateObject({ 0,0,0 });
 	manager->CreateObject({ 2,0,0 });
 	manager->CreateObject({ -2,0,0 });
 	manager->CreateObject({ 0,2,0 });
+
+	//3Dモデルマネージャーの初期化
+	ModelManager::GetInstance()->Initialize(dxCommon);
+
+	
 
 
 	////DXGIファクトリーの作成
@@ -1541,6 +1549,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	delete winApp;
 	winApp = nullptr;
 
+	ModelManager::GetInstance()->Finalize();
 	
 
 	/*IDXGIDebug1* debug;
