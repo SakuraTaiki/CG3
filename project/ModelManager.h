@@ -1,4 +1,6 @@
 #pragma once
+#include <map>
+#include <memory>
 #include <string>
 #include "Model.h"
 #include <map>
@@ -22,14 +24,25 @@ public:
 
     Model* FindModel(const std::string& filePath);
 private:
-    ModelManager() = default;
-    ~ModelManager() = default;
+	ModelManager() = default;
+
+	// デストラクタ
+	~ModelManager() = default;
 
     // コピー禁止（シングルトン）
-    ModelManager(const ModelManager&) = delete;
-    ModelManager& operator=(const ModelManager&) = delete;
+	ModelManager(const ModelManager&) = delete;
 
-   
+	// コピー代入演算子（禁止）
+	ModelManager& operator=(const ModelManager&) = delete;
+
+	ModelCommon* modelCommon = nullptr;
+
+public:
+	static ModelManager* GetInstance();
+
+	void Initialize(DirectXCommon* dxCommon);
+
+	void Finalize();
 
 private:
     static ModelManager* instance_;

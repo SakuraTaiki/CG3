@@ -1,9 +1,9 @@
 #include "ModelManager.h"
-#include "ModelCommon.h"
+#include"ModelCommon.h"
 
-ModelManager* ModelManager::instance_ = nullptr;
+ModelManager* ModelManager::instance = nullptr;
 
-//インスタンス取得
+//�C���X�^���X�擾
 ModelManager* ModelManager::GetInstance() {
     if (!instance_) {
         instance_ = new ModelManager();
@@ -12,34 +12,20 @@ ModelManager* ModelManager::GetInstance() {
 }
 
 void ModelManager::Initialize(DirectXCommon*dxCommon) {
-    modelCommon_ = new ModelCommon;
-    modelCommon_->Intialize(dxCommon);
+	modelCommon = new ModelCommon;
+	modelCommon->Intialize(dxCommon);
 }
-
-
 
 void ModelManager::LoadModel(const std::string& filePath)
 {
-    if (models_.contains(filePath)) {
-        //読み込み済みなら早期リターン
-        return;
-    }
+	std::unique_ptr<Model>model = std::make_unique<Model>();
+	model->Initialize(modelCommon, "resources", filePath);
 
-    //モデル生成
-    std::unique_ptr<Model>model = std::make_unique<Model>();
+	models.insert(std::make_pair(filePath, std::move(model)));
 
-    //モデル読み込み
-    model->Initialize(modelCommon_, "resources",filePath);
-
-    //モデルをmapコンテナに格納する
-    models_.insert(std::make_pair(filePath, std::move(model)));
-
-}
-
-void ModelManager::Finalize() {
-    if (!instance_) {
-        return;
-    }
+	if (models.contains(filePath)) {
+		return;
+	}
     instance_->models_.clear();
 
     delete instance_->modelCommon_;
@@ -54,6 +40,8 @@ Model* ModelManager::FindModel(const std::string& filePath)
     if (models_.contains(filePath)) {
         //読み込みモデルを戻り値としてreturn
         return models_.at(filePath).get();
-    }
-    return nullptr;
+	if (models.contains(filePath)) {
+		return models.at(filePath).get();
+	}
+	return nullptr;
 }
