@@ -134,10 +134,6 @@ IDxcBlob* CompileShader(
 	);
 	assert(SUCCEEDED(hr));
 
-
-
-
-
 	IDxcBlobUtf8* shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
@@ -152,7 +148,6 @@ IDxcBlob* CompileShader(
 	shaderSource->Release();
 	shaderResult->Release();
 	return shaderBlob;
-
 }
 
 DirectX::ScratchImage LoadTexture(const std::string& filePath) {
@@ -272,8 +267,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	IDXGIFactory7* dxgiFactory = nullptr;
 	
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
-	ID3D12Device* device = nullptr;
 
+	ID3D12Device* device = nullptr;
+	
 		//ポインタ
 	Input* input = nullptr;
 	//入力の初期化
@@ -285,7 +281,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	IDxcCompiler3* dxcCompiler = nullptr;
 
 	IDxcIncludeHandler* includeHandler = nullptr;
-
+	
 	//RootSignatureの作成
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
 	descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -371,13 +367,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 
 	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
-	
 	ComPtr<ID3D12Resource> textureResource = dxCommon->CreateTextureResource(mipImages.GetMetadata());
 
 	dxCommon->UploadTextureData(textureResource, mipImages);
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	//srvDesc.Format = metadata.format;
 	srvDesc.Format = mipImages.GetMetadata().format;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
@@ -389,14 +383,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		&srvDesc,
 		dxCommon->GetSRVCPUDescriptorHandle(0) // 0番目のSRVヒープスロットを使用すると仮定
 	);
-
+	
 	ComPtr<ID3D12Resource> indexResourceSprite = dxCommon->CreateBufferResource(sizeof(uint32_t) * 6);
 
 	uint32_t* indexDataSprite = nullptr;
 	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
 	indexDataSprite[0] = 0; indexDataSprite[1] = 1; indexDataSprite[2] = 2;
 	indexDataSprite[3] = 1; indexDataSprite[4] = 3; indexDataSprite[5] = 2;
-
 
 	// 1. まず、使いたい画像のファイル名をリストにします
 	std::vector<std::string> texFiles = {
@@ -435,8 +428,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Sprite* sprite = new Sprite();
 	// Initialize()に SpriteCommon などの必要な情報を渡す想定
 	sprite->Initialize(spriteCommon, "resources/uvChecker.png");
-
-
 
 	//ウィンドウの×ボタンが押されるまでループ
 	while (true) {
@@ -478,7 +469,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			ImGui::ShowDemoWindow();
 
 			ImGui::Begin("Settings");
-
+			
 			// 1. 現在の位置を取得
 			Math::Vector2 currentPos = sprite->GetPosition();
 			Math::Vector3 currentRot = sprite->GetRotation();
@@ -522,7 +513,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			// --- 描画前処理 ---
 			dxCommon->PreDraw();
 
-
 			object3dCommon->SetCommonDrawSettings(dxCommon->GetCommandList());
 
 			object3d->Draw();
@@ -549,19 +539,15 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), dxCommon->GetCommandList());
 
-
 			dxCommon->PostDraw();
 
 
 		}
 
 	}
-
 	//変数から型を推測する
 
 	Log(ConverString(std::format(L"WSTRING{}\n", L"abc")));
-
-
 
 	//出力ウィンドウへの文字出力
 	OutputDebugStringA("Hello,DirectX!\n");
@@ -582,10 +568,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// 入力
 	delete input;
 
-
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+
+	//windowsAPIの終了処理
 	
 	// GPU処理が終わるまで待つ
 	dxCommon->WaitForGPU();
@@ -599,8 +586,5 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	delete winApp;
 	winApp = nullptr;
 
-	ModelManager::GetInstance()->Finalize();
-	
-	//CloseHandle(fenceEvent);
 	return 0;
 }
