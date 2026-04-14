@@ -49,7 +49,7 @@ private:
 
 public:
     //setter
-    void SetModel(Model* model) { this->model = model; }
+    void SetModel(const std::string& filePath);
 
     static void LoadModel(ModelCommon* modelCommon,
         const std::string& dir,
