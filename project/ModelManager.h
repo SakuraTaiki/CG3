@@ -2,6 +2,7 @@
 #include <string>
 #include "Model.h"
 #include <map>
+#include<memory>
 
 class DirectXCommon;
 
@@ -37,7 +38,5 @@ private:
 
     // ★ モデル管理
     std::map<std::string, std::unique_ptr<Model>>models_;
-
-    
 };
 
