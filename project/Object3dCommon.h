@@ -2,6 +2,18 @@
 #include "DirectXCommon.h"
 #include <d3d12.h>
 #include <wrl.h>
+#include "Math.h"
+
+// 前方宣言
+class TextureManager;
+
+// 共通のライト構造体
+struct DirectionalLight {
+	Math::Vector4 color;
+	Math::Vector3 direction;
+	float intensity;
+};
+
 class Object3dCommon
 {
 public:

@@ -429,6 +429,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// Initialize()に SpriteCommon などの必要な情報を渡す想定
 	sprite->Initialize(spriteCommon, "resources/uvChecker.png");
 
+	ModelManager::GetInstance()->Initialize(dxCommon);
+
 	//ウィンドウの×ボタンが押されるまでループ
 	while (true) {
 		if (winApp->ProcessMessage()) {
@@ -578,6 +580,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	dxCommon->WaitForGPU();
 
 	TextureManager::GetInstance()->Finalize();
+
+	ModelManager::GetInstance()->Finalize();
 
 	delete dxCommon;
 
