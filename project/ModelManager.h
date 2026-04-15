@@ -11,7 +11,7 @@ class DirectXCommon;
 class ModelManager
 {
 public:
-    // ★ インスタンス取得
+
     static ModelManager* GetInstance();
 
     // 初期化
@@ -35,15 +35,7 @@ private:
 	// コピー代入演算子（禁止）
 	ModelManager& operator=(const ModelManager&) = delete;
 
-	ModelCommon* modelCommon = nullptr;
-
 public:
-	static ModelManager* GetInstance();
-
-	void Initialize(DirectXCommon* dxCommon);
-
-	void Finalize();
-
 private:
     static ModelManager* instance_;
 
