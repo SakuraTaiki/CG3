@@ -25,7 +25,7 @@ public:
     void Draw();
 private:
     Object3dCommon* object3dCommon_ = nullptr;
-    static Model* model;
+    Model* model=nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
     TransformationMatrix* transformationMatrixData_ = nullptr;
