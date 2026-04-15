@@ -30,6 +30,7 @@
 #include"ModelCommon.h"
 #include"Model.h"
 #include"Object3dManager.h"
+#include"ModelManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -133,10 +134,6 @@ IDxcBlob* CompileShader(
 	);
 	assert(SUCCEEDED(hr));
 
-
-
-
-
 	IDxcBlobUtf8* shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
@@ -151,7 +148,6 @@ IDxcBlob* CompileShader(
 	shaderSource->Release();
 	shaderResult->Release();
 	return shaderBlob;
-
 }
 
 DirectX::ScratchImage LoadTexture(const std::string& filePath) {
@@ -253,19 +249,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// 初期化
 	manager->Initialize(object3dCommon, modelCommon);
 
+	//モデル描画初期位置
+	
 	// 複数生成
 	manager->CreateObject({ 0,0,0 });
 	manager->CreateObject({ 2,0,0 });
 	manager->CreateObject({ -2,0,0 });
 	manager->CreateObject({ 0,2,0 });
 
+	//3Dモデルマネージャーの初期化
+	ModelManager::GetInstance()->Initialize(dxCommon);
+
+	
+
 
 	////DXGIファクトリーの作成
 	IDXGIFactory7* dxgiFactory = nullptr;
 	
 	HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory));
-	
-	
 	ID3D12Device* device = nullptr;
 	
 		//ポインタ
@@ -277,9 +278,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	////dxCompilerを初期化
 	IDxcUtils* dxcUtils = nullptr;
 	IDxcCompiler3* dxcCompiler = nullptr;
-	
-	IDxcIncludeHandler* includeHandler = nullptr;
-
 	//RootSignatureの作成
 	D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
 	descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
@@ -365,7 +363,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 
 	DirectX::ScratchImage mipImages = LoadTexture("resources/uvChecker.png");
-	
+
 	ComPtr<ID3D12Resource> textureResource = dxCommon->CreateTextureResource(mipImages.GetMetadata());
 
 	dxCommon->UploadTextureData(textureResource, mipImages);
@@ -382,15 +380,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		dxCommon->GetSRVCPUDescriptorHandle(0) // 0番目のSRVヒープスロットを使用すると仮定
 	);
 
-	
-	ComPtr<ID3D12Resource> indexResourceSprite = dxCommon->CreateBufferResource(sizeof(uint32_t) * 6);
-
-	
 	uint32_t* indexDataSprite = nullptr;
 	indexResourceSprite->Map(0, nullptr, reinterpret_cast<void**>(&indexDataSprite));
 	indexDataSprite[0] = 0; indexDataSprite[1] = 1; indexDataSprite[2] = 2;
 	indexDataSprite[3] = 1; indexDataSprite[4] = 3; indexDataSprite[5] = 2;
-
 
 	// 1. まず、使いたい画像のファイル名をリストにします
 	std::vector<std::string> texFiles = {
@@ -420,9 +413,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		sprites.push_back(sprite);
 	}
 
+
 	Sprite* sprite = new Sprite();
 	// Initialize()に SpriteCommon などの必要な情報を渡す想定
 	sprite->Initialize(spriteCommon, "resources/uvChecker.png");
+
 
 	//ウィンドウの×ボタンが押されるまでループ
 	while (true) {
@@ -563,11 +558,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+
 	
 	// GPU処理が終わるまで待つ
 	dxCommon->WaitForGPU();
 
 	TextureManager::GetInstance()->Finalize();
+
+	ModelManager::GetInstance()->Finalize();
 
 	delete dxCommon;
 

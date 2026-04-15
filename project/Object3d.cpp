@@ -6,6 +6,7 @@
 #include <algorithm>
 #include"TextureManager.h"
 #include"Model.h"
+#include"ModelManager.h"
 
 #include<fstream>
 #include<sstream>
@@ -24,6 +25,11 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 	// 行列・ライトだけ作る
 	CreateTransformationMatrix();
 	CreateDirectionalLight();
+}
+
+void Object3d::SetModel(const std::string& filePath)
+{
+	model = ModelManager::GetInstance()->FindModel(filePath);
 }
 
 void Object3d::LoadModel(ModelCommon* modelCommon,
