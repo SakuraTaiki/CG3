@@ -25,7 +25,7 @@ public:
     void Draw();
 private:
     Object3dCommon* object3dCommon_ = nullptr;
-    static Model* model;
+    Model* model_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
     TransformationMatrix* transformationMatrixData_ = nullptr;
@@ -49,10 +49,6 @@ private:
 public:
     //setter
     void SetModel(const std::string& filePath);
-
-    static void LoadModel(ModelCommon* modelCommon,
-        const std::string& dir,
-        const std::string& file);
 
     // ===== Transform
     Math::Transform transform;

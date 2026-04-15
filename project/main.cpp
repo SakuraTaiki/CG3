@@ -260,9 +260,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//3Dモデルマネージャーの初期化
 	ModelManager::GetInstance()->Initialize(dxCommon);
 
-	
-
-
 	////DXGIファクトリーの作成
 	IDXGIFactory7* dxgiFactory = nullptr;
 	
@@ -423,6 +420,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// Initialize()に SpriteCommon などの必要な情報を渡す想定
 	sprite->Initialize(spriteCommon, "resources/uvChecker.png");
 
+
+	ModelManager::GetInstance()->LoadModel("plane.obj");
+	object3d->SetModel("plane.obj");
 
 	//ウィンドウの×ボタンが押されるまでループ
 	while (true) {
