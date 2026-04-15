@@ -420,7 +420,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	}
 
 	//objファイルからモデルを読み込む
-	ModelManager::GetInstance()->LoadModel("plane.obj");
+	ModelManager::GetInstance()->LoadModel("plane/plane.obj");
 
 	//初期化済みの3Dオブジェクトにモデルを紐づける
 	object3d->SetModel("plane.obj");
