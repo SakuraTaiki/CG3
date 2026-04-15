@@ -3,8 +3,6 @@ void Object3dManager::Initialize(Object3dCommon* common, ModelCommon* modelCommo
 {
     common_ = common;
 
-    // ★ ここでモデルロード（mainから排除）
-    Object3d::LoadModel(modelCommon, "resources/plane", "plane.obj");
 }
 
 void Object3dManager::CreateObject(const Math::Vector3& pos)

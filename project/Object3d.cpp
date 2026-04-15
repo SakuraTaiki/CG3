@@ -11,9 +11,6 @@
 #include<fstream>
 #include<sstream>
 
-
-Model* Object3d::model = nullptr;
-
 void Object3d::Initialize(Object3dCommon* object3dCommon)
 {
 
@@ -29,17 +26,7 @@ void Object3d::Initialize(Object3dCommon* object3dCommon)
 
 void Object3d::SetModel(const std::string& filePath)
 {
-	model = ModelManager::GetInstance()->FindModel(filePath);
-}
-
-void Object3d::LoadModel(ModelCommon* modelCommon,
-	const std::string& dir,
-	const std::string& file)
-{
-	if (model != nullptr) return; // すでにロード済み
-
-	model = new Model();
-	model->Initialize(modelCommon, dir, file);
+	model_ = ModelManager::GetInstance()->FindModel(filePath);
 }
 
 void Object3d::CreateTransformationMatrix() {
@@ -135,7 +122,7 @@ void Object3d::Draw()
 		directionalLightResource_->GetGPUVirtualAddress()
 	);
 
-	if (model) {
-		model->Draw();
+	if (model_) {
+		model_->Draw();
 	}
 }

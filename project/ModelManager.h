@@ -37,7 +37,7 @@ private:
 private:
     static ModelManager* instance_;
 
-    ModelCommon* modelCommon_ = nullptr;
+    ModelCommon* modelCommon = nullptr;
 
     // ★ モデル管理
     std::map<std::string, std::unique_ptr<Model>>models_;
