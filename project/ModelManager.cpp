@@ -15,26 +15,12 @@ void ModelManager::Initialize(DirectXCommon*dxCommon) {
 	modelCommon->Intialize(dxCommon);
 }
 
-void ModelManager::Finalize() {
-    models_.clear();
-
-    delete modelCommon_;
-    modelCommon_ = nullptr;
-
-    delete instance_;
-    instance_ = nullptr;
-}
-
-
 void ModelManager::LoadModel(const std::string& filePath)
 {
-    // すでにあるかチェック
-    auto it = models_.find(filePath);
-    if (it != models_.end()) {
-        return it->second.get();
+    
+    if (models_.contains(filePath)) {
+        return;
     }
-
-
 
     std::unique_ptr<Model>model = std::make_unique<Model>();
 
@@ -58,4 +44,7 @@ void ModelManager::Finalize() {
 
     delete modelCommon;
     modelCommon = nullptr;
+
+    delete instance_;
+    instance_ = nullptr;
 }
