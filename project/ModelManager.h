@@ -3,8 +3,6 @@
 #include <memory>
 #include <string>
 #include "Model.h"
-#include <map>
-#include<memory>
 
 class DirectXCommon;
 
