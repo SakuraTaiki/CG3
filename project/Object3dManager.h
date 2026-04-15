@@ -11,7 +11,7 @@ public:
     void Update();
     void Draw();
 
-    void CreateObject(const Math::Vector3& pos);
+    void CreateObject(const std::string& modelPath, const Math::Vector3& pos);
 
 private:
     std::vector<Object3d*> objects_;
