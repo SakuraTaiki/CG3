@@ -3,10 +3,9 @@
 #include <memory>
 #include <string>
 #include "Model.h"
-#include <map>
-#include<memory>
 
 class DirectXCommon;
+class ModelCommon;
 
 class ModelManager
 {
@@ -35,7 +34,6 @@ private:
 	// コピー代入演算子（禁止）
 	ModelManager& operator=(const ModelManager&) = delete;
 
-public:
 private:
     static ModelManager* instance_;
 

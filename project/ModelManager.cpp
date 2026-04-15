@@ -10,16 +10,30 @@ ModelManager* ModelManager::GetInstance() {
     return instance_;
 }
 
-void ModelManager::Initialize(DirectXCommon*dxCommon) {
-	modelCommon_ = new ModelCommon;
-	modelCommon_->Intialize(dxCommon);
+void ModelManager::Initialize(DirectXCommon* dxCommon) {
+    modelCommon_ = new ModelCommon;
 }
+
+void ModelManager::Finalize() {
+    models_.clear();
+
+    delete modelCommon_;
+    modelCommon_ = nullptr;
+
+    delete instance_;
+    instance_ = nullptr;
+}
+
 
 void ModelManager::LoadModel(const std::string& filePath)
 {
-	if (models_.contains(filePath)) {
-		return;
-	}
+    // すでにあるかチェック
+    auto it = models_.find(filePath);
+    if (it != models_.end()) {
+        return it->second.get();
+    }
+
+
 
     std::unique_ptr<Model>model = std::make_unique<Model>();
 
@@ -42,12 +56,3 @@ Model* ModelManager::FindModel(const std::string& filePath)
 	return nullptr;
 }
 
-void ModelManager::Finalize() {
-    models_.clear();
-
-    delete modelCommon_;
-    modelCommon_ = nullptr;
-
-    delete instance_;
-    instance_ = nullptr;
-}
