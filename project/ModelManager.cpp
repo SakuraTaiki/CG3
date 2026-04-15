@@ -22,6 +22,11 @@ void ModelManager::LoadModel(const std::string& filePath)
 	}
 
     std::unique_ptr<Model>model = std::make_unique<Model>();
+
+    std::string directory = "resources/" + filePath.substr(0, filePath.find_last_of('/'));
+    std::string filename = filePath.substr(filePath.find_last_of('/') + 1);
+
+
     model->Initialize(modelCommon_, "resources", filePath);
 
     models_.insert(std::make_pair(filePath, std::move(model)));
