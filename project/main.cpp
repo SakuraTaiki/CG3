@@ -252,10 +252,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//モデル描画初期位置
 	
 	// 複数生成
-	manager->CreateObject({ 0,0,0 });
-	manager->CreateObject({ 2,0,0 });
-	manager->CreateObject({ -2,0,0 });
-	manager->CreateObject({ 0,2,0 });
+	
+	manager->CreateObject("plane/plane.obj", { 0,0,0 });
+	manager->CreateObject("axis/axis.obj", { 0,0,0 });
+	manager->CreateObject("axis/axis.obj", { 2,0,0 });
 
 	//3Dモデルマネージャーの初期化
 	ModelManager::GetInstance()->Initialize(dxCommon);
@@ -421,8 +421,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	sprite->Initialize(spriteCommon, "resources/uvChecker.png");
 
 
-	ModelManager::GetInstance()->LoadModel("plane.obj");
-	object3d->SetModel("plane.obj");
+	/*ModelManager::GetInstance()->LoadModel("plane/plane.obj");
+	ModelManager::GetInstance()->LoadModel("axis/axis.obj");
+
+	Object3d* planeObj = new Object3d();
+	planeObj->Initialize(object3dCommon);
+	planeObj->SetModel("plane/plane.obj");
+
+	Object3d* axisObj = new Object3d();
+	axisObj->Initialize(object3dCommon);
+	axisObj->SetModel("axis/axis.obj");*/
 
 	//ウィンドウの×ボタンが押されるまでループ
 	while (true) {
@@ -455,6 +463,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			object3d->Update();
 
 			manager->Update();
+
+			/*planeObj->Update();
+			axisObj->Update();*/
 
 			ImGui_ImplDX12_NewFrame();
 			ImGui_ImplWin32_NewFrame();
@@ -513,6 +524,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			object3d->Draw();
 
 			manager->Draw();
+
+			/*planeObj->Draw();
+
+			axisObj->Draw();*/
 
 			// --------------------------------------------------------------------------------------
 			// 【スプライト描画の準備】

@@ -5,10 +5,12 @@ void Object3dManager::Initialize(Object3dCommon* common, ModelCommon* modelCommo
 
 }
 
-void Object3dManager::CreateObject(const Math::Vector3& pos)
+void Object3dManager::CreateObject(const std::string& modelPath, const Math::Vector3& pos)
 {
     Object3d* obj = new Object3d();
     obj->Initialize(common_);
+
+    obj->SetModel(modelPath);
 
     obj->transform.translate = pos;
 
