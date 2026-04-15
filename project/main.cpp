@@ -30,6 +30,7 @@
 #include"ModelCommon.h"
 #include"Model.h"
 #include"Object3dManager.h"
+#include"ModelManager.h"
 
 using namespace Microsoft::WRL;
 
@@ -133,10 +134,6 @@ IDxcBlob* CompileShader(
 	);
 	assert(SUCCEEDED(hr));
 
-
-
-
-
 	IDxcBlobUtf8* shaderError = nullptr;
 	shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
 	if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
@@ -151,7 +148,6 @@ IDxcBlob* CompileShader(
 	shaderSource->Release();
 	shaderResult->Release();
 	return shaderBlob;
-
 }
 
 DirectX::ScratchImage LoadTexture(const std::string& filePath) {
@@ -253,11 +249,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// 初期化
 	manager->Initialize(object3dCommon, modelCommon);
 
+	//モデル描画初期位置
+	
 	// 複数生成
 	manager->CreateObject({ 0,0,0 });
 	manager->CreateObject({ 2,0,0 });
 	manager->CreateObject({ -2,0,0 });
 	manager->CreateObject({ 0,2,0 });
+
+	//3Dモデルマネージャーの初期化
+	ModelManager::GetInstance()->Initialize(dxCommon);
+
+	
 
 
 	////DXGIファクトリーの作成
@@ -388,7 +391,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	indexDataSprite[0] = 0; indexDataSprite[1] = 1; indexDataSprite[2] = 2;
 	indexDataSprite[3] = 1; indexDataSprite[4] = 3; indexDataSprite[5] = 2;
 
-
 	// 1. まず、使いたい画像のファイル名をリストにします
 	std::vector<std::string> texFiles = {
 		"resources/uvChecker.png",
@@ -420,7 +422,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	Sprite* sprite = new Sprite();
 	// Initialize()に SpriteCommon などの必要な情報を渡す想定
 	sprite->Initialize(spriteCommon, "resources/uvChecker.png");
-
 
 
 	//ウィンドウの×ボタンが押されるまでループ
@@ -538,15 +539,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 	}
-
-
-	
-
 	//変数から型を推測する
-
 	Log(ConverString(std::format(L"WSTRING{}\n", L"abc")));
-
-
 
 	//出力ウィンドウへの文字出力
 	OutputDebugStringA("Hello,DirectX!\n");
@@ -577,6 +571,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	dxCommon->WaitForGPU();
 
 	TextureManager::GetInstance()->Finalize();
+
+	ModelManager::GetInstance()->Finalize();
 
 	delete dxCommon;
 
