@@ -1,45 +1,34 @@
 #pragma once
-#include <map>
-#include <memory>
 #include <string>
+#include <unordered_map>
 #include "Model.h"
+#include "Object3d.h"
+#include "Object3dCommon.h"
 
-class DirectXCommon;
-class ModelCommon;
-
-class ModelManager
-{
+class ModelManager {
 public:
+    // 初期化（最初に一度だけ呼ぶ）
+    static void Initialize(Object3dCommon* common);
 
-    static ModelManager* GetInstance();
+    // 終了処理（モデルのメモリ解放）
+    static void Finalize();
 
-    // 初期化
-    void Initialize(DirectXCommon*dxCommon);
+    // ★これが「関数一つ」の描画関数
+    static void Draw(
+        const std::string& modelName,
+        const Vector3& pos,
+        const Vector3& rot = { 0,0,0 },
+        const Vector3& scale = { 1,1,1 },
+        const Vector4& color = { 1,1,1,1 }
+    );
 
-    // モデル読み込み
-    void LoadModel(const std::string&filePath);
-
-    void Finalize();
-
-    Model* FindModel(const std::string& filePath);
-private:
-	ModelManager() = default;
-
-	// デストラクタ
-	~ModelManager() = default;
-
-    // コピー禁止（シングルトン）
-	ModelManager(const ModelManager&) = delete;
-
-	// コピー代入演算子（禁止）
-	ModelManager& operator=(const ModelManager&) = delete;
+    // カメラの設定（Updateの前に呼ぶ必要がある）
+    static void SetCamera(const Matrix4x4& view, const Matrix4x4& projection);
 
 private:
-    static ModelManager* instance_;
-
-    ModelCommon* modelCommon = nullptr;
-
-    // ★ モデル管理
-    std::map<std::string, std::unique_ptr<Model>>models_;
+    static Object3dCommon* common_;
+    static std::unordered_map<std::string, Model*> models_;
+    static Object3d* internalObject_; // 描画用の使い回しインスタンス
+    static Matrix4x4 viewMatrix_;
+    static Matrix4x4 projectionMatrix_;
 };
-

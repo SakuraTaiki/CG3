@@ -1,128 +1,66 @@
 #include "Object3d.h"
-#include"Object3dCommon.h"
+#include "TextureManager.h" // GetSrvHandleGPUを使うために必要
 #include <cassert>
-#include "Math.h"
-#include "WinApp.h"
-#include <algorithm>
-#include"TextureManager.h"
-#include"Model.h"
-#include"ModelManager.h"
 
-#include<fstream>
-#include<sstream>
+void Object3d::Initialize(Object3dCommon* object3dCommon) {
+    assert(object3dCommon);
+    object3dCommon_ = object3dCommon;
+    auto device = object3dCommon_->GetDxCommon()->GetDevice();
 
-void Object3d::Initialize(Object3dCommon* object3dCommon)
-{
+    // Transform Buffer
+    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resDesc.Width = (sizeof(TransformationMatrix) + 0xff) & ~0xff;
+    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
+    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
 
-	object3dCommon_ = object3dCommon;
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&transformationResource_));
+    transformationResource_->Map(0, nullptr, (void**)&transformationData_);
+    transformationData_->WVP = Math::MakeIdentity4x4();
+    transformationData_->World = Math::MakeIdentity4x4();
 
-	transform = { {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-	cameraTransform = { {1.0f,1.0f,1.0f},{0.3f,0.0f,0.0f},{0.0f,4.0f,-10.0f} };
+    // Material Buffer
+    resDesc.Width = (sizeof(Material) + 0xff) & ~0xff;
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&materialResource_));
+    materialResource_->Map(0, nullptr, (void**)&materialData_);
 
-	// 行列・ライトだけ作る
-	CreateTransformationMatrix();
-	CreateDirectionalLight();
-}
-
-void Object3d::SetModel(const std::string& filePath)
-{
-	model_ = ModelManager::GetInstance()->FindModel(filePath);
-}
-
-void Object3d::CreateTransformationMatrix() {
-	transformationMatrixResource_ = object3dCommon_->GetDxCommon()->CreateBufferResource(sizeof(TransformationMatrix));
-	transformationMatrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
-
-	transformationMatrixData_->WVP = Math::MakeIdentity4x4();
-	transformationMatrixData_->World = Math::MakeIdentity4x4();
-}
-
-void Object3d::CreateDirectionalLight() {
-	directionalLightResource_ = object3dCommon_->GetDxCommon()->CreateBufferResource(sizeof(DirectionalLight));
-
-	directionalLightResource_->Map(0, nullptr, reinterpret_cast<void**>(&directionalLightData_));
-
-	//初期値
-	directionalLightData_->color = { 1.0f,1.0f,1.0f,1.0f };//白
-	directionalLightData_->direction = { 0.0f,-1.0f,0.0f };//下向き
+    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    materialData_->enableLighting = 1;
+    materialData_->uvTransform = Math::MakeIdentity4x4();
 }
 
 void Object3d::Update() {
-	// =========================
-  // 1. WorldMatrix作成
-  // =========================
-	Math::Matrix4x4 scaleMatrix =
-		Math::MakeScaleMatrix(transform.scale);
+    Matrix4x4 worldMatrix = Math::MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
+    Matrix4x4 wvpMatrix = Math::Multiply(worldMatrix, Math::Multiply(viewMatrix_, projectionMatrix_));
 
-	Math::Matrix4x4 rotateMatrix =
-		Math::MakeRotateXYZMatrix(transform.rotate);
-
-	Math::Matrix4x4 translateMatrix =
-		Math::MakeTranslateMatrix(transform.translate);
-
-	Math::Matrix4x4 worldMatrix =
-		scaleMatrix * rotateMatrix * translateMatrix;
-
-	// =========================
-	// 2. ViewMatrix作成（カメラ）
-	// =========================
-	Math::Matrix4x4 cameraMatrix =
-		Math::MakeAffineMatrix(
-			cameraTransform.scale,
-			cameraTransform.rotate,
-			cameraTransform.translate
-		);
-
-	Math::Matrix4x4 viewMatrix =
-		Math::Inverse(cameraMatrix);
-
-	// =========================
-	// 3. ProjectionMatrix作成
-	// =========================
-	Math::Matrix4x4 projectionMatrix =
-		Math::MakePerspectiveFovMatrix(
-			0.45f,                                   // FOV
-			float(WinApp::kClientWidth) /
-			float(WinApp::kClientHeight),             // アスペクト比
-			0.1f,                                     // nearZ
-			100.0f                                    // farZ
-		);
-
-	// =========================
-	// 4. WVP計算
-	// =========================
-	Math::Matrix4x4 worldViewProjectionMatrix =
-		worldMatrix * viewMatrix * projectionMatrix;
-
-	// =========================
-	// 5. 定数バッファに書き込み
-	// =========================
-	transformationMatrixData_->World = worldMatrix;
-	transformationMatrixData_->WVP = worldViewProjectionMatrix;
-
-	transform.rotate.y += 0.02f;
+    transformationData_->WVP = wvpMatrix;
+    transformationData_->World = worldMatrix;
 }
 
-void Object3d::Draw()
-{
-	ID3D12GraphicsCommandList* commandList =
-		object3dCommon_->GetDxCommon()->GetCommandList();
+void Object3d::SetUVTransform(const Transform& t) {
+    if (materialData_) {
+        Matrix4x4 w = Math::MakeAffineMatrix(t.scale, t.rotate, t.translate);
+        materialData_->uvTransform = w;
+    }
+}
 
-	object3dCommon_->SetCommonDrawSettings(commandList);
+void Object3d::Draw() {
+    if (!model_) return;
+    auto commandList = object3dCommon_->GetDxCommon()->GetCommandList();
 
-	// WVP
-	commandList->SetGraphicsRootConstantBufferView(
-		0,
-		transformationMatrixResource_->GetGPUVirtualAddress()
-	);
+    // 0. Material
+    commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
+    // 1. Transform
+    commandList->SetGraphicsRootConstantBufferView(1, transformationResource_->GetGPUVirtualAddress());
+    // 2. Light (Commonが持つ)
+    commandList->SetGraphicsRootConstantBufferView(2, object3dCommon_->GetLightGPUVirtualAddress());
+    // 3. Texture
+    // ★ここが修正ポイント: Common経由でTextureManagerを呼び出す
+    if (object3dCommon_->GetTextureManager()) {
+        auto gpuHandle = object3dCommon_->GetTextureManager()->GetSrvHandleGPU(model_->GetTextureHandle());
+        commandList->SetGraphicsRootDescriptorTable(3, gpuHandle);
+    }
 
-	// ライト
-	commandList->SetGraphicsRootConstantBufferView(
-		3,
-		directionalLightResource_->GetGPUVirtualAddress()
-	);
-
-	if (model_) {
-		model_->Draw();
-	}
+    model_->Draw(commandList);
 }
