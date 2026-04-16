@@ -1,64 +1,49 @@
-#include"Input.h"
+#include "Input.h"
 #include <cassert>
 
+void Input::Initialize(WinApp* winApp) {
+    winApp_ = winApp;
+    HRESULT hr;
 
-#pragma comment(lib,"dinput8.lib")
-#pragma comment(lib,"dxguid.lib")
+    // DirectInputオブジェクトの生成
+    hr = DirectInput8Create(
+        winApp->GetHInstance(), DIRECTINPUT_VERSION, IID_IDirectInput8,
+        (void**)&directInput_, nullptr);
+    assert(SUCCEEDED(hr));
 
-Input::Input() {
+    // キーボードデバイスの生成
+    hr = directInput_->CreateDevice(GUID_SysKeyboard, &keyboard_, nullptr);
+    assert(SUCCEEDED(hr));
 
+    // 入力データ形式のセット
+    hr = keyboard_->SetDataFormat(&c_dfDIKeyboard);
+    assert(SUCCEEDED(hr));
+
+    // 排他制御レベルのセット
+    hr = keyboard_->SetCooperativeLevel(
+        winApp->GetHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+    assert(SUCCEEDED(hr));
 }
 
-Input::~Input() {
+void Input::Update() {
+    HRESULT hr;
 
-	if (keyboard) {
-		keyboard->Unacquire(); // デバイスの解放
-		keyboard->Release();
-		keyboard = nullptr;
-	}
-	if (directInput) {
-		directInput->Release();
-		directInput = nullptr;
-	}
+    // 前回のキー入力を保存
+    memcpy(keyPre_, key_, sizeof(key_));
+
+    // キーボード情報の取得開始
+    keyboard_->Acquire();
+
+    // 全キーの入力状態を取得する
+    hr = keyboard_->GetDeviceState(sizeof(key_), key_);
 }
 
-void Input::Initialize(WinApp*winApp) {
-	//DirectInputの初期化
-
-	HRESULT result = DirectInput8Create(
-		GetModuleHandle(nullptr),
-		DIRECTINPUT_VERSION,
-		IID_IDirectInput8,
-		(void**)&directInput,
-		nullptr
-	);
-	assert(SUCCEEDED(result));
-
-	//キーボードデバイスの生成
-
-	result = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
-	assert(SUCCEEDED(result));
-
-	result = keyboard->SetDataFormat(&c_dfDIKeyboard);
-	assert(SUCCEEDED(result));
-
-	result = keyboard->SetCooperativeLevel(winApp->GetHwnd(), DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
-	assert(SUCCEEDED(result));
-
-	this->winApp = winApp;
-
-};
-void Input::Update() 
-{
-	keyboard->Acquire();
-
-	keyboard->GetDeviceState(sizeof(key), key);
+bool Input::PushKey(BYTE keyNumber) {
+    // 0以外なら押されている
+    return key_[keyNumber];
 }
-bool Input::Pushkey(BYTE keyNumber) 
-{
-	if (key[keyNumber]) {
-		return true;
-	}
 
-	return false;
+bool Input::TriggerKey(BYTE keyNumber) {
+    // 今押されていて、前は押されていなかったらトリガー
+    return key_[keyNumber] && !keyPre_[keyNumber];
 }
