@@ -31,11 +31,7 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
 }
 
 void Object3d::Update() {
-    Matrix4x4 worldMatrix = Math::MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-    Matrix4x4 wvpMatrix = Math::Multiply(worldMatrix, Math::Multiply(viewMatrix_, projectionMatrix_));
-
-    transformationData_->WVP = wvpMatrix;
-    transformationData_->World = worldMatrix;
+   
 }
 
 void Object3d::SetUVTransform(const Transform& t) {
