@@ -49,8 +49,10 @@ void MyGame::Update() {
     input->Update();
     /*if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);*/
 
-    Matrix4x4 cameraWorld = Math::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
-    Matrix4x4 view = Math::Inverse(cameraWorld);
+    //=================カメラhに移行=======================
+    /*Matrix4x4 cameraWorld = Math::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+    Matrix4x4 view = Math::Inverse(cameraWorld);*/
+
     Matrix4x4 projection = Math::MakePerspectiveFovMatrix(0.45f, (float)WinApp::kClientWidth / (float)WinApp::kClientHeight, 0.1f, 100.0f);
 
     for (Object3d* obj : objectList) {
