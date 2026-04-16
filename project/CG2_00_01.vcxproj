@@ -210,9 +210,6 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ResourceCompile Include="CG_3.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="resources\shaders\Sprite.hlsli" />
-  </ItemGroup>
-  <ItemGroup>
     <FxCompile Include="resources\shaders\Sprite.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>

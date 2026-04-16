@@ -1,192 +1,173 @@
 #include "Sprite.h"
-#include "SpriteCommon.h"
+#include "MyMath.h" // 必ずインクルード
 #include <cassert>
-#include "Math.h"
-#include "WinApp.h"
-#include <algorithm>
-#include"TextureManager.h"
-void Sprite::Initialize(SpriteCommon* spriteCommon,std::string textureFilePath) {
 
-	this->spriteCommon_ = spriteCommon;
-	textureIndex = TextureManager::GetInstance()->GetTextureIndexByFilePath(textureFilePath);
-	assert(this->spriteCommon_ != nullptr);
+void Sprite::Initialize(SpriteCommon* spriteCommon, uint32_t textureHandle) {
+    assert(spriteCommon);
+    spriteCommon_ = spriteCommon;
+    textureHandle_ = textureHandle;
 
-	CreateVertexData();
+    // テクスチャ情報から初期サイズを設定
+    auto& desc = spriteCommon_->GetTextureManager()->GetResourceDesc(textureHandle_);
+    size_ = { (float)desc.Width, (float)desc.Height };
+    textureSize_ = size_; // 初期状態は全範囲
+    textureLeftTop_ = { 0.0f, 0.0f };
 
-	CreateMaterial();
+    CreateVertexBuffer();
+    CreateMaterialBuffer();
+    CreateTransformationMatrixBuffer();
 
-	CreateTransformationMatrix();
-
-	AdjustTextureSize();
+    // 初期データを転送
+    UpdateVertexData();
 }
 
-void Sprite::CreateVertexData()
-{
-	ID3D12Device* device = spriteCommon_->GetDxCommon()->GetDevice();
-	HRESULT hr = S_FALSE;
+void Sprite::Update() {
+    // 頂点情報に変更があれば更新
+    if (transferNeeded_) {
+        UpdateVertexData();
+        transferNeeded_ = false;
+    }
 
-	// --- 1. VertexResource / IndexResource を作る ---
-	const size_t kVertexCount = 4; // 矩形は通常4頂点
-	const size_t kIndexCount = 6;  // 矩形は通常6インデックス
+    // 行列計算 (MyMathの関数を使用)
+    // 名前空間 Math:: をつけ、関数名を合わせる
+    Matrix4x4 scaleMat = Math::Matrix4x4MakeScaleMatrix({ 1.0f, 1.0f, 1.0f });
+    Matrix4x4 rotateMat = Math::MakeRotateZMatrix(rotation_);
+    Matrix4x4 translateMat = Math::MakeTranslateMatrix({ position_.x, position_.y, 0.0f });
 
-	// VertexResource (4頂点)
-	vertexResource_ = spriteCommon_->GetDxCommon()->CreateBufferResource(sizeof(VertexData) * kVertexCount);
-	// IndexResource (6インデックス)
-	indexResource_ = spriteCommon_->GetDxCommon()->CreateBufferResource(sizeof(uint32_t) * kIndexCount);
+    // 行列の掛け算
+    Matrix4x4 worldMatrix = Math::Multiply(scaleMat, Math::Multiply(rotateMat, translateMat));
 
-	// --- 2. VertexResource / IndexResource にデータを書き込むためのアドレスを取得 ---
-	// VertexData* vertexData_ = nullptr;
-	vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData_));
-	// uint32_t* indexData_ = nullptr;
-	indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indexData_));
+    // ビュープロジェクション行列（正射影）
+    // 画面サイズ 1280x720 を想定
+    Matrix4x4 viewMatrix = Math::MakeIdentity4x4();
+    Matrix4x4 projectionMatrix = Math::MakeOrthographicMatrix(0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 100.0f);
 
-	// --- 3. VertexData の初期値設定 (main.cpp から移植) ---
-	// ※ ここではスプライトのサイズを仮で 128x128 と設定するロジックを移植します
-	// main.cppの座標 {0.0f,360.0f}, {0.0f,0.0f}, {640.0f,360.0f}, {640.0f,0.0f}
-	float left = 0.0f;
-	float top = 0.0f;
-	float right = 1.0f;
-	float bottom = 1.0f;
+    Matrix4x4 wvpMatrix = Math::Multiply(worldMatrix, Math::Multiply(viewMatrix, projectionMatrix));
 
-	vertexData_[0].position = { left, bottom, 0.0f, 1.0f };    // 左下
-	vertexData_[0].texcoord = { 0.0f, 1.0f };
-	vertexData_[1].position = { left, top, 0.0f, 1.0f };       // 左上
-	vertexData_[1].texcoord = { 0.0f, 0.0f };
-	vertexData_[2].position = { right, bottom, 0.0f, 1.0f };   // 右下
-	vertexData_[2].texcoord = { 1.0f, 1.0f };
-	vertexData_[3].position = { right, top, 0.0f, 1.0f };      // 右上
-	vertexData_[3].texcoord = { 1.0f, 0.0f };
-	// Normalは一旦0で埋める
-	vertexData_[0].normal = { 0.0f, 0.0f, -1.0f };
-	vertexData_[1].normal = { 0.0f, 0.0f, -1.0f };
-	vertexData_[2].normal = { 0.0f, 0.0f, -1.0f };
-	vertexData_[3].normal = { 0.0f, 0.0f, -1.0f };
-
-	// IndexData の設定 (main.cpp から移植)
-	indexData_[0] = 0; indexData_[1] = 1; indexData_[2] = 2; // 1枚目の三角形 (左下、左上、右下)
-	indexData_[3] = 1; indexData_[4] = 3; indexData_[5] = 2; // 2枚目の三角形 (左上、右上、右下)
-
-	// --- 4. VertexBufferView / IndexBufferView を作成する ---
-	// VertexBufferView
-	vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
-	vertexBufferView_.SizeInBytes = sizeof(VertexData) * kVertexCount;
-	vertexBufferView_.StrideInBytes = sizeof(VertexData);
-
-	// IndexBufferView
-	indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
-	indexBufferView_.SizeInBytes = sizeof(uint32_t) * kIndexCount;
-	indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
+    transformationMatrixData_->WVP = wvpMatrix;
 }
 
-void Sprite::CreateMaterial()
-{
+void Sprite::Draw() {
+    // コマンドリスト取得
+    // DirectXCommonに GetCommandList() を追加している前提
+    auto commandList = spriteCommon_->GetDxCommon()->GetCommandList();
 
-	materialResource_ = spriteCommon_->GetDxCommon()->CreateBufferResource(sizeof(Material));
-	assert(materialResource_);
+    // 1. VBVセット
+    commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
 
-	HRESULT hr = materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
-	assert(SUCCEEDED(hr));
+    // 2. マテリアルCBV
+    commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
 
-	materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
-	materialData_->enableLighting = false; // false = 0
+    // 3. トランスフォームCBV
+    commandList->SetGraphicsRootConstantBufferView(1, transformationMatrixResource_->GetGPUVirtualAddress());
 
-	materialData_->uvTransform = Math::MakeIdentity4x4();
+    // 4. テクスチャSRV
+    auto gpuHandle = spriteCommon_->GetTextureManager()->GetSrvHandleGPU(textureHandle_);
+    commandList->SetGraphicsRootDescriptorTable(2, gpuHandle);
+
+    // 5. 描画 (6頂点)
+    commandList->DrawInstanced(6, 1, 0, 0);
 }
 
-void Sprite::CreateTransformationMatrix()
-{
-	transformationMatrixResource_ = spriteCommon_->GetDxCommon()->CreateBufferResource(sizeof(TransformationMatrix));
-
-	transformationMatrixResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationMatrixData_));
-
-	transformationMatrixData_->WVP = Math::MakeIdentity4x4();
-	transformationMatrixData_->World = Math::MakeIdentity4x4();
+void Sprite::SetTextureRect(const Vector2& position, const Vector2& size) {
+    textureLeftTop_ = position;
+    textureSize_ = size;
+    // size_ = size; // 切り抜きサイズに合わせて表示サイズも変えたい場合はコメントアウトを外す
+    transferNeeded_ = true;
 }
 
-void Sprite::UpdateTransformationMatrix() {
-	Math::Matrix4x4 worldMatrix = Math::MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-	Math::Matrix4x4 viewMatrix = Math::MakeIdentity4x4();
-
-	Math::Matrix4x4 projectionMatrix = Math::MakeOrthorgraphicMatrix(
-		0.0f,
-		0.0f,                          // [FIX] ここを 0.0f に変更 (Top = 0)
-		(float)WinApp::kClientWidth,
-		(float)WinApp::kClientHeight,  // [FIX] ここを Height に変更 (Bottom = Height)
-		0.0f,
-		100.0f
-	);
-
-	Math::Matrix4x4 worldViewProjectionMatrix = Math::Multiply(worldMatrix, Math::Multiply(viewMatrix, projectionMatrix));
-
-	transformationMatrixData_->WVP = worldViewProjectionMatrix;
-
-	transformationMatrixData_->World = worldMatrix;
+void Sprite::SetTexture(uint32_t textureHandle) {
+    textureHandle_ = textureHandle;
+    auto& desc = spriteCommon_->GetTextureManager()->GetResourceDesc(textureHandle_);
+    textureSize_ = { (float)desc.Width, (float)desc.Height };
+    transferNeeded_ = true;
 }
 
+void Sprite::CreateVertexBuffer() {
+    auto device = spriteCommon_->GetDxCommon()->GetDevice();
 
+    // 頂点リソース作成
+    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resDesc.Width = sizeof(VertexData) * 6;
+    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
+    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
 
-void Sprite::Update()
-{
-	float left = 0.0f - anchorPoint_.x;
-	float right = 1.0f - anchorPoint_.x;
-	float top = 0.0f - anchorPoint_.y;
-	float bottom = 1.0f - anchorPoint_.y;
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer_));
 
-	if (isFlipX_) {
-		left = -left;
-		right = -right;
-	}
-
-	if (isFlipY_) {
-		top = -top;
-		bottom = -bottom;
-	}
-
-	vertexData_[0].position = { left, bottom, 0.0f, 1.0f };
-
-	vertexData_[1].position = { left, top, 0.0f, 1.0f };
-
-	vertexData_[2].position = { right, bottom, 0.0f, 1.0f };
-
-	vertexData_[3].position = { right, top, 0.0f, 1.0f };
-
-	const DirectX::TexMetadata& metadata =
-		TextureManager::GetInstance()->GetMetaData(textureIndex);
-
-	float tex_left = textureLeftTop_.x / metadata.width;
-	float tex_right = (textureLeftTop_.x + textureSize_.x) / metadata.width;
-	float tex_top = textureLeftTop_.y / metadata.height;
-	float tex_bottom = (textureLeftTop_.y + textureSize_.y) / metadata.height;
-
-	vertexData_[0].texcoord = { tex_left, tex_bottom }; // 左下
-	vertexData_[1].texcoord = { tex_left, tex_top };    // 左上
-	vertexData_[2].texcoord = { tex_right, tex_bottom };// 右下
-	vertexData_[3].texcoord = { tex_right, tex_top };   // 右上
-
-	transform_.translate = { position_.x,position_.y,0.0f };
-
-	transform_.scale = { size_.x, size_.y, 1.0f };
-
-	UpdateTransformationMatrix();
-}
-void Sprite::Draw(ID3D12GraphicsCommandList* commandList) {
-	commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-	commandList->IASetIndexBuffer(&indexBufferView_);
-	commandList->SetGraphicsRootConstantBufferView(0, transformationMatrixResource_->GetGPUVirtualAddress());
-	commandList->SetGraphicsRootConstantBufferView(1, materialResource_->GetGPUVirtualAddress());
-	commandList->SetGraphicsRootDescriptorTable(2, TextureManager::GetInstance()->GetSrvHandleGPU(textureIndex));
-	commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
-}
-void Sprite::AdjustTextureSize() {
-	// テクスチャメタデータを取得
-	const DirectX::TexMetadata& metadata = TextureManager::GetInstance()->GetMetaData(textureIndex);
-
-	// テクスチャサイズをスプライトのサイズに設定する
-	textureSize_.x = static_cast<float>(metadata.width);
-	textureSize_.y = static_cast<float>(metadata.height);
-
-	// 画像サイズをテクスチャサイズに合わせる
-	size_ = textureSize_;
+    vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
+    vertexBufferView_.SizeInBytes = sizeof(VertexData) * 6;
+    vertexBufferView_.StrideInBytes = sizeof(VertexData);
 }
 
+void Sprite::CreateMaterialBuffer() {
+    auto device = spriteCommon_->GetDxCommon()->GetDevice();
+    size_t sizeIB = (sizeof(Material) + 0xff) & ~0xff;
+    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resDesc.Width = sizeIB;
+    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
+    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
 
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&materialResource_));
+    materialResource_->Map(0, nullptr, (void**)&materialData_);
+    materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+}
+
+void Sprite::CreateTransformationMatrixBuffer() {
+    auto device = spriteCommon_->GetDxCommon()->GetDevice();
+    size_t sizeIB = (sizeof(TransformationMatrix) + 0xff) & ~0xff;
+    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
+    D3D12_RESOURCE_DESC resDesc = {};
+    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resDesc.Width = sizeIB;
+    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
+    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+
+    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&transformationMatrixResource_));
+    transformationMatrixResource_->Map(0, nullptr, (void**)&transformationMatrixData_);
+    transformationMatrixData_->WVP = Math::MakeIdentity4x4();
+}
+
+void Sprite::UpdateVertexData() {
+    VertexData* vertMap = nullptr;
+    vertexBuffer_->Map(0, nullptr, (void**)&vertMap);
+
+    // テクスチャ全体のサイズ取得
+    auto& texDesc = spriteCommon_->GetTextureManager()->GetResourceDesc(textureHandle_);
+    float texWidth = (float)texDesc.Width;
+    float texHeight = (float)texDesc.Height;
+
+    // UV計算
+    float left = textureLeftTop_.x / texWidth;
+    float right = (textureLeftTop_.x + textureSize_.x) / texWidth;
+    float top = textureLeftTop_.y / texHeight;
+    float bottom = (textureLeftTop_.y + textureSize_.y) / texHeight;
+
+    // 頂点座標計算（アンカーポイント考慮）
+    float leftPos = 0.0f - (anchorPoint_.x * size_.x);
+    float rightPos = size_.x - (anchorPoint_.x * size_.x);
+    float topPos = 0.0f - (anchorPoint_.y * size_.y);
+    float bottomPos = size_.y - (anchorPoint_.y * size_.y);
+
+    // 6頂点
+    // Triangle 1
+    vertMap[0].position = { leftPos, topPos, 0.0f, 1.0f };
+    vertMap[0].texcoord = { left, top };
+    vertMap[1].position = { leftPos, bottomPos, 0.0f, 1.0f };
+    vertMap[1].texcoord = { left, bottom };
+    vertMap[2].position = { rightPos, topPos, 0.0f, 1.0f };
+    vertMap[2].texcoord = { right, top };
+
+    // Triangle 2
+    vertMap[3].position = { leftPos, bottomPos, 0.0f, 1.0f };
+    vertMap[3].texcoord = { left, bottom };
+    vertMap[4].position = { rightPos, bottomPos, 0.0f, 1.0f };
+    vertMap[4].texcoord = { right, bottom };
+    vertMap[5].position = { rightPos, topPos, 0.0f, 1.0f };
+    vertMap[5].texcoord = { right, top };
+
+    vertexBuffer_->Unmap(0, nullptr);
+}

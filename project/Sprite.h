@@ -1,133 +1,91 @@
 #pragma once
-#include "Math.h"
 #include <wrl.h>
 #include <d3d12.h>
-#include <string>
-
-class SpriteCommon;
+#include "MyMath.h"
+#include "SpriteCommon.h"
 
 class Sprite {
 public:
+    // 頂点データ構造体
+    struct VertexData {
+        Vector4 position;
+        Vector2 texcoord;
+    };
 
-    uint32_t textureIndex = 0;
+    // マテリアルデータ（色）
+    struct Material {
+        Vector4 color;
+    };
 
-    void Initialize(SpriteCommon* spriteCommon,std::string textureFilePath );
+    // 座標変換データ
+    struct TransformationMatrix {
+        Matrix4x4 WVP;
+    };
 
+public:
+    // 初期化（テクスチャインデックス指定）
+    void Initialize(SpriteCommon* spriteCommon, uint32_t textureHandle);
+
+    // 更新処理
     void Update();
 
-    void Draw(ID3D12GraphicsCommandList* commandList);
+    // 描画
+    void Draw();
 
-    const Math::Vector2& GetPosition() const { return position_; }
+    // --- セッター群 ---
+    void SetPosition(const Vector2& position) { position_ = position; transferNeeded_ = true; }
+    void SetRotation(float rotation) { rotation_ = rotation; transferNeeded_ = true; }
+    void SetSize(const Vector2& size) { size_ = size; transferNeeded_ = true; }
+    void SetColor(const Vector4& color) { materialData_->color = color; }
 
-    void SetPosition(const Math::Vector2& position) { this->position_ = position; }
+    // アンカーポイント (0.0~1.0) 例: 中心なら{0.5, 0.5}
+    void SetAnchorPoint(const Vector2& anchor) { anchorPoint_ = anchor; transferNeeded_ = true; }
 
-    const Math::Vector3& GetScale() const { return transform_.scale; }
+    // テクスチャ切り抜き (画像上のピクセル座標とサイズ)
+    void SetTextureRect(const Vector2& position, const Vector2& size);
+    // テクスチャ変更
+    void SetTexture(uint32_t textureHandle);
 
-    void SetScale(const Math::Vector3& scale) { this->transform_.scale = scale; }
+    // 既に Initialize 等があると思いますが、その下に以下を追加
+    const Vector2& GetPosition() const { return position_; }
+    float GetRotation() const { return rotation_; }
+    const Vector2& GetSize() const { return size_; }
 
-    const Math::Vector3& GetRotation() const { return transform_.rotate; }
+private:
+    // 頂点バッファの作成
+    void CreateVertexBuffer();
+    // マテリアルバッファの作成
+    void CreateMaterialBuffer();
+    // トランスフォームバッファの作成
+    void CreateTransformationMatrixBuffer();
 
-    void SetRotation(const Math::Vector3& rotate) { this->transform_.rotate = rotate; }
-
-    const Math::Vector4& GetColor() const { return materialData_->color; }
-
-    void SetColor(const Math::Vector4& color) { this->materialData_->color = color; }
-
-    const Math::Vector2& GetSize() const { return size_; }
-
-    void SetSize(const Math::Vector2& size) { this->size_ = size; }
-
-    const Math::Vector2& GetAnchorPoint() const { return anchorPoint_; }
-
-    void SetAnchorPoint(const Math::Vector2& anchorPoint) { this->anchorPoint_ = anchorPoint; }
-
-    bool GetFlipX()const { return isFlipX_; }
-    void SetFlipX(bool isFlipX) { isFlipX_ = isFlipX; }
-
-    // 上下フリップのGetter/Setter
-    bool GetFlipY() const { return isFlipY_; }
-    void SetFlipY(bool isFlipY) { isFlipY_ = isFlipY; }
-
-    const Math::Vector2& GetTextureLeftTop() const { return textureLeftTop_; }
-    void SetTextureLeftTop(const Math::Vector2& textureLeftTop) { textureLeftTop_ = textureLeftTop; }
-
-    // テクスチャ切り出しサイズのGetter/Setter
-    const Math::Vector2& GetTextureSize() const { return textureSize_; }
-    void SetTextureSize(const Math::Vector2& textureSize) { textureSize_ = textureSize; }
+    // 頂点データの更新（サイズや切り抜き変更時）
+    void UpdateVertexData();
 
 private:
     SpriteCommon* spriteCommon_ = nullptr;
+    uint32_t textureHandle_ = 0;
 
-    struct VertexData {
-        Math::Vector4 position;
-        Math::Vector2 texcoord;
-        Math::Vector3 normal; // スライドの指示通り、一旦normalも含めておく
-    };
+    // トランスフォーム情報
+    Vector2 position_ = { 0.0f, 0.0f };
+    float rotation_ = 0.0f;
+    Vector2 size_ = { 100.0f, 100.0f };
+    Vector2 anchorPoint_ = { 0.0f, 0.0f };
 
+    // テクスチャ切り抜き情報
+    Vector2 textureLeftTop_ = { 0.0f, 0.0f };
+    Vector2 textureSize_ = { 100.0f, 100.0f };
 
-    // ===== Vertex
-    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
+    // フラグ
+    bool transferNeeded_ = true; // 頂点データの再転送が必要か
 
-    VertexData* vertexData_ = nullptr;
-    uint32_t* indexData_ = nullptr;
-
-  
+    // DirectXリソース
+    Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
-    D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
-    void CreateVertexData();
-
-    struct Material
-    {
-     Math::Vector4 color;
-     int32_t enableLighting;
-     float padding[3];                // パディング (float[3])
-     Math::Matrix4x4 uvTransform;     // UV変換行列 (Matrix4x4)
-    };
-
-    // ===== Material
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
 
-    void CreateMaterial();
-
-
-    struct TransformationMatrix {
-        Math::Matrix4x4 WVP;    // World View Projection Matrix
-        Math::Matrix4x4 World;  // World Matrix
-    };
-
-    // ===== TransformationMatrix
     Microsoft::WRL::ComPtr<ID3D12Resource> transformationMatrixResource_;
     TransformationMatrix* transformationMatrixData_ = nullptr;
-
-    Math::Transform transform_{ {1.0f,1.0f,1.0f},{0.0f,0.0f,0.0f},{0.0f,0.0f,0.0f} };
-
-    void CreateTransformationMatrix();
-
-    void UpdateTransformationMatrix();
-
-    Math::Vector2 position_ = { 0.0f, 0.0f };
-
-    float rotation = 0.0f;
-
-    Math::Vector2 size_ = { 100.0f, 100.0f };
-
-    Math::Vector2 anchorPoint_ = { 0.0f, 0.0f };
-
-    // 左右フリップ
-    bool isFlipX_ = false;
-    // 上下フリップ
-    bool isFlipY_ = false;
-
-
-    // テクスチャ左上座標
-    Math::Vector2 textureLeftTop_ = { 0.0f, 0.0f };
-
-    // テクスチャ切り出しサイズ
-    Math::Vector2 textureSize_ = { 512.0f, 512.0f };
-
-    //  テクスチャサイズをイメージに合わせる
-    void AdjustTextureSize();
 };
