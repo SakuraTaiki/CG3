@@ -47,7 +47,7 @@ Object3d* MyGame::CreateObject(Model* model, Vector3 pos) {
 
 void MyGame::Update() {
     input->Update();
-    if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);
+    /*if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);*/
 
     Matrix4x4 cameraWorld = Math::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
     Matrix4x4 view = Math::Inverse(cameraWorld);

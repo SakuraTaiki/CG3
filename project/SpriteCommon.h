@@ -1,28 +1,34 @@
 #pragma once
 #include "DirectXCommon.h"
-#include <d3d12.h>
+#include "TextureManager.h" // 追加
 #include <wrl.h>
-class SpriteCommon
-{
+#include <d3d12.h>
+#include <memory>
+
+class SpriteCommon {
 public:
-	void Initialize(DirectXCommon*dxCommon);
-	
-	void PreDraw(ID3D12GraphicsCommandList* commandList);
+    void Initialize(DirectXCommon* dxCommon);
 
-	void SetCommonDrawSettings(ID3D12GraphicsCommandList* commandList);
+    // 共通描画設定（ルートシグネチャ設定など）
+    void PreDraw();
 
-	ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
+    DirectXCommon* GetDxCommon() const { return dxCommon_; }
+    TextureManager* GetTextureManager() { return textureManager_; }
+    ID3D12RootSignature* GetRootSignature() { return rootSignature_.Get(); }
+    ID3D12PipelineState* GetPipelineState() { return pipelineState_.Get(); }
 
-	ID3D12PipelineState* GetPipelineState() const { return graphicsPipelineState_.Get(); }
-
-	DirectXCommon* GetDxCommon() const { return dxCommon_; }
+    void SetTextureManager(TextureManager* textureManager) {
+        textureManager_ = textureManager;
+    }
 
 private:
-	void CreateRootSignature();
-	void CreateGraphicsPipelineState();
-	DirectXCommon* dxCommon_=nullptr;
-	Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
-	Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
-	
-};
+    void CreateRootSignature();
+    void CreateGraphicsPipeline();
 
+private:
+    DirectXCommon* dxCommon_ = nullptr;
+    TextureManager* textureManager_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = nullptr;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_ = nullptr;
+};

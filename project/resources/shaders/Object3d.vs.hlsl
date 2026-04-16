@@ -1,23 +1,27 @@
 #include "object3d.hlsli"
 
-struct TransformationMatrix
-{
-    float32_t4x4 WVP;
-};
+//初めてのVertexShader/CG2_02_00
+//struct TransformationMatrix
+//{
+//    float32_t4x4 WVP;　//資料にhlslに書けってあったからそっちに書くよ
+//};
 ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
+    
 
-struct VertexShaderInput
+
+struct VertexSgaderInput
 {
     float32_t4 position : POSITION0;
     float32_t2 texcoord : TEXCOORD0;
-    float32_t3 normal   : NORMAL0;
+    float32_t3 normal : NORMAL0;
 };
 
-VertexShaderOutput main(VertexShaderInput input)
+
+VertexShaderOutput main(VertexSgaderInput input)
 {
     VertexShaderOutput output;
     output.position = mul(input.position, gTransformationMatrix.WVP);
     output.texcoord = input.texcoord;
-    output.normal = input.normal;
+    output.normal = normalize(mul(input.normal, (float32_t3x3) gTransformationMatrix.World));
     return output;
 }

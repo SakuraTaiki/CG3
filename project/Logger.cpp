@@ -1,10 +1,8 @@
 #include "Logger.h"
+#include <iostream>
 
-#include <format>
-// ログ出力のための名前空間
 namespace Logger {
-
 	void Log(const std::string& message) {
-		OutputDebugStringA(message.c_str());
+		std::cout << message;
 	}
 }

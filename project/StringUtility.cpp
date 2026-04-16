@@ -1,34 +1,20 @@
-#include <Windows.h>
 #include "StringUtility.h"
-namespace StringUtility
-{
-   
+#include <cstdlib>
+#include <cwchar>
+
+namespace StringUtility {
+	//stringをwstringに変換する
 	std::wstring ConvertString(const std::string& str) {
-		if (str.empty()) {
-			return std::wstring();
-		}
-
-		auto sizeNeeded = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), NULL, 0
-		);
-		if (sizeNeeded == 0) {
-			return std::wstring();
-		}
-		std::wstring result(sizeNeeded, 0);
-		MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(&str[0]), static_cast<int>(str.size()), &result[0], sizeNeeded);
-		return result;
+		size_t size = str.size();
+		std::wstring wstr(size, L' ');
+		mbstowcs_s(nullptr, &wstr[0], size + 1, str.c_str(), size);
+		return wstr;
 	}
-
+	//wstringをstringに変換する
 	std::string ConvertString(const std::wstring& str) {
-		if (str.empty()) {
-			return std::string();
-		}
-
-		auto sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0, NULL, NULL);
-		if (sizeNeeded == 0) {
-			return std::string();
-		}
-		std::string result(sizeNeeded, 0);
-		WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), result.data(), sizeNeeded, NULL, NULL);
-		return result;
+		size_t size = str.size();
+		std::string sstr(size, ' ');
+		wcstombs_s(nullptr, &sstr[0], size + 1, str.c_str(), size);
+		return sstr;
 	}
-}
+};
