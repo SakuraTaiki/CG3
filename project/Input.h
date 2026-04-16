@@ -1,35 +1,38 @@
 #pragma once
 #include <Windows.h>
-#define DIRECTINPUT_VERSION 0x0800
-#include <dinput.h>
-#include<wrl.h>
-#include"WinApp.h"
+#include <wrl.h>
+#include <dinput.h> // DirectInputのヘッダー
+#include "WinApp.h"
 
-//入力
-class Input
-{
+// ライブラリのリンク指示
+#pragma comment(lib, "dinput8.lib")
+#pragma comment(lib, "dxguid.lib")
+
+class Input {
 public:
-	template<class T>using ComPtr = Microsoft::WRL::ComPtr<T>;
-public: 
-	
-	Input();
-	~Input();
-	//初期化
-	void Initialize(WinApp*winApp);
-	//更新
-	void Update();
-	
-	bool Pushkey(BYTE keyNumber);
+    // 名前空間省略
+    template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-private: 
-	
-	IDirectInput8* directInput = nullptr;
+public:
+    // 初期化
+    void Initialize(WinApp* winApp);
+    // 更新
+    void Update();
 
-	BYTE key[256] = {};
+    // キーが押されているか判定
+    // keyNumber: DIK_SPACE などのキーコード
+    bool PushKey(BYTE keyNumber);
 
-	ComPtr<IDirectInputDevice8>keyboard;
+    // キーがトリガーされたか（押した瞬間）判定
+    bool TriggerKey(BYTE keyNumber);
 
-	WinApp* winApp = nullptr;
+private:
+    WinApp* winApp_ = nullptr;
 
+    ComPtr<IDirectInput8> directInput_;
+    ComPtr<IDirectInputDevice8> keyboard_;
 
+    // キーボードの入力状態（全キー256個）
+    BYTE key_[256] = {};
+    BYTE keyPre_[256] = {}; // 1フレーム前の状態（トリガー判定用）
 };
