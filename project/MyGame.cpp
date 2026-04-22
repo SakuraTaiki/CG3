@@ -55,10 +55,7 @@ void MyGame::Update() {
 
     Matrix4x4 projection = Math::MakePerspectiveFovMatrix(0.45f, (float)WinApp::kClientWidth / (float)WinApp::kClientHeight, 0.1f, 100.0f);
 
-    for (Object3d* obj : objectList) {
-        obj->SetCamera(view, projection);
-        obj->Update();
-    }
+   
     sprite->Update();
 }
 
