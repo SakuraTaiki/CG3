@@ -10,6 +10,7 @@ public:
     struct VertexData {
         Vector4 position;
         Vector2 texcoord;
+
     };
 
     // マテリアルデータ（色）

@@ -176,10 +176,10 @@
   <ItemGroup>
     <FxCompile Include="Sprite.VS.hlsl" />
     <FxCompile Include="Sprite.PS.hlsl" />
-    <FxCompile Include="Particle.PS.hlsl" />
-    <FxCompile Include="Particle.VS.hlsl" />
+    <FxCompile Include="Resources\shaders\hlsl\Particle.PS.hlsl" />
+    <FxCompile Include="Resources\shaders\hlsl\Particle.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Particle.hlsli" />
+    <None Include="Resources\shaders\hlsl\Particle.hlsli" />
   </ItemGroup>
 </Project>

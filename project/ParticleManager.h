@@ -30,8 +30,8 @@ public:
 	struct VertexData
 	{
 		Vector4 position;
-		Vector3 texcoord;
-		Vector2 normal;
+		Vector2 texcoord;
+		Vector3 normal;
 	};
 
 	void Initialize(DirectXCommon* dxCommon, TextureManager* textureManager);
