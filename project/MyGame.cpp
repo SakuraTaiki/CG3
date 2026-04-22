@@ -9,6 +9,9 @@ void MyGame::Initialize() {
     spriteCommon->Initialize(dxCommon);
     object3dCommon = new Object3dCommon(); object3dCommon->SetTextureManager(textureManager);
     object3dCommon->Initialize(dxCommon);
+    particleManager = new ParticleManager();
+    particleManager->Initialize(dxCommon, textureManager);
+
 
     // --- モデル読み込み (各1回ずつ) ---
     Model* modelPlane = Model::CreateFromOBJ(dxCommon, "Resources", "plane.obj", textureManager);
@@ -47,7 +50,7 @@ Object3d* MyGame::CreateObject(Model* model, Vector3 pos) {
 
 void MyGame::Update() {
     input->Update();
-    /*if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);*/
+    if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);
 
     Matrix4x4 cameraWorld = Math::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
     Matrix4x4 view = Math::Inverse(cameraWorld);
@@ -58,6 +61,7 @@ void MyGame::Update() {
         obj->Update();
     }
     sprite->Update();
+    particleManager->Update(view, projection);
 }
 
 void MyGame::Draw() {
@@ -71,6 +75,8 @@ void MyGame::Draw() {
         obj->Draw();
     }
 
+    particleManager->Draw();
+
     // 2D描画
     spriteCommon->PreDraw();
     sprite->Draw();
@@ -81,6 +87,6 @@ void MyGame::Draw() {
 void MyGame::Finalize() {
     for (Object3d* obj : objectList) delete obj;
     for (Model* m : models) delete m;
-    delete spriteCommon; delete textureManager; delete input;
+    delete spriteCommon; delete particleManager; delete textureManager; delete input;
     delete dxCommon; delete winApp;
 }

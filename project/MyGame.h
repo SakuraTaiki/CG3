@@ -10,7 +10,7 @@
 #include "Object3d.h"
 #include "Model.h"
 #include "Sprite.h"
-
+#include"ParticleManager.h"
 
 class MyGame
 {
@@ -29,6 +29,7 @@ private:
     TextureManager* textureManager = nullptr;
     SpriteCommon* spriteCommon = nullptr;
     Object3dCommon* object3dCommon = nullptr;
+    ParticleManager* particleManager = nullptr;
 
     // オブジェクト管理
     std::vector<Object3d*> objectList;
