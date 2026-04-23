@@ -185,12 +185,24 @@ void Sound::SoundUnload(SoundData* soundData) {
     soundData->wfex = {};
 }
 
-void Sound::SoundPlay(const SoundData& soundData) {
+void Sound::SoundPlay(const SoundData& soundData, float volume) {
     HRESULT result;
+
+    if (volume < 0.0f) {
+        volume = 0.0f;
+    }
+
+    if (volume > 1.0f) {
+        volume = 1.0f;
+    }
 
     // 波形フォーマットを元にSourceVoiceの生成
     IXAudio2SourceVoice* pSourceVoice = nullptr;
     result = xAudio2->CreateSourceVoice(&pSourceVoice, &soundData.wfex);
+    assert(SUCCEEDED(result));
+
+    //音量設定
+    result = pSourceVoice->SetVolume(volume);
     assert(SUCCEEDED(result));
 
     // 再生する波形データの設定

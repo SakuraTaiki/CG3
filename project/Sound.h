@@ -38,7 +38,7 @@ public:
     void SoundUnload(SoundData* soundData);
 
     // 音声再生
-    void SoundPlay(const SoundData& soundData);
+    void SoundPlay(const SoundData& soundData,float volume=1.0f);
 
 private:
     // チャンクヘッダ

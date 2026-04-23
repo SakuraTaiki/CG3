@@ -76,18 +76,36 @@ void MyGame::Update() {
 
     // SPACEでwav再生
     if (input->TriggerKey(DIK_SPACE)) {
-        sound.SoundPlay(wavSoundData);
+        sound.SoundPlay(wavSoundData,wavVolume);
     }
 
     // Mキーでmp4音声再生
     if (input->TriggerKey(DIK_M)) {
-        sound.SoundPlay(mp4SoundData);
+        sound.SoundPlay(mp4SoundData,mp4Volume);
        
     }
 
     if (input->TriggerKey(DIK_N)) {
-        sound.SoundPlay(mp3SoundData);
+        sound.SoundPlay(mp3SoundData,mp3Volume);
     }
+
+    //mp3版音量変更キー
+    if (input->TriggerKey(DIK_UP)) {
+        mp3Volume += 0.1f;
+        if (mp3Volume > 1.0f) {
+            mp3Volume = 1.0f;
+        }
+        OutputDebugStringA("[MyGame] mp3 音量アップ\n");
+    }
+
+    if (input->TriggerKey(DIK_DOWN)) {
+        mp3Volume -= 0.1f;
+        if (mp3Volume < 0.0f) {
+            mp3Volume = 0.0f;
+        }
+        OutputDebugStringA("[MyGame] mp3 音量ダウン\n");
+    }
+
 }
 
 void MyGame::Draw() {

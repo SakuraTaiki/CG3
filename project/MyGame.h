@@ -47,5 +47,10 @@ private:
     Sound::SoundData wavSoundData;
     Sound::SoundData mp4SoundData;
     Sound::SoundData mp3SoundData;
+
+    //音量メンバ変数
+    float wavVolume = 0.5f;
+    float mp4Volume = 0.5f;
+    float mp3Volume = 0.5f;
 };
 
