@@ -44,6 +44,7 @@ private:
     //サウンド管理
     Sound sound;
     //音声データ
-    Sound::SoundData soundData;
+    Sound::SoundData wavSoundData;
+    Sound::SoundData mp4SoundData;
 };
 

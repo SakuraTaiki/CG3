@@ -41,7 +41,12 @@ void MyGame::Initialize() {
     //サウンド初期化
     sound.Initialize();
     //読み込み
-    soundData = sound.SoundLoadWave("Resources/Sound/Alarm01.wav");
+    wavSoundData = sound.SoundLoadFile("Resources/Sound/Alarm01.wav");
+    
+
+    mp4SoundData = sound.SoundLoadFile("Resources/Sound/AlarmMovie.mp4");
+   
+
 }
 
 Object3d* MyGame::CreateObject(Model* model, Vector3 pos) {
@@ -69,11 +74,18 @@ void MyGame::Update() {
     sprite->Update();
     particleManager->Update(view, projection);
 
+
+    // SPACEでwav再生
     if (input->TriggerKey(DIK_SPACE)) {
-        sound.SoundPlayWave(soundData);
-        OutputDebugStringA("サウンドを再生しました\n");
+        sound.SoundPlay(wavSoundData);
+        OutputDebugStringA("[Sound] wav 再生要求 : Alarm01.wav を再生しました\n");
     }
 
+    // Mキーでmp4音声再生
+    if (input->TriggerKey(DIK_M)) {
+        sound.SoundPlay(mp4SoundData);
+        OutputDebugStringA("[Sound] mp4 再生要求 : AlarmMovie.mp4 の音声を再生しました\n");
+    }
 }
 
 void MyGame::Draw() {

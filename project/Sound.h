@@ -4,8 +4,15 @@
 #include <fstream>
 #include <vector>
 #include <cstdint>
+#include <string>
+#include <mfapi.h>
+#include <mfidl.h>
+#include <mfreadwrite.h>
 
 #pragma comment(lib, "xaudio2.lib")
+#pragma comment(lib, "mfplat.lib")
+#pragma comment(lib, "mfreadwrite.lib")
+#pragma comment(lib, "mfuuid.lib")
 
 class Sound {
 public:
@@ -19,20 +26,19 @@ public:
     struct SoundData {
         // 波形フォーマット
         WAVEFORMATEX wfex;
-        // バッファの先頭アドレス
-        BYTE* pBuffer;
-        // バッファのサイズ
-        unsigned int bufferSize;
+        // バッファ
+        std::vector<BYTE> buffer;
     };
 
-    // 音声読み込み
-    SoundData SoundLoadWave(const char* filename);
+
+    // wav / mp4 などをまとめて読み込む
+    SoundData SoundLoadFile(const std::string& filename);
 
     // 音声データ解放
     void SoundUnload(SoundData* soundData);
 
     // 音声再生
-    void SoundPlayWave(const SoundData& soundData);
+    void SoundPlay(const SoundData& soundData);
 
 private:
     // チャンクヘッダ
@@ -52,6 +58,10 @@ private:
         ChunkHeader chunk;
         WAVEFORMATEX fmt;
     };
+
+private:
+    // 文字列変換
+    std::wstring ConvertString(const std::string& str);
 
 private:
     Microsoft::WRL::ComPtr<IXAudio2> xAudio2;
