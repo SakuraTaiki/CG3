@@ -43,10 +43,9 @@ void MyGame::Initialize() {
     //読み込み
     wavSoundData = sound.SoundLoadFile("Resources/Sound/Alarm01.wav");
     
-
     mp4SoundData = sound.SoundLoadFile("Resources/Sound/AlarmMovie.mp4");
    
-
+    mp3SoundData = sound.SoundLoadFile("Resources/Sound/maou_bgm_neorock83.mp3");
 }
 
 Object3d* MyGame::CreateObject(Model* model, Vector3 pos) {
@@ -78,13 +77,16 @@ void MyGame::Update() {
     // SPACEでwav再生
     if (input->TriggerKey(DIK_SPACE)) {
         sound.SoundPlay(wavSoundData);
-        OutputDebugStringA("[Sound] wav 再生要求 : Alarm01.wav を再生しました\n");
     }
 
     // Mキーでmp4音声再生
     if (input->TriggerKey(DIK_M)) {
         sound.SoundPlay(mp4SoundData);
-        OutputDebugStringA("[Sound] mp4 再生要求 : AlarmMovie.mp4 の音声を再生しました\n");
+       
+    }
+
+    if (input->TriggerKey(DIK_N)) {
+        sound.SoundPlay(mp3SoundData);
     }
 }
 
