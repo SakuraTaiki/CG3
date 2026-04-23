@@ -1,4 +1,5 @@
 #include "MyGame.h"
+#include <Windows.h>
 void MyGame::Initialize() {
     // --- 基盤初期化 ---
     winApp = new WinApp(); winApp->Initialize();
@@ -36,6 +37,11 @@ void MyGame::Initialize() {
     sprite->Initialize(spriteCommon, texHandle);
 
     cameraTransform = { {1,1,1}, {0.3f, 0, 0}, {0, 5, -10} };
+
+    //サウンド初期化
+    sound.Initialize();
+    //読み込み
+    soundData = sound.SoundLoadWave("Resources/Sound/Alarm01.wav");
 }
 
 Object3d* MyGame::CreateObject(Model* model, Vector3 pos) {
@@ -62,6 +68,12 @@ void MyGame::Update() {
     }
     sprite->Update();
     particleManager->Update(view, projection);
+
+    if (input->TriggerKey(DIK_SPACE)) {
+        sound.SoundPlayWave(soundData);
+        OutputDebugStringA("サウンドを再生しました\n");
+    }
+
 }
 
 void MyGame::Draw() {
@@ -89,4 +101,5 @@ void MyGame::Finalize() {
     for (Model* m : models) delete m;
     delete spriteCommon; delete particleManager; delete textureManager; delete input;
     delete dxCommon; delete winApp;
+    sound.Finalize();
 }

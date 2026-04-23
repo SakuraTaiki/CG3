@@ -11,6 +11,7 @@
 #include "Model.h"
 #include "Sprite.h"
 #include"ParticleManager.h"
+#include "Sound.h"
 
 class MyGame
 {
@@ -40,5 +41,9 @@ private:
     // ヘルパー関数
     Object3d* CreateObject(Model* model, Vector3 pos);
 
+    //サウンド管理
+    Sound sound;
+    //音声データ
+    Sound::SoundData soundData;
 };
 
