@@ -57,8 +57,6 @@ private: // メンバ関数(内部処理)
     void InitializeCopyImagePipeline();
     void TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState);
 
-    
-
 private: // メンバ変数
     WinApp* winApp_ = nullptr;
 

@@ -188,7 +188,7 @@
   <ItemGroup>
     <None Include="Resources\shaders\hlsl\Particle.hlsli" />
     <None Include="CopyImage.hlsli" />
-    <None Include="CopyImage.VS.hlsl" />
+
     <None Include="CopyImage.PS.hlsl" />
-  </ItemGroup>
+    <None Include="CopyImage.VS.hlsl" /> 
 </Project>
