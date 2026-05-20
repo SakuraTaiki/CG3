@@ -516,8 +516,8 @@ void DirectXCommon::InitializeCopyImagePipeline()
         IID_PPV_ARGS(&copyImageRootSignature_));
     assert(SUCCEEDED(hr));
 
-    auto vsBlob = CompileShader(L"Resources/shaders/hlsl/CopyImage.VS.hlsl", L"vs_6_0");
-    auto psBlob = CompileShader(L"Resources/shaders/hlsl/CopyImage.PS.hlsl", L"ps_6_0");
+    auto vsBlob = CompileShader(L"Resources/shaders/hlsl/Fullscreen.VS.hlsl", L"vs_6_0");
+    auto psBlob = CompileShader(L"Resources/shaders/hlsl/Grayscale.PS.hlsl", L"ps_6_0");
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
     psoDesc.pRootSignature = copyImageRootSignature_.Get();

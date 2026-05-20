@@ -5,7 +5,7 @@
     <FxCompile Include="Resources\shaders\hlsl\Particle.VS.hlsl" />
     <FxCompile Include="Sprite.PS.hlsl" />
     <FxCompile Include="Sprite.VS.hlsl" />
-    <FxCompile Include="Resources\shaders\hlsl\Fullscreen.PS.hlsl" />
+    <FxCompile Include="Resources\shaders\hlsl\Grayscale.PS.hlsl" />
     <FxCompile Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
