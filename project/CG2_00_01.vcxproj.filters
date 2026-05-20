@@ -5,8 +5,6 @@
     <FxCompile Include="Resources\shaders\hlsl\Particle.VS.hlsl" />
     <FxCompile Include="Sprite.PS.hlsl" />
     <FxCompile Include="Sprite.VS.hlsl" />
-    <FxCompile Include="Resources\shaders\hlsl\Grayscale.PS.hlsl" />
-    <FxCompile Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DResourceLeakChecker.cpp" />
@@ -69,6 +67,8 @@
   <ItemGroup>
     <None Include="Resources\shaders\hlsl\Particle.hlsli" />
     <None Include="Resources\shaders\hlsl\FullScreen.hlsli" />
+    <None Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Grayscale.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

@@ -214,8 +214,12 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ResourceCompile Include="CG_3.rc" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\shaders\hlsl\Grayscale.PS.hlsl" />
-    <FxCompile Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Grayscale.PS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl">
+      <FileType>Document</FileType>
+    </None>
     <FxCompile Include="Resources\shaders\hlsl\Particle.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
