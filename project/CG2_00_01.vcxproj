@@ -214,18 +214,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ResourceCompile Include="CG_3.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="CopyImage.PS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <FileType>Document</FileType>
-    </None>
-    <None Include="CopyImage.VS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <FileType>Document</FileType>
-    </None>
+    <FxCompile Include="Resources\shaders\hlsl\Fullscreen.PS.hlsl" />
+    <FxCompile Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl" />
     <FxCompile Include="Resources\shaders\hlsl\Particle.PS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
@@ -248,7 +238,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CopyImage.hlsli" />
+    <None Include="Resources\shaders\hlsl\FullScreen.hlsli" />
     <None Include="Resources\shaders\hlsl\Particle.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
