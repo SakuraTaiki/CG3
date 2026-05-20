@@ -109,7 +109,11 @@ void MyGame::Update() {
 }
 
 void MyGame::Draw() {
-    dxCommon->PreDraw();
+
+    // RenderTextureに3Dシーンを描画
+    dxCommon->PreDrawForRenderTexture();
+
+   
     ID3D12DescriptorHeap* heaps[] = { textureManager->GetSrvHeap() };
     dxCommon->GetCommandList()->SetDescriptorHeaps(1, heaps);
 
@@ -121,7 +125,14 @@ void MyGame::Draw() {
 
     particleManager->Draw();
 
+    dxCommon->PreDraw();
+
+    dxCommon->DrawRenderTextureToSwapChain();
+
+
     // 2D描画
+     // 2Dスプライトは最終画面に描く
+    dxCommon->GetCommandList()->SetDescriptorHeaps(1, heaps);
     spriteCommon->PreDraw();
     sprite->Draw();
 
