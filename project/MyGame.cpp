@@ -1,15 +1,28 @@
 #include "MyGame.h"
 #include <Windows.h>
+
 void MyGame::Initialize() {
     // --- 基盤初期化 ---
-    winApp = new WinApp(); winApp->Initialize();
-    dxCommon = new DirectXCommon(); dxCommon->Initialize(winApp);
-    input = new Input(); input->Initialize(winApp);
-    textureManager = new TextureManager(); textureManager->Initialize(dxCommon);
-    spriteCommon = new SpriteCommon(); spriteCommon->SetTextureManager(textureManager);
+    winApp = new WinApp(); 
+    winApp->Initialize();
+
+    dxCommon = new DirectXCommon(); 
+    dxCommon->Initialize(winApp);
+
+    input = new Input(); 
+    input->Initialize(winApp);
+
+    textureManager = new TextureManager(); 
+    textureManager->Initialize(dxCommon);
+
+    spriteCommon = new SpriteCommon(); 
+    spriteCommon->SetTextureManager(textureManager);
     spriteCommon->Initialize(dxCommon);
-    object3dCommon = new Object3dCommon(); object3dCommon->SetTextureManager(textureManager);
+
+    object3dCommon = new Object3dCommon();
+    object3dCommon->SetTextureManager(textureManager);
     object3dCommon->Initialize(dxCommon);
+
     particleManager = new ParticleManager();
     particleManager->Initialize(dxCommon, textureManager);
 
@@ -35,6 +48,11 @@ void MyGame::Initialize() {
     uint32_t texHandle = textureManager->LoadTexture("Resources/uvChecker.png");
     sprite = new Sprite();
     sprite->Initialize(spriteCommon, texHandle);
+
+    //skyBox
+    skybox = new Skybox();
+    skybox->Initialize(dxCommon, textureManager, "Resources/skybox.dds");
+    skybox->SetScale({ 100.0f, 100.0f, 100.0f });
 
     cameraTransform = { {1,1,1}, {0.3f, 0, 0}, {0, 5, -10} };
 
@@ -62,14 +80,28 @@ void MyGame::Update() {
     input->Update();
     if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);
 
-    Matrix4x4 cameraWorld = Math::MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate, cameraTransform.translate);
+    Matrix4x4 cameraWorld = Math::MakeAffineMatrix
+    (cameraTransform.scale, 
+     cameraTransform.rotate,
+     cameraTransform.translate);
+
     Matrix4x4 view = Math::Inverse(cameraWorld);
-    Matrix4x4 projection = Math::MakePerspectiveFovMatrix(0.45f, (float)WinApp::kClientWidth / (float)WinApp::kClientHeight, 0.1f, 100.0f);
+
+    Matrix4x4 projection = Math::MakePerspectiveFovMatrix(
+        0.45f,
+        (float)WinApp::kClientWidth / (float)WinApp::kClientHeight,
+        0.1f, 100.0f);
 
     for (Object3d* obj : objectList) {
         obj->SetCamera(view, projection);
         obj->Update();
     }
+
+    if (skybox) {
+        skybox->SetCamera(view, projection);
+        skybox->Update();
+    }
+
     sprite->Update();
     particleManager->Update(view, projection);
 
@@ -105,13 +137,13 @@ void MyGame::Update() {
         }
         OutputDebugStringA("[MyGame] mp3 音量ダウン\n");
     }
-
 }
 
 void MyGame::Draw() {
 
     // RenderTextureに3Dシーンを描画
     dxCommon->PreDrawForRenderTexture();
+
     ID3D12DescriptorHeap* heaps[] = { textureManager->GetSrvHeap() };
     dxCommon->GetCommandList()->SetDescriptorHeaps(1, heaps);
 
@@ -119,6 +151,10 @@ void MyGame::Draw() {
     object3dCommon->PreDraw();
     for (Object3d* obj : objectList) {
         obj->Draw();
+    }
+
+    if (skybox) {
+        skybox->Draw();
     }
 
     particleManager->Draw();
@@ -130,6 +166,7 @@ void MyGame::Draw() {
     // 2D描画
     // 2Dスプライトは最終画面に描く
     dxCommon->GetCommandList()->SetDescriptorHeaps(1, heaps);
+
     spriteCommon->PreDraw();
     sprite->Draw();
 
@@ -137,9 +174,17 @@ void MyGame::Draw() {
 }
 
 void MyGame::Finalize() {
+    delete skybox;
+
     for (Object3d* obj : objectList) delete obj;
     for (Model* m : models) delete m;
-    delete spriteCommon; delete particleManager; delete textureManager; delete input;
-    delete dxCommon; delete winApp;
+
+    delete spriteCommon;
+    delete particleManager; 
+    delete textureManager; 
+    delete input;
+    delete dxCommon; 
+    delete winApp;
+
     sound.Finalize();
 }

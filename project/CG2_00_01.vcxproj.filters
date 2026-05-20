@@ -5,6 +5,8 @@
     <FxCompile Include="Resources\shaders\hlsl\Particle.VS.hlsl" />
     <FxCompile Include="Sprite.PS.hlsl" />
     <FxCompile Include="Sprite.VS.hlsl" />
+    <FxCompile Include="Skybox.PS.hlsl" />
+    <FxCompile Include="Skybox.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="D3DResourceLeakChecker.cpp" />
@@ -32,6 +34,7 @@
     <ClCompile Include="MyMath.cpp" />
     <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="WinApp.cpp" />
+    <ClCompile Include="Skybox.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -60,6 +63,7 @@
     <ClInclude Include="MyMath.h" />
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="WinApp.h" />
+    <ClInclude Include="Skybox.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
@@ -69,6 +73,7 @@
     <None Include="Resources\shaders\hlsl\FullScreen.hlsli" />
     <None Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl" />
     <None Include="Resources\shaders\hlsl\Grayscale.PS.hlsl" />
+    <None Include="Skybox.hlsli" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

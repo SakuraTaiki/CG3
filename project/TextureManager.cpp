@@ -78,24 +78,50 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
     }
     assert(textures_.size() < kMaxTextures);
 
-
     // 2. ファイル読み込み (DirectXTex)
     DirectX::ScratchImage image;
-    std::wstring wFilePath = ConvertString(filePath);
-    HRESULT hr = DirectX::LoadFromWICFile(wFilePath.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, image);
-    // ★ここで失敗を検知して止める
-    if (FAILED(hr)) {
-        // コンソールに失敗したファイル名を表示
-        std::string message = "Failed to load texture: " + filePath + "\n";
-        OutputDebugStringA(message.c_str());
-        assert(SUCCEEDED(hr)); // ここで強制停止させる
-        return 0;
-    }
-
     // 3. ミップマップ生成
     DirectX::ScratchImage mipImages;
-    hr = DirectX::GenerateMipMaps(image.GetImages(), image.GetImageCount(), image.GetMetadata(), DirectX::TEX_FILTER_SRGB, 0, mipImages);
-    assert(SUCCEEDED(hr));
+
+    std::wstring wFilePath = ConvertString(filePath);
+    HRESULT hr;
+
+    if (filePath.ends_with(".dds")) {
+        hr = DirectX::LoadFromDDSFile(
+            wFilePath.c_str(),
+            DirectX::DDS_FLAGS_NONE,
+            nullptr,
+            image);
+    } else {
+        hr = DirectX::LoadFromWICFile(
+            wFilePath.c_str(),
+            DirectX::WIC_FLAGS_FORCE_SRGB,
+            nullptr,
+            image);
+    }
+
+    if (FAILED(hr)) {
+        std::string message = "Failed to load texture: " + filePath + "\n";
+        OutputDebugStringA(message.c_str());
+        assert(SUCCEEDED(hr));
+        return 0;
+    }
+    
+    const DirectX::TexMetadata& originalMetadata = image.GetMetadata();
+
+    if (DirectX::IsCompressed(originalMetadata.format)) {
+        mipImages = std::move(image);
+    } else {
+        hr= DirectX::GenerateMipMaps(
+            image.GetImages(),
+            image.GetImageCount(),
+            image.GetMetadata(),
+            DirectX::TEX_FILTER_SRGB,
+            0,
+            mipImages);
+
+        assert(SUCCEEDED(hr));
+    }
 
     // 4. テクスチャリソースの作成
     const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
@@ -113,6 +139,7 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
     textureHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> textureResource;
+
     hr = dxCommon_->GetDevice()->CreateCommittedResource(
         &textureHeapProps,
         D3D12_HEAP_FLAG_NONE,
@@ -120,6 +147,7 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
         D3D12_RESOURCE_STATE_COPY_DEST, // データ転送前はコピー先状態にしておく
         nullptr,
         IID_PPV_ARGS(&textureResource));
+
     assert(SUCCEEDED(hr));
 
     // 5. 中間リソース（Upload Heap）の作成
