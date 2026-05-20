@@ -12,6 +12,7 @@
 #include "Sprite.h"
 #include"ParticleManager.h"
 #include "Sound.h"
+#include "Skybox.h"
 
 class MyGame
 {
@@ -36,6 +37,8 @@ private:
     std::vector<Object3d*> objectList;
     std::vector<Model*> models; // モデル解放用
     Sprite* sprite = nullptr;
+    Skybox* skybox = nullptr;
+
     Transform cameraTransform;
 
     // ヘルパー関数
