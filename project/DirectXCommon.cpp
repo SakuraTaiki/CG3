@@ -55,6 +55,8 @@ void DirectXCommon::PreDrawForRenderTexture()
     scissorRect.right = WinApp::kClientWidth;
     scissorRect.bottom = WinApp::kClientHeight;
     commandList_->RSSetScissorRects(1, &scissorRect);
+
+
 }
 
 void DirectXCommon::DrawRenderTextureToSwapChain()
