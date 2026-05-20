@@ -39,6 +39,9 @@ public: // メンバ関数
     ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
     size_t GetBackBufferCount() const { return 2; }
 
+    void PreDrawForRenderTexture();
+    void DrawRenderTextureToSwapChain();
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -49,6 +52,12 @@ private: // メンバ関数(内部処理)
     void InitializeDXC();
     void InitializeFixFPS();
     void UpdateFixFPS();
+
+    void InitializeRenderTexture();
+    void InitializeCopyImagePipeline();
+    void TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState);
+
+    
 
 private: // メンバ変数
     WinApp* winApp_ = nullptr;
@@ -81,4 +90,17 @@ private: // メンバ変数
 
     // FPS制御
     std::chrono::steady_clock::time_point reference_;
+
+    ComPtr<ID3D12Resource> renderTextureResource_;
+
+    ComPtr<ID3D12DescriptorHeap> renderTextureSrvHeap_;
+    D3D12_CPU_DESCRIPTOR_HANDLE renderTextureSrvHandleCPU_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE renderTextureSrvHandleGPU_{};
+
+    D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
+
+    D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+    ComPtr<ID3D12RootSignature> copyImageRootSignature_;
+    ComPtr<ID3D12PipelineState> copyImagePipelineState_;
 };

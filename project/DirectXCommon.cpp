@@ -4,6 +4,7 @@
 #include <cassert>
 #include <format>
 #include <thread>
+#include "MyMath.h"
 
 using namespace Microsoft::WRL;
 
@@ -19,6 +20,64 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     InitializeDepthStencilView();
     InitializeFence();
     InitializeDXC();
+
+    InitializeRenderTexture();
+    InitializeCopyImagePipeline();
+}
+
+void DirectXCommon::PreDrawForRenderTexture()
+{
+
+    TransitionResource(
+        renderTextureResource_.Get(),
+        renderTextureState_,
+        D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+    renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
+        dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    commandList_->OMSetRenderTargets(1, &renderTextureRtvHandle_, false, &dsvHandle);
+
+    float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+    commandList_->ClearRenderTargetView(renderTextureRtvHandle_, clearColor, 0, nullptr);
+    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+    D3D12_VIEWPORT viewport{};
+    viewport.Width = static_cast<float>(WinApp::kClientWidth);
+    viewport.Height = static_cast<float>(WinApp::kClientHeight);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    commandList_->RSSetViewports(1, &viewport);
+
+    D3D12_RECT scissorRect{};
+    scissorRect.right = WinApp::kClientWidth;
+    scissorRect.bottom = WinApp::kClientHeight;
+    commandList_->RSSetScissorRects(1, &scissorRect);
+
+}
+
+void DirectXCommon::DrawRenderTextureToSwapChain()
+{
+
+    TransitionResource(
+        renderTextureResource_.Get(),
+        renderTextureState_,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+    renderTextureState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+    ID3D12DescriptorHeap* heaps[] = { renderTextureSrvHeap_.Get() };
+    commandList_->SetDescriptorHeaps(1, heaps);
+
+    commandList_->SetGraphicsRootSignature(copyImageRootSignature_.Get());
+    commandList_->SetPipelineState(copyImagePipelineState_.Get());
+    commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList_->SetGraphicsRootDescriptorTable(0, renderTextureSrvHandleGPU_);
+
+    commandList_->DrawInstanced(3, 1, 0, 0);
+
 }
 
 void DirectXCommon::InitializeDevice() {
@@ -98,7 +157,7 @@ void DirectXCommon::InitializeSwapChain() {
 void DirectXCommon::InitializeRenderTargetView() {
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.NumDescriptors = 2;
+    rtvHeapDesc.NumDescriptors = 3;
     HRESULT hr = device_->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap_));
     assert(SUCCEEDED(hr));
 
@@ -335,4 +394,166 @@ void DirectXCommon::UpdateFixFPS() {
         }
     }
     reference_ = steady_clock::now();
+}
+
+void DirectXCommon::InitializeRenderTexture()
+{
+
+    const Vector4 clearColor{ 1.0f, 0.0f, 0.0f, 1.0f };
+
+    D3D12_RESOURCE_DESC resourceDesc{};
+    resourceDesc.Width = WinApp::kClientWidth;
+    resourceDesc.Height = WinApp::kClientHeight;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+
+    D3D12_HEAP_PROPERTIES heapProperties{};
+    heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    D3D12_CLEAR_VALUE clearValue{};
+    clearValue.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    clearValue.Color[0] = clearColor.x;
+    clearValue.Color[1] = clearColor.y;
+    clearValue.Color[2] = clearColor.z;
+    clearValue.Color[3] = clearColor.w;
+
+    HRESULT hr = device_->CreateCommittedResource(
+        &heapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        &clearValue,
+        IID_PPV_ARGS(&renderTextureResource_));
+    assert(SUCCEEDED(hr));
+
+    UINT rtvSize = device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+    renderTextureRtvHandle_ = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    renderTextureRtvHandle_.ptr += rtvSize * 2;
+
+    device_->CreateRenderTargetView(renderTextureResource_.Get(), nullptr, renderTextureRtvHandle_);
+
+    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
+    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srvHeapDesc.NumDescriptors = 1;
+    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+    hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&renderTextureSrvHeap_));
+    assert(SUCCEEDED(hr));
+
+    renderTextureSrvHandleCPU_ = renderTextureSrvHeap_->GetCPUDescriptorHandleForHeapStart();
+    renderTextureSrvHandleGPU_ = renderTextureSrvHeap_->GetGPUDescriptorHandleForHeapStart();
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = 1;
+
+    device_->CreateShaderResourceView(renderTextureResource_.Get(), &srvDesc, renderTextureSrvHandleCPU_);
+
+    renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+}
+
+void DirectXCommon::InitializeCopyImagePipeline()
+{
+
+    HRESULT hr = S_FALSE;
+
+    D3D12_DESCRIPTOR_RANGE descriptorRange{};
+    descriptorRange.BaseShaderRegister = 0;
+    descriptorRange.NumDescriptors = 1;
+    descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_ROOT_PARAMETER rootParameter{};
+    rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameter.DescriptorTable.pDescriptorRanges = &descriptorRange;
+    rootParameter.DescriptorTable.NumDescriptorRanges = 1;
+    rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_STATIC_SAMPLER_DESC staticSampler{};
+    staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+    staticSampler.ShaderRegister = 0;
+    staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+    rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    rootSignatureDesc.pParameters = &rootParameter;
+    rootSignatureDesc.NumParameters = 1;
+    rootSignatureDesc.pStaticSamplers = &staticSampler;
+    rootSignatureDesc.NumStaticSamplers = 1;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+
+    hr = D3D12SerializeRootSignature(
+        &rootSignatureDesc,
+        D3D_ROOT_SIGNATURE_VERSION_1,
+        &signatureBlob,
+        &errorBlob);
+
+    if (FAILED(hr)) {
+        OutputDebugStringA(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+        assert(false);
+    }
+
+    hr = device_->CreateRootSignature(
+        0,
+        signatureBlob->GetBufferPointer(),
+        signatureBlob->GetBufferSize(),
+        IID_PPV_ARGS(&copyImageRootSignature_));
+    assert(SUCCEEDED(hr));
+
+    auto vsBlob = CompileShader(L"Resources/shaders/hlsl/CopyImage.VS.hlsl", L"vs_6_0");
+    auto psBlob = CompileShader(L"Resources/shaders/hlsl/CopyImage.PS.hlsl", L"ps_6_0");
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+    psoDesc.pRootSignature = copyImageRootSignature_.Get();
+    psoDesc.InputLayout.pInputElementDescs = nullptr;
+    psoDesc.InputLayout.NumElements = 0;
+    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
+    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
+    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+    psoDesc.DepthStencilState.DepthEnable = false;
+    psoDesc.DepthStencilState.StencilEnable = false;
+    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
+    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    psoDesc.NumRenderTargets = 1;
+    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.SampleDesc.Count = 1;
+
+    hr = device_->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&copyImagePipelineState_));
+    assert(SUCCEEDED(hr));
+
+}
+
+void DirectXCommon::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
+{
+
+    if (beforeState == afterState) {
+        return;
+    }
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = resource;
+    barrier.Transition.StateBefore = beforeState;
+    barrier.Transition.StateAfter = afterState;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    commandList_->ResourceBarrier(1, &barrier);
+
 }
