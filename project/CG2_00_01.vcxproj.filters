@@ -34,6 +34,7 @@
     <ClCompile Include="WinApp.cpp" />
     <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="SrvManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -64,6 +65,7 @@
     <ClInclude Include="WinApp.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="SrvManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
