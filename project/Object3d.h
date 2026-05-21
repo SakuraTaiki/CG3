@@ -11,7 +11,10 @@ struct TransformationMatrix {
 struct Material {
     Vector4 color;
     int32_t enableLighting;
-    float padding[3];
+
+    float environmentCoefficient;
+    float padding[2];
+
     Matrix4x4 uvTransform;
 };
 
@@ -36,6 +39,12 @@ public:
     void SetColor(const Vector4& color) { if (materialData_) materialData_->color = color; }
     void SetEnableLighting(bool enable) { if (materialData_) materialData_->enableLighting = (enable ? 1 : 0); }
     void SetUVTransform(const Transform& uvTransform);
+
+    void SetEnvironmentCoefficient(float value) {
+        if (materialData_) {
+            materialData_->environmentCoefficient = value;
+        }
+    }
 
 private:
     Object3dCommon* object3dCommon_ = nullptr;

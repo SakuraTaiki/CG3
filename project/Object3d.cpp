@@ -27,6 +27,7 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
 
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = 1;
+    materialData_->environmentCoefficient = 0.3f;
     materialData_->uvTransform = Math::MakeIdentity4x4();
 }
 
@@ -60,6 +61,12 @@ void Object3d::Draw() {
     if (object3dCommon_->GetTextureManager()) {
         auto gpuHandle = object3dCommon_->GetTextureManager()->GetSrvHandleGPU(model_->GetTextureHandle());
         commandList->SetGraphicsRootDescriptorTable(3, gpuHandle);
+
+        auto envHandle =
+            object3dCommon_->GetTextureManager()->GetSrvHandleGPU(
+                object3dCommon_->GetTextureManager()->LoadTexture(
+                    "Resources/skybox/rostock_laage_airport_4k.dds"));
+        commandList->SetGraphicsRootDescriptorTable(4, envHandle);
     }
 
     model_->Draw(commandList);
