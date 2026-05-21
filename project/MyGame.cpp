@@ -51,7 +51,7 @@ void MyGame::Initialize() {
 
     //skyBox
     skybox = new Skybox();
-    skybox->Initialize(dxCommon, textureManager, "Resources/skybox.dds");
+    skybox->Initialize(dxCommon, textureManager, "Resources/skybox/rostock_laage_airport_4k.dds");
     skybox->SetScale({ 100.0f, 100.0f, 100.0f });
 
     cameraTransform = { {1,1,1}, {0.3f, 0, 0}, {0, 5, -10} };
@@ -175,6 +175,7 @@ void MyGame::Draw() {
 
 void MyGame::Finalize() {
     delete skybox;
+    delete sprite;
 
     for (Object3d* obj : objectList) delete obj;
     for (Model* m : models) delete m;

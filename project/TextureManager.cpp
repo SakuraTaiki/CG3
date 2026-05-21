@@ -72,15 +72,13 @@ void TextureManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 uint32_t TextureManager::LoadTexture(const std::string& filePath) {
-    // 1. 既に読み込み済みかチェック
     if (fileMap_.contains(filePath)) {
         return fileMap_[filePath];
     }
+
     assert(textures_.size() < kMaxTextures);
 
-    // 2. ファイル読み込み (DirectXTex)
     DirectX::ScratchImage image;
-    // 3. ミップマップ生成
     DirectX::ScratchImage mipImages;
 
     std::wstring wFilePath = ConvertString(filePath);
@@ -103,16 +101,16 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
     if (FAILED(hr)) {
         std::string message = "Failed to load texture: " + filePath + "\n";
         OutputDebugStringA(message.c_str());
-        assert(SUCCEEDED(hr));
+        assert(false);
         return 0;
     }
-    
-    const DirectX::TexMetadata& originalMetadata = image.GetMetadata();
 
-    if (DirectX::IsCompressed(originalMetadata.format)) {
+    const DirectX::TexMetadata& metadata = image.GetMetadata();
+
+    if (DirectX::IsCompressed(metadata.format)) {
         mipImages = std::move(image);
     } else {
-        hr= DirectX::GenerateMipMaps(
+        hr = DirectX::GenerateMipMaps(
             image.GetImages(),
             image.GetImageCount(),
             image.GetMetadata(),
@@ -123,146 +121,99 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
         assert(SUCCEEDED(hr));
     }
 
-    // 4. テクスチャリソースの作成
-    const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
-    D3D12_RESOURCE_DESC textureDesc = {};
-    textureDesc.Width = UINT(metadata.width);
-    textureDesc.Height = UINT(metadata.height);
-    textureDesc.MipLevels = UINT16(metadata.mipLevels);
-    textureDesc.DepthOrArraySize = UINT16(metadata.arraySize);
-    textureDesc.Format = metadata.format;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);
+    const DirectX::TexMetadata& finalMetadata = mipImages.GetMetadata();
 
-    // Heap Properties for Texture (Default Heap)
-    D3D12_HEAP_PROPERTIES textureHeapProps = {};
-    textureHeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+    D3D12_RESOURCE_DESC textureDesc{};
+    textureDesc.Width = UINT(finalMetadata.width);
+    textureDesc.Height = UINT(finalMetadata.height);
+    textureDesc.MipLevels = UINT16(finalMetadata.mipLevels);
+    textureDesc.DepthOrArraySize = UINT16(finalMetadata.arraySize);
+    textureDesc.Format = finalMetadata.format;
+    textureDesc.SampleDesc.Count = 1;
+    textureDesc.Dimension = D3D12_RESOURCE_DIMENSION(finalMetadata.dimension);
+
+    D3D12_HEAP_PROPERTIES heapProps{};
+    heapProps.Type = D3D12_HEAP_TYPE_CUSTOM;
+    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
+    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> textureResource;
 
     hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &textureHeapProps,
+        &heapProps,
         D3D12_HEAP_FLAG_NONE,
         &textureDesc,
-        D3D12_RESOURCE_STATE_COPY_DEST, // データ転送前はコピー先状態にしておく
+        D3D12_RESOURCE_STATE_GENERIC_READ,
         nullptr,
         IID_PPV_ARGS(&textureResource));
 
     assert(SUCCEEDED(hr));
 
-    // 5. 中間リソース（Upload Heap）の作成
-    // データ転送に必要なサイズやレイアウトを計算
-    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(metadata.mipLevels);
-    UINT64 uploadBufferSize = 0;
-    dxCommon_->GetDevice()->GetCopyableFootprints(&textureDesc, 0, UINT(metadata.mipLevels), 0, layouts.data(), nullptr, nullptr, &uploadBufferSize);
+    for (size_t arrayIndex = 0; arrayIndex < finalMetadata.arraySize; ++arrayIndex) {
+        for (size_t mipIndex = 0; mipIndex < finalMetadata.mipLevels; ++mipIndex) {
 
-    D3D12_HEAP_PROPERTIES uploadHeapProps = {};
-    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+            const DirectX::Image* img = mipImages.GetImage(
+                mipIndex,
+                arrayIndex,
+                0);
 
-    D3D12_RESOURCE_DESC uploadBufferDesc = {};
-    uploadBufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    uploadBufferDesc.Alignment = 0;
-    uploadBufferDesc.Width = uploadBufferSize;
-    uploadBufferDesc.Height = 1;
-    uploadBufferDesc.DepthOrArraySize = 1;
-    uploadBufferDesc.MipLevels = 1;
-    uploadBufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-    uploadBufferDesc.SampleDesc.Count = 1;
-    uploadBufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            assert(img);
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
-    hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &uploadHeapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &uploadBufferDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&intermediateResource)
-    );
-    assert(SUCCEEDED(hr));
+            UINT subresourceIndex =
+                UINT(mipIndex + arrayIndex * finalMetadata.mipLevels);
 
-    // 6. データ転送（CPU -> Upload Heap）
-    uint8_t* pData = nullptr;
-    hr = intermediateResource->Map(0, nullptr, reinterpret_cast<void**>(&pData));
-    assert(SUCCEEDED(hr));
+            hr = textureResource->WriteToSubresource(
+                subresourceIndex,
+                nullptr,
+                img->pixels,
+                UINT(img->rowPitch),
+                UINT(img->slicePitch));
 
-    for (size_t i = 0; i < metadata.mipLevels; ++i) {
-        const DirectX::Image* img = mipImages.GetImage(i, 0, 0);
-
-        // 書き込み先のポインタ計算（レイアウトのオフセットを加算）
-        uint8_t* dstStart = pData + layouts[i].Offset;
-        const uint8_t* srcStart = img->pixels;
-
-        // 行ごとにコピー（アライメント対応）
-        for (size_t y = 0; y < img->height; ++y) {
-            memcpy(
-                dstStart + y * layouts[i].Footprint.RowPitch,
-                srcStart + y * img->rowPitch,
-                img->rowPitch
-            );
+            assert(SUCCEEDED(hr));
         }
     }
-    intermediateResource->Unmap(0, nullptr);
 
-    // 7. データ転送コマンド発行（Upload Heap -> Texture Resource）
-    auto commandList = dxCommon_->GetCommandList();
-
-    for (size_t i = 0; i < metadata.mipLevels; ++i) {
-        D3D12_TEXTURE_COPY_LOCATION dst = {};
-        dst.pResource = textureResource.Get();
-        dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-        dst.SubresourceIndex = UINT(i);
-
-        D3D12_TEXTURE_COPY_LOCATION src = {};
-        src.pResource = intermediateResource.Get();
-        src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-        src.PlacedFootprint = layouts[i];
-
-        commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
-    }
-
-    // 8. リソースバリア（CopyDest -> PixelShaderResource）
-    D3D12_RESOURCE_BARRIER barrier = {};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Transition.pResource = textureResource.Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-
-    commandList->ResourceBarrier(1, &barrier);
-
-
-    // 9. 構造体に保存
-    TextureData data;
+    TextureData data{};
     data.resource = textureResource;
-    data.intermediateResource = intermediateResource;
     data.resourceDesc = textureResource->GetDesc();
 
-    // 10. SRV作成
     uint32_t index = static_cast<uint32_t>(textures_.size());
+
     D3D12_CPU_DESCRIPTOR_HANDLE handleCPU = srvHeap_->GetCPUDescriptorHandleForHeapStart();
     D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = srvHeap_->GetGPUDescriptorHandleForHeapStart();
 
-    handleCPU.ptr += (descriptorSizeSRV_ * index);
-    handleGPU.ptr += (descriptorSizeSRV_ * index);
+    handleCPU.ptr += descriptorSizeSRV_ * index;
+    handleGPU.ptr += descriptorSizeSRV_ * index;
 
     data.srvHandleCPU = handleCPU;
     data.srvHandleGPU = handleGPU;
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = data.resourceDesc.Format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = UINT(metadata.mipLevels);
 
-    dxCommon_->GetDevice()->CreateShaderResourceView(data.resource.Get(), &srvDesc, data.srvHandleCPU);
+    if (finalMetadata.IsCubemap()) {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+        srvDesc.TextureCube.MostDetailedMip = 0;
+        srvDesc.TextureCube.MipLevels = UINT(finalMetadata.mipLevels);
+        srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+    } else {
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.MipLevels = UINT(finalMetadata.mipLevels);
+        srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+    }
+
+    dxCommon_->GetDevice()->CreateShaderResourceView(
+        data.resource.Get(),
+        &srvDesc,
+        data.srvHandleCPU);
 
     textures_.push_back(data);
     fileMap_[filePath] = index;
 
     return index;
 }
-
 D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetSrvHandleGPU(uint32_t textureHandle) {
     return textures_[textureHandle].srvHandleGPU;
 }
