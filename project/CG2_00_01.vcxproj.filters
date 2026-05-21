@@ -33,6 +33,7 @@
     <ClCompile Include="TextureManager.cpp" />
     <ClCompile Include="WinApp.cpp" />
     <ClCompile Include="Skybox.cpp" />
+    <ClCompile Include="Camera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -62,6 +63,7 @@
     <ClInclude Include="TextureManager.h" />
     <ClInclude Include="WinApp.h" />
     <ClInclude Include="Skybox.h" />
+    <ClInclude Include="Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

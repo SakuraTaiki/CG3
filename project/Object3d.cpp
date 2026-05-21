@@ -7,6 +7,8 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
     object3dCommon_ = object3dCommon;
     auto device = object3dCommon_->GetDxCommon()->GetDevice();
 
+    camera_ = object3dCommon_->GetDefaultCamera();
+
     // Transform Buffer
     D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
     D3D12_RESOURCE_DESC resDesc = {};
@@ -32,10 +34,21 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
 }
 
 void Object3d::Update() {
-    Matrix4x4 worldMatrix = Math::MakeAffineMatrix(transform_.scale, transform_.rotate, transform_.translate);
-    Matrix4x4 wvpMatrix = Math::Multiply(worldMatrix, Math::Multiply(viewMatrix_, projectionMatrix_));
+    Matrix4x4 worldMatrix = Math::MakeAffineMatrix(
+        transform_.scale,
+        transform_.rotate, 
+        transform_.translate);
 
-    transformationData_->WVP = wvpMatrix;
+    Matrix4x4 worldViewProjectionmatrix = worldMatrix;
+
+
+    if (camera_) {
+        worldViewProjectionmatrix = 
+            Math::Multiply(worldMatrix, Math::Multiply(worldMatrix, camera_->GetViewProjectionMatrix()));
+    }
+    
+
+    transformationData_->WVP = worldViewProjectionmatrix;
     transformationData_->World = worldMatrix;
 }
 

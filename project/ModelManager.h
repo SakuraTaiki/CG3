@@ -22,13 +22,8 @@ public:
         const Vector4& color = { 1,1,1,1 }
     );
 
-    // カメラの設定（Updateの前に呼ぶ必要がある）
-    static void SetCamera(const Matrix4x4& view, const Matrix4x4& projection);
-
 private:
     static Object3dCommon* common_;
     static std::unordered_map<std::string, Model*> models_;
     static Object3d* internalObject_; // 描画用の使い回しインスタンス
-    static Matrix4x4 viewMatrix_;
-    static Matrix4x4 projectionMatrix_;
 };

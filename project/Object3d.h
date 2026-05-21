@@ -2,6 +2,7 @@
 #include "Object3dCommon.h"
 #include "Model.h"
 #include "MyMath.h"
+#include"Camera.h"
 
 struct TransformationMatrix {
     Matrix4x4 WVP;
@@ -30,10 +31,7 @@ public:
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
 
     // カメラ設定
-    void SetCamera(const Matrix4x4& view, const Matrix4x4& projection) {
-        viewMatrix_ = view;
-        projectionMatrix_ = projection;
-    }
+    void SetCamera(Camera* camera) { camera_ = camera; }
 
     // マテリアル制御
     void SetColor(const Vector4& color) { if (materialData_) materialData_->color = color; }
@@ -51,12 +49,13 @@ private:
     Model* model_ = nullptr;
 
     Transform transform_ = { {1,1,1}, {0,0,0}, {0,0,0} };
-    Matrix4x4 viewMatrix_;
-    Matrix4x4 projectionMatrix_;
-
+    
     Microsoft::WRL::ComPtr<ID3D12Resource> transformationResource_;
     TransformationMatrix* transformationData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
+
+    //カメラ
+    Camera* camera_ = nullptr;
 };

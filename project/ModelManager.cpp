@@ -4,8 +4,6 @@
 Object3dCommon* ModelManager::common_ = nullptr;
 std::unordered_map<std::string, Model*> ModelManager::models_;
 Object3d* ModelManager::internalObject_ = nullptr;
-Matrix4x4 ModelManager::viewMatrix_ = Math::MakeIdentity4x4();
-Matrix4x4 ModelManager::projectionMatrix_ = Math::MakeIdentity4x4();
 
 void ModelManager::Initialize(Object3dCommon* common) {
     common_ = common;
@@ -20,10 +18,7 @@ void ModelManager::Finalize() {
     delete internalObject_;
 }
 
-void ModelManager::SetCamera(const Matrix4x4& view, const Matrix4x4& projection) {
-    viewMatrix_ = view;
-    projectionMatrix_ = projection;
-}
+
 
 void ModelManager::Draw(const std::string& modelName, const Vector3& pos, const Vector3& rot, const Vector3& scale, const Vector4& color) {
     // 1. モデルがなければ読み込む（キャッシュ機能）
@@ -37,8 +32,7 @@ void ModelManager::Draw(const std::string& modelName, const Vector3& pos, const 
     internalObject_->SetRotation(rot);
     internalObject_->SetScale(scale);
     internalObject_->SetColor(color);
-    internalObject_->SetCamera(viewMatrix_, projectionMatrix_);
-
+    
     // 3. 更新と描画
     internalObject_->Update();
     internalObject_->Draw();

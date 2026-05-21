@@ -23,6 +23,12 @@ void MyGame::Initialize() {
     object3dCommon->SetTextureManager(textureManager);
     object3dCommon->Initialize(dxCommon);
 
+    //カメラ
+    camera = new Camera();
+    camera->Update();
+
+    object3dCommon->SetDefaultCamera(camera);
+
     particleManager = new ParticleManager();
     particleManager->Initialize(dxCommon, textureManager);
 
@@ -54,8 +60,6 @@ void MyGame::Initialize() {
     skybox->Initialize(dxCommon, textureManager, "Resources/skybox/rostock_laage_airport_4k.dds");
     skybox->SetScale({ 100.0f, 100.0f, 100.0f });
 
-    cameraTransform = { {1,1,1}, {0.3f, 0, 0}, {0, 5, -10} };
-
     //サウンド初期化
     sound.Initialize();
     //読み込み
@@ -64,6 +68,8 @@ void MyGame::Initialize() {
     mp4SoundData = sound.SoundLoadFile("Resources/Sound/AlarmMovie.mp4");
    
     mp3SoundData = sound.SoundLoadFile("Resources/Sound/maou_bgm_neorock83.mp3");
+
+    
 }
 
 Object3d* MyGame::CreateObject(Model* model, Vector3 pos) {
@@ -80,20 +86,12 @@ void MyGame::Update() {
     input->Update();
     if (input->TriggerKey(DIK_SPACE)) particleManager->Emit({ 0,0,0 }, 10);
 
-    Matrix4x4 cameraWorld = Math::MakeAffineMatrix
-    (cameraTransform.scale, 
-     cameraTransform.rotate,
-     cameraTransform.translate);
+    camera->Update();
 
-    Matrix4x4 view = Math::Inverse(cameraWorld);
-
-    Matrix4x4 projection = Math::MakePerspectiveFovMatrix(
-        0.45f,
-        (float)WinApp::kClientWidth / (float)WinApp::kClientHeight,
-        0.1f, 100.0f);
-
+    const Matrix4x4& view = camera->GetViewMatrix();
+    const Matrix4x4& projection = camera->GetProjectionMatrix();
+    
     for (Object3d* obj : objectList) {
-        obj->SetCamera(view, projection);
         obj->Update();
     }
 
@@ -177,6 +175,8 @@ void MyGame::Draw() {
 }
 
 void MyGame::Finalize() {
+    delete camera;
+
     delete skybox;
     delete sprite;
 
