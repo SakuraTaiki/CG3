@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include "MyMath.h"
+#include"Camera.h"
 
 // 前方宣言
 class TextureManager;
@@ -35,6 +36,10 @@ public:
     void SetTextureManager(TextureManager* textureManager) { textureManager_ = textureManager; }
     TextureManager* GetTextureManager() const { return textureManager_; }
 
+    //デフォルトカメラのセット
+    void SetDefaultCamera(Camera* camera) { defaultCamera_ = camera; }
+    Camera* GetDefaultCamera() const { return defaultCamera_; }
+
 private:
     void CreateRootSignature();
     void CreateGraphicsPipeline();
@@ -50,4 +55,7 @@ private:
     // 平行光源用
     Microsoft::WRL::ComPtr<ID3D12Resource> lightResource_;
     DirectionalLight* lightData_ = nullptr;
+
+    //デフォルトカメラ用メンバ変数
+    Camera* defaultCamera_ = nullptr;
 };
