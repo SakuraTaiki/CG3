@@ -74,6 +74,9 @@
     <None Include="Resources\shaders\hlsl\Skybox.hlsli" />
     <None Include="Resources\shaders\hlsl\Skybox.VS.hlsl" />
     <None Include="Resources\shaders\hlsl\Skybox.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Object3d.hlsli" />
+    <None Include="Resources\shaders\hlsl\Object3d.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Object3d.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

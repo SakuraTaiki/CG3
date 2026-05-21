@@ -137,6 +137,9 @@ void MyGame::Update() {
         }
         OutputDebugStringA("[MyGame] mp3 音量ダウン\n");
     }
+
+    //ImGui
+    
 }
 
 void MyGame::Draw() {
