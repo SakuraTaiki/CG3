@@ -57,18 +57,12 @@ ComPtr<ID3D12Resource> UploadTextureData(ID3D12Device* device, const DirectX::Sc
     return resource;
 }
 
-void TextureManager::Initialize(DirectXCommon* dxCommon) {
+void TextureManager::Initialize(DirectXCommon* dxCommon,SrvManager*srvManager) {
     dxCommon_ = dxCommon;
+    srvManager_ = srvManager;
 
-    ID3D12Device* device = dxCommon_->GetDevice();
-    D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-    srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = kMaxTextures;
-    srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-    HRESULT hr = device->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&srvHeap_));
-    assert(SUCCEEDED(hr));
-
-    descriptorSizeSRV_ = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    assert(dxCommon_);
+    assert(srvManager_);
 }
 
 uint32_t TextureManager::LoadTexture(const std::string& filePath) {
@@ -179,37 +173,30 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
 
     uint32_t index = static_cast<uint32_t>(textures_.size());
 
-    D3D12_CPU_DESCRIPTOR_HANDLE handleCPU = srvHeap_->GetCPUDescriptorHandleForHeapStart();
-    D3D12_GPU_DESCRIPTOR_HANDLE handleGPU = srvHeap_->GetGPUDescriptorHandleForHeapStart();
+    assert(srvManager_->CheckCanAllocate());
 
-    handleCPU.ptr += descriptorSizeSRV_ * index;
-    handleGPU.ptr += descriptorSizeSRV_ * index;
-
-    data.srvHandleCPU = handleCPU;
-    data.srvHandleGPU = handleGPU;
-
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-    srvDesc.Format = data.resourceDesc.Format;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    data.srvIndex = srvManager_->Allocate();
+    data.srvHandleCPU = srvManager_->GetCPUDescriptorHandle(data.srvIndex);
+    data.srvHandleGPU = srvManager_->GetGPUDescriptorHandle(data.srvIndex);
 
     if (finalMetadata.IsCubemap()) {
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
-        srvDesc.TextureCube.MostDetailedMip = 0;
-        srvDesc.TextureCube.MipLevels = UINT(finalMetadata.mipLevels);
-        srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
+        srvManager_->CreateSRVForTextureCube(
+            data.srvIndex,
+            data.resource.Get(),
+            data.resourceDesc.Format,
+            UINT(finalMetadata.mipLevels)
+        );
     } else {
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MostDetailedMip = 0;
-        srvDesc.Texture2D.MipLevels = UINT(finalMetadata.mipLevels);
-        srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+        srvManager_->CreateSRVForTexture2D(
+            data.srvIndex,
+            data.resource.Get(),
+            data.resourceDesc.Format,
+            UINT(finalMetadata.mipLevels)
+        );
     }
 
-    dxCommon_->GetDevice()->CreateShaderResourceView(
-        data.resource.Get(),
-        &srvDesc,
-        data.srvHandleCPU);
-
     textures_.push_back(data);
+
     fileMap_[filePath] = index;
 
     return index;

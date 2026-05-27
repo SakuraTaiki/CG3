@@ -14,6 +14,7 @@
 #include "Sound.h"
 #include "Skybox.h"
 #include"Camera.h"
+#include"SrvManager.h"
 
 class MyGame
 {
@@ -33,6 +34,7 @@ private:
     SpriteCommon* spriteCommon = nullptr;
     Object3dCommon* object3dCommon = nullptr;
     ParticleManager* particleManager = nullptr;
+    SrvManager* srvManager = nullptr;
 
     // オブジェクト管理
     std::vector<Object3d*> objectList;
@@ -40,6 +42,7 @@ private:
     Sprite* sprite = nullptr;
     Skybox* skybox = nullptr;
     Camera* camera = nullptr;
+
 
     // ヘルパー関数
     Object3d* CreateObject(Model* model, Vector3 pos);
