@@ -12,8 +12,11 @@ void MyGame::Initialize() {
     input = new Input(); 
     input->Initialize(winApp);
 
+    srvManager = new SrvManager();
+    srvManager->Initialize(dxCommon);
+
     textureManager = new TextureManager(); 
-    textureManager->Initialize(dxCommon);
+    textureManager->Initialize(dxCommon,srvManager);
 
     spriteCommon = new SpriteCommon(); 
     spriteCommon->SetTextureManager(textureManager);
@@ -145,8 +148,7 @@ void MyGame::Draw() {
     // RenderTextureに3Dシーンを描画
     dxCommon->PreDrawForRenderTexture();
 
-    ID3D12DescriptorHeap* heaps[] = { textureManager->GetSrvHeap() };
-    dxCommon->GetCommandList()->SetDescriptorHeaps(1, heaps);
+    srvManager->PreDraw();
 
     // 3D描画 (リスト内の全オブジェクトをループで描画)
     object3dCommon->PreDraw();
@@ -166,7 +168,7 @@ void MyGame::Draw() {
 
     // 2D描画
     // 2Dスプライトは最終画面に描く
-    dxCommon->GetCommandList()->SetDescriptorHeaps(1, heaps);
+    srvManager->PreDraw();
 
     spriteCommon->PreDraw();
     sprite->Draw();
@@ -186,6 +188,7 @@ void MyGame::Finalize() {
     delete spriteCommon;
     delete particleManager; 
     delete textureManager; 
+    delete srvManager;
     delete input;
     delete dxCommon; 
     delete winApp;
