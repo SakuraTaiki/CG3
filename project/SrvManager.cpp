@@ -2,6 +2,11 @@
 #include "DirectXCommon.h"
 #include <cassert>
 
+SrvManager* SrvManager::GetInstance() {
+    static SrvManager instance;
+    return &instance;
+}
+
 const uint32_t SrvManager::kMaxSRVCount = 512;
 
 void SrvManager::Initialize(DirectXCommon* dxCommon) {

@@ -15,6 +15,7 @@
 #include "Skybox.h"
 #include"Camera.h"
 #include"SrvManager.h"
+#include "ImGuiManager.h"
 
 class MyGame
 {
@@ -35,6 +36,7 @@ private:
     Object3dCommon* object3dCommon = nullptr;
     ParticleManager* particleManager = nullptr;
     SrvManager* srvManager = nullptr;
+    ImGuiManager* imGuiManager = nullptr;
 
     // オブジェクト管理
     std::vector<Object3d*> objectList;

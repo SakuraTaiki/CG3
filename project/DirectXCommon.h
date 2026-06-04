@@ -36,6 +36,15 @@ public: // メンバ関数
 
     // ゲッター
     ID3D12Device* GetDevice() const { return device_.Get(); }
+
+    ID3D12CommandQueue* GetCommandQueue() const { return commandQueue_.Get(); }
+
+    DXGI_FORMAT GetRTVFormat() const { return DXGI_FORMAT_R8G8B8A8_UNORM; }
+
+    DXGI_FORMAT GetDSVFormat() const { return DXGI_FORMAT_D24_UNORM_S8_UINT; }
+
+    size_t GetSwapChainResourcesNum() const { return 2; }
+
     ID3D12GraphicsCommandList* GetCommandList() const { return commandList_.Get(); }
     size_t GetBackBufferCount() const { return 2; }
 
