@@ -1,5 +1,6 @@
 #include "MyGame.h"
 #include <Windows.h>
+#include "externals/imgui/imgui.h"
 
 void MyGame::Initialize() {
     // --- 基盤初期化 ---
@@ -34,6 +35,14 @@ void MyGame::Initialize() {
 
     particleManager = new ParticleManager();
     particleManager->Initialize(dxCommon, textureManager);
+
+    //ImGui
+    imGuiManager = new ImGuiManager();
+
+    imGuiManager->Initialize(
+        dxCommon,
+        srvManager,
+        winApp);
 
 
     // --- モデル読み込み (各1回ずつ) ---
@@ -140,6 +149,21 @@ void MyGame::Update() {
     }
 
     //ImGui
+#ifdef USE_IMGUI
+
+    imGuiManager->Begin();
+
+    ImGui::Begin("Sound");
+
+    ImGui::SliderFloat("wavVolume", &wavVolume, 0.0f, 1.0f);
+    ImGui::SliderFloat("mp4Volume", &mp4Volume, 0.0f, 1.0f);
+    ImGui::SliderFloat("mp3Volume", &mp3Volume, 0.0f, 1.0f);
+
+    ImGui::End();
+
+    imGuiManager->End();
+
+#endif
     
 }
 
@@ -172,6 +196,7 @@ void MyGame::Draw() {
 
     spriteCommon->PreDraw();
     sprite->Draw();
+    imGuiManager->Draw();
 
     dxCommon->PostDraw();
 }
@@ -192,6 +217,9 @@ void MyGame::Finalize() {
     delete input;
     delete dxCommon; 
     delete winApp;
+
+    imGuiManager->Finalize();
+    delete imGuiManager;
 
     sound.Finalize();
 }

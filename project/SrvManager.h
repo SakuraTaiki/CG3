@@ -23,6 +23,12 @@ public:
     void PreDraw();
     void SetGraphicsRootDescriptorTable(UINT rootParameterIndex, uint32_t srvIndex);
 
+    static SrvManager* GetInstance();
+
+    ID3D12DescriptorHeap* GetDescriptorHeap() const {
+        return descriptorHeap_.Get();
+    }
+
 private:
     DirectXCommon* directXCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap_;
