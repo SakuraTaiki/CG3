@@ -1,39 +1,45 @@
 #include "ModelManager.h"
+#include <cassert>
 
-// 静的メンバの定義
 Object3dCommon* ModelManager::common_ = nullptr;
-std::unordered_map<std::string, Model*> ModelManager::models_;
-Object3d* ModelManager::internalObject_ = nullptr;
+std::unordered_map<std::string, std::unique_ptr<Model>> ModelManager::models_;
 
 void ModelManager::Initialize(Object3dCommon* common) {
+    assert(common);
     common_ = common;
-    // 描画用の実体を一つだけ作っておく
-    internalObject_ = new Object3d();
-    internalObject_->Initialize(common_);
 }
 
 void ModelManager::Finalize() {
-    for (auto& pair : models_) { delete pair.second; }
     models_.clear();
-    delete internalObject_;
+    common_ = nullptr;
 }
 
-
-
-void ModelManager::Draw(const std::string& modelName, const Vector3& pos, const Vector3& rot, const Vector3& scale, const Vector4& color) {
-    // 1. モデルがなければ読み込む（キャッシュ機能）
-    if (models_.find(modelName) == models_.end()) {
-        models_[modelName] = Model::CreateFromOBJ(common_->GetDxCommon(), "Resources", modelName, common_->GetTextureManager());
+Model* ModelManager::Load(const std::string& modelName) {
+    auto it = models_.find(modelName);
+    if (it != models_.end()) {
+        return it->second.get();
     }
 
-    // 2. 使い回し用オブジェクトに設定を流し込む
-    internalObject_->SetModel(models_[modelName]);
-    internalObject_->SetPosition(pos);
-    internalObject_->SetRotation(rot);
-    internalObject_->SetScale(scale);
-    internalObject_->SetColor(color);
-    
-    // 3. 更新と描画
-    internalObject_->Update();
-    internalObject_->Draw();
+    std::unique_ptr<Model> model(
+        Model::CreateFromOBJ(
+            common_->GetDxCommon(),
+            "Resources",
+            modelName,
+            common_->GetTextureManager()
+        )
+    );
+
+    Model* result = model.get();
+    models_[modelName] = std::move(model);
+
+    return result;
+}
+
+Model* ModelManager::Find(const std::string& modelName) {
+    auto it = models_.find(modelName);
+    if (it == models_.end()) {
+        return nullptr;
+    }
+
+    return it->second.get();
 }
