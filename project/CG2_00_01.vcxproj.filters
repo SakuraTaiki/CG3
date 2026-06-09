@@ -36,6 +36,8 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="SrvManager.cpp" />
     <ClCompile Include="ImGuiManager.cpp" />
+    <ClCompile Include="GameSystem.cpp" />
+    <ClCompile Include="GameScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -68,6 +70,8 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="SrvManager.h" />
     <ClInclude Include="ImGuiManager.h" />
+    <ClInclude Include="GameSystem.h" />
+    <ClInclude Include="GameScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

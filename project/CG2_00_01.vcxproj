@@ -169,6 +169,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="externals\imgui\imgui_widgets.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="GameScene.cpp" />
+    <ClCompile Include="GameSystem.cpp" />
     <ClCompile Include="ImGuiManager.cpp" />
     <ClCompile Include="MyGame.cpp" />
     <ClCompile Include="Input.cpp" />
@@ -204,6 +206,8 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_rectpack.h" />
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
+    <ClInclude Include="GameScene.h" />
+    <ClInclude Include="GameSystem.h" />
     <ClInclude Include="ImGuiManager.h" />
     <ClInclude Include="MyGame.h" />
     <ClInclude Include="Input.h" />
