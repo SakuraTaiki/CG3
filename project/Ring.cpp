@@ -110,8 +110,8 @@ void Ring::Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix
         Matrix4x4 wvp =
             Math::Multiply(worldMat, Math::Multiply(viewMatrix, projectionMatrix));
 
-        instancingDataMapped_[0].WVP = wvp;
-        instancingDataMapped_[0].color = color_;
+        instancingDataMapped_[index].WVP = wvp;
+        instancingDataMapped_[index].color = color_;
         index++;
     }
 }
