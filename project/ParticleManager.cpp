@@ -1,6 +1,7 @@
 #include "ParticleManager.h"
 #include <cassert>
 #include <random>
+#include<numbers>
 
 using namespace Microsoft::WRL;
 
@@ -73,9 +74,21 @@ void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& proje
     for (const auto& particle : particles_) {
         if (index >= kMaxParticles) break;
 
-        Matrix4x4 scaleMat = Math::Matrix4x4MakeScaleMatrix(particle.transform.scale);
-        Matrix4x4 transMat = Math::MakeTranslateMatrix(particle.transform.translate);
-        Matrix4x4 worldMat = Math::Multiply(scaleMat, Math::Multiply(billboardMat, transMat));
+        Matrix4x4 scaleMat =
+            Math::Matrix4x4MakeScaleMatrix(particle.transform.scale);
+
+        Matrix4x4 rotateMat =
+            Math::MakeRotateZMatrix(particle.transform.rotate.z);
+
+        Matrix4x4 transMat =
+            Math::MakeTranslateMatrix(particle.transform.translate);
+
+        Matrix4x4 worldMat =
+            Math::Multiply(
+                Math::Multiply(scaleMat, rotateMat),
+                Math::Multiply(billboardMat, transMat)
+            );
+
         Matrix4x4 wvp = Math::Multiply(worldMat, Math::Multiply(viewMatrix, projectionMatrix));
 
         instancingDataMapped_[index].WVP = wvp;
@@ -108,20 +121,55 @@ void ParticleManager::Draw() {
 }
 
 void ParticleManager::Emit(const Vector3& pos, uint32_t count) {
-    std::uniform_real_distribution<float> distVel(-0.1f, 0.1f);
-    std::uniform_real_distribution<float> distColor(0.5f, 1.0f);
-    std::uniform_real_distribution<float> distTime(1.0f, 3.0f);
+    std::uniform_real_distribution<float> distRotate(
+        -std::numbers::pi_v<float>,
+        std::numbers::pi_v<float>
+    );
+
+    std::uniform_real_distribution<float> distScaleY(0.4f, 1.5f);
+    std::uniform_real_distribution<float> distColor(0.7f, 1.0f);
+    std::uniform_real_distribution<float> distTime(0.4f, 0.8f);
 
     for (uint32_t i = 0; i < count; ++i) {
-        if (particles_.size() >= kMaxParticles) return;
+        if (particles_.size() >= kMaxParticles) {
+            return;
+        }
+
         Particle p;
-        p.transform.scale = { 1.0f, 1.0f, 1.0f };
-        p.transform.rotate = { 0.0f, 0.0f, 0.0f };
+
+        // 縦長Particle
+        p.transform.scale = {
+            0.05f,
+            distScaleY(engine),
+            1.0f
+        };
+
+        // Z回転をランダムにする
+        p.transform.rotate = {
+            0.0f,
+            0.0f,
+            distRotate(engine)
+        };
+
         p.transform.translate = pos;
-        p.velocity = { distVel(engine), distVel(engine), distVel(engine) };
-        p.color = { distColor(engine), distColor(engine), distColor(engine), 1.0f };
+
+        // 今回は動かさない
+        p.velocity = {
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        p.color = {
+            distColor(engine),
+            distColor(engine),
+            distColor(engine),
+            1.0f
+        };
+
         p.lifeTime = 0.0f;
         p.maxTime = distTime(engine);
+
         particles_.push_back(p);
     }
 }
