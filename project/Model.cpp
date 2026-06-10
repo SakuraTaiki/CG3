@@ -3,6 +3,11 @@
 #include <sstream>
 #include <cassert>
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <filesystem>
+
 using namespace Microsoft::WRL;
 
 Model* Model::CreateFromOBJ(DirectXCommon* dxCommon, const std::string& directoryPath, const std::string& filename, TextureManager* textureManager) {
@@ -24,80 +29,143 @@ void Model::Initialize(DirectXCommon* dxCommon, const std::string& directoryPath
     // 2. バッファ生成
     CreateBuffers(dxCommon);
 
-    // 3. テクスチャ読み込み
     if (textureManager) {
-        // パスが不安な場合は、ここでフルパスを組み立てるか確認ログを出す
-        textureHandle_ = textureManager->LoadTexture("Resources/uvChecker.png");
+        if (!textureFilePath_.empty()) {
+            textureHandle_ = textureManager->LoadTexture(textureFilePath_);
+        } else {
+            textureHandle_ = textureManager->LoadTexture("Resources/uvChecker.png");
+        }
     }
 }
 
-void Model::LoadObjFile(const std::string& directoryPath, const std::string& filename) {
-    std::string fullPath = directoryPath + "/" + filename;
-    std::ifstream file(fullPath);
-    assert(file.is_open());
+void Model::LoadObjFile(const std::string& directoryPath,
+    const std::string& filename)
+{
+    vertices_.clear();
 
-    // ★追加：どのパスのファイルを読んでいるか出力
-    OutputDebugStringA(("---- Loading: " + fullPath + " ----\n").c_str());
+    Assimp::Importer importer;
 
-    std::vector<Vector4> positions;
-    std::vector<Vector3> normals;
-    std::vector<Vector2> texcoords;
-    std::string line;
-    int lineCount = 0; // ★追加：何行読めたかカウント
+    std::string filePath = directoryPath + "/" + filename;
 
-    while (std::getline(file, line)) {
-        lineCount++; // 行数をカウント
-        std::stringstream ss(line);
-        std::string identifier;
-        ss >> identifier;
+    const aiScene* scene = importer.ReadFile(
+        filePath.c_str(),
+        aiProcess_FlipWindingOrder |
+        aiProcess_FlipUVs |
+        aiProcess_Triangulate
+    );
 
-        if (identifier == "v") {
-            Vector4 position;
-            ss >> position.x >> position.y >> position.z;
-            position.w = 1.0f;
-            positions.push_back(position);
-        } else if (identifier == "vt") {
-            Vector2 texcoord;
-            ss >> texcoord.x >> texcoord.y;
-            texcoord.y = 1.0f - texcoord.y;
-            texcoords.push_back(texcoord);
-        } else if (identifier == "vn") {
-            Vector3 normal;
-            ss >> normal.x >> normal.y >> normal.z;
-            normals.push_back(normal);
-        } else if (identifier == "f") {
-            for (int i = 0; i < 3; i++) {
-                std::string s;
-                ss >> s;
-                std::stringstream ss2(s);
-                std::string idx;
-                int p = 0, t = 0, n = 0;
+    assert(scene->HasMeshes());
 
-                std::getline(ss2, idx, '/'); if (!idx.empty()) p = std::stoi(idx) - 1;
-                std::getline(ss2, idx, '/'); if (!idx.empty()) t = std::stoi(idx) - 1;
-                std::getline(ss2, idx, '/'); if (!idx.empty()) n = std::stoi(idx) - 1;
+    //------------------------------------
+    // Mesh解析
+    //------------------------------------
+    for (uint32_t meshIndex = 0;
+        meshIndex < scene->mNumMeshes;
+        ++meshIndex)
+    {
+        aiMesh* mesh = scene->mMeshes[meshIndex];
 
-                ModelVertexData v;
-                v.position = positions[p];
-                if (t >= 0 && t < texcoords.size()) v.texcoord = texcoords[t];
-                if (n >= 0 && n < normals.size()) v.normal = normals[n];
+        assert(mesh->HasNormals());
 
-                v.position.z *= -1.0f;
-                v.normal.z *= -1.0f;
+        //--------------------------------
+        // Face解析
+        //--------------------------------
+        for (uint32_t faceIndex = 0;
+            faceIndex < mesh->mNumFaces;
+            ++faceIndex)
+        {
+            aiFace& face = mesh->mFaces[faceIndex];
 
-                // ★カリング対策：Z反転に伴い、面を裏返さないためにここで 0 -> 2 -> 1 の順に後でなるよう対策
-                // とりあえず今回はそのまま入れてみる
-                vertices_.push_back(v);
+            assert(face.mNumIndices == 3);
+
+            //--------------------------------
+            // Vertex解析
+            //--------------------------------
+            for (uint32_t element = 0;
+                element < face.mNumIndices;
+                ++element)
+            {
+                uint32_t vertexIndex = face.mIndices[element];
+
+                aiVector3D position = mesh->mVertices[vertexIndex];
+                aiVector3D normal = mesh->mNormals[vertexIndex];
+
+                ModelVertexData vertex{};
+                vertex.position = {
+                    position.x,
+                    position.y,
+                    position.z,
+                    1.0f
+                };
+
+                vertex.normal = {
+                    normal.x,
+                    normal.y,
+                    normal.z
+                };
+
+                // UVがある場合
+                if (mesh->HasTextureCoords(0)) {
+                    aiVector3D texcoord = mesh->mTextureCoords[0][vertexIndex];
+                    vertex.texcoord = {
+                        texcoord.x,
+                        texcoord.y
+                    };
+                }
+                // UVが無い場合：位置から仮UVを作る
+                else {
+                    vertex.texcoord = {
+                        position.x,
+                        position.z
+                    };
+                }
+
+                // 左手系変換
+                vertex.position.x *= -1.0f;
+                vertex.normal.x *= -1.0f;
+
+                vertices_.push_back(vertex);
             }
         }
     }
 
-    // ★追加：最終結果のレポートを出力
-    std::string report = "Read Lines: " + std::to_string(lineCount) + ", Parsed Vertices: " + std::to_string(vertices_.size()) + "\n";
-    OutputDebugStringA(report.c_str());
+    OutputDebugStringA(
+        ("Loaded : " + filename +
+            " VertexCount = " +
+            std::to_string(vertices_.size()) + "\n").c_str());
 
-    if (vertices_.empty()) {
-        OutputDebugStringA(("Error: Model vertices are empty! File: " + filename + "\n").c_str());
+    // ------------------------------------
+    // Material解析
+    // ------------------------------------
+    textureFilePath_.clear();
+
+    for (uint32_t materialIndex = 0;
+        materialIndex < scene->mNumMaterials;
+        ++materialIndex)
+    {
+        aiMaterial* material = scene->mMaterials[materialIndex];
+
+        if (material->GetTextureCount(aiTextureType_DIFFUSE) == 0) {
+            continue;
+        }
+
+        aiString textureFilePath;
+        material->GetTexture(
+            aiTextureType_DIFFUSE,
+            0,
+            &textureFilePath
+        );
+
+        std::string path = directoryPath + "/" + textureFilePath.C_Str();
+
+        // パス区切りをWindowsでも安全にする
+        std::replace(path.begin(), path.end(), '\\', '/');
+
+        // 実在するテクスチャだけ採用する
+        if (std::filesystem::exists(path)) {
+            textureFilePath_ = path;
+            break;
+        }
     }
 }
 

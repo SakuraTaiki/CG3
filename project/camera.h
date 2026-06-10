@@ -23,6 +23,10 @@ public:
     const Vector3& GetRotate() const { return transform_.rotate; }
     const Vector3& GetTranslate() const { return transform_.translate; }
 
+    float GetFovY() const { return fovY_; }
+    float GetNearClip() const { return nearClip_; }
+    float GetFarClip() const { return farClip_; }
+
 private:
     Transform transform_;
 

@@ -35,6 +35,30 @@ Model* ModelManager::Load(const std::string& modelName) {
     return result;
 }
 
+Model* ModelManager::Load(const std::string& directoryPath, const std::string& modelName)
+{
+    std::string key = directoryPath + "/" + modelName;
+
+    auto it = models_.find(key);
+    if (it != models_.end()) {
+        return it->second.get();
+    }
+
+    std::unique_ptr<Model> model(
+        Model::CreateFromOBJ(
+            common_->GetDxCommon(),
+            directoryPath,
+            modelName,
+            common_->GetTextureManager()
+        )
+    );
+
+    Model* result = model.get();
+    models_[key] = std::move(model);
+
+    return result;
+}
+
 Model* ModelManager::Find(const std::string& modelName) {
     auto it = models_.find(modelName);
     if (it == models_.end()) {
