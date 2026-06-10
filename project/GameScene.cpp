@@ -15,6 +15,7 @@ void GameScene::Initialize(GameSystem* system) {
     InitializeSkybox();
     InitializeObjects();
     InitializeSound();
+    InitializeRing();
 }
 
 void GameScene::Finalize() {
@@ -114,12 +115,24 @@ void GameScene::InitializeSound() {
     mp3SoundData_ = sound_.SoundLoadFile("Resources/Sound/maou_bgm_neorock83.mp3");
 }
 
+void GameScene::InitializeRing() {
+    ring_ = std::make_unique<Ring>();
+    ring_->Initialize(system_->GetDxCommon(), system_->GetTextureManager());
+    ring_->SetIsActive(enableRing_);
+}
+
 void GameScene::Update() {
     Input* input = system_->GetInput();
     input->Update();
 
     if (input->TriggerKey(DIK_SPACE)) {
-        system_->GetParticleManager()->Emit({ 0.0f, 1.0f, 0.0f }, 8);
+        Vector3 effectPos = { 0.0f, 1.0f, 0.0f };
+
+        system_->GetParticleManager()->Emit(effectPos, 8);
+
+        if (enableRing_ && ring_) {
+            ring_->Emit(effectPos);
+        }
     }
 
     UpdateSound();
@@ -139,6 +152,12 @@ void GameScene::Update() {
         sprite_->Update();
     }
 
+    system_->GetParticleManager()->Update(view, projection);
+
+    if (ring_) {
+        ring_->SetIsActive(enableRing_);
+        ring_->Update(view, projection);
+    }
     system_->GetParticleManager()->Update(view, projection);
 
     UpdateImGui();
@@ -210,6 +229,15 @@ void GameScene::UpdateImGui() {
 
     ImGui::End();
 
+
+    ImGui::Begin("Ring");
+
+    ImGui::Checkbox("Enable Ring Effect", &enableRing_);
+
+    ImGui::Text("SPACEキーでParticleとRingを同時に発生");
+
+    ImGui::End();
+
     system_->GetImGuiManager()->End();
 #endif
 }
@@ -234,6 +262,10 @@ void GameScene::Draw3D() {
 
     if (skybox_) {
         skybox_->Draw();
+    }
+
+    if (ring_) {
+        ring_->Draw();
     }
 
     system_->GetParticleManager()->Draw();

@@ -38,6 +38,7 @@
     <ClCompile Include="ImGuiManager.cpp" />
     <ClCompile Include="GameSystem.cpp" />
     <ClCompile Include="GameScene.cpp" />
+    <ClCompile Include="Ring.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -72,6 +73,7 @@
     <ClInclude Include="ImGuiManager.h" />
     <ClInclude Include="GameSystem.h" />
     <ClInclude Include="GameScene.h" />
+    <ClInclude Include="Ring.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
