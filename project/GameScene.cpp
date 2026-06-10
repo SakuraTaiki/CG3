@@ -16,6 +16,7 @@ void GameScene::Initialize(GameSystem* system) {
     InitializeObjects();
     InitializeSound();
     InitializeRing();
+    InitializeCylinder();
 }
 
 void GameScene::Finalize() {
@@ -121,6 +122,17 @@ void GameScene::InitializeRing() {
     ring_->SetIsActive(enableRing_);
 }
 
+void GameScene::InitializeCylinder()
+{
+    cylinder_ = std::make_unique<Cylinder>();
+    cylinder_->Initialize(
+        system_->GetDxCommon(),
+        system_->GetTextureManager()
+    );
+    cylinder_->SetIsActive(enableCylinder_);
+
+}
+
 void GameScene::Update() {
     Input* input = system_->GetInput();
     input->Update();
@@ -132,6 +144,10 @@ void GameScene::Update() {
 
         if (enableRing_ && ring_) {
             ring_->Emit(effectPos);
+        }
+
+        if (enableCylinder_ && ring_) {
+            cylinder_->Emit(effectPos);
         }
     }
 
@@ -158,6 +174,12 @@ void GameScene::Update() {
         ring_->SetIsActive(enableRing_);
         ring_->Update(view, projection);
     }
+
+    if (cylinder_) {
+        cylinder_->SetIsActive(enableCylinder_);
+        cylinder_->Update(view, projection);
+    }
+
     system_->GetParticleManager()->Update(view, projection);
 
     UpdateImGui();
@@ -238,6 +260,14 @@ void GameScene::UpdateImGui() {
 
     ImGui::End();
 
+
+    ImGui::Begin("Cylinder");
+
+    ImGui::Checkbox("Enable Cylinder Effect", &enableCylinder_);
+    ImGui::Text("SPACEキーでCylinderを発生");
+
+    ImGui::End();
+
     system_->GetImGuiManager()->End();
 #endif
 }
@@ -266,6 +296,10 @@ void GameScene::Draw3D() {
 
     if (ring_) {
         ring_->Draw();
+    }
+
+    if (cylinder_) {
+        cylinder_->Draw();
     }
 
     system_->GetParticleManager()->Draw();
