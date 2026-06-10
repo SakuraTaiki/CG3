@@ -26,6 +26,7 @@ public:
 private:
     void LoadObjFile(const std::string& directoryPath, const std::string& filename);
     void CreateBuffers(DirectXCommon* dxCommon);
+    std::string textureFilePath_;
 
 private:
     std::vector<ModelVertexData> vertices_;

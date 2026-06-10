@@ -32,23 +32,23 @@ void GameScene::Finalize() {
 }
 
 void GameScene::InitializeModels() {
-    ModelManager::Load("plane.obj");
+    ModelManager::Load("Resources/terrain", "terrain.obj");
     ModelManager::Load("axis.obj");
 }
 
 void GameScene::InitializeObjects() {
     Object3dCommon* object3dCommon = system_->GetObject3dCommon();
 
-    Model* modelPlane = ModelManager::Load("plane.obj");
+    Model* modelPlane = ModelManager::Load("Resources/terrain", "terrain.obj");
     Model* modelAxis = ModelManager::Load("axis.obj");
 
     {
         std::unique_ptr<Object3d> object = std::make_unique<Object3d>();
         object->Initialize(object3dCommon);
         object->SetModel(modelPlane);
-        object->SetPosition({ 0.0f, 0.0f, 0.0f });
-        object->SetRotation({ 1.57f, 0.0f, 0.0f });
-        object->SetScale({ 10.0f, 1.0f, 10.0f });
+        object->SetPosition({ 0.0f, 1.0f, 0.0f });
+        object->SetRotation({ 0.0f, 0.0f, 0.0f });
+        object->SetScale({ 0.5f, 0.5f, 0.5f });
 
         object->SetEnvironmentTexture(environmentTexturehandle_);
         object->SetEnvironmentCoefficient(environmentCoefficient_);
@@ -339,6 +339,91 @@ void GameScene::UpdateImGui() {
         }
 
         ImGui::EndTabBar();
+    }
+
+    //==============================
+// Camera Debug Window
+//==============================
+    {
+        Camera* camera = system_->GetCamera();
+
+        Vector3 rotate = camera->GetRotate();
+        Vector3 translate = camera->GetTranslate();
+
+        float fov = camera->GetFovY();
+        float nearClip = camera->GetNearClip();
+        float farClip = camera->GetFarClip();
+
+        ImGui::SetNextWindowPos(ImVec2(460.0f, 20.0f), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowSize(ImVec2(360.0f, 360.0f), ImGuiCond_FirstUseEver);
+
+        ImGui::Begin("Camera Debug Panel");
+
+        ImGui::Text("Camera Transform");
+        ImGui::Separator();
+
+        if (ImGui::BeginTabBar("CameraTabs")) {
+
+            if (ImGui::BeginTabItem("Transform")) {
+
+                ImGui::Text("Position");
+                ImGui::DragFloat3("Translate", &translate.x, 0.1f);
+
+                ImGui::Spacing();
+
+                ImGui::Text("Rotation");
+                ImGui::DragFloat3("Rotate", &rotate.x, 0.01f);
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Lens")) {
+
+                ImGui::Text("Projection");
+                ImGui::DragFloat("Fov", &fov, 0.01f, 0.1f, 2.0f);
+                ImGui::DragFloat("Near Clip", &nearClip, 0.01f, 0.01f, 10.0f);
+                ImGui::DragFloat("Far Clip", &farClip, 1.0f, 10.0f, 10000.0f);
+
+                ImGui::EndTabItem();
+            }
+
+            if (ImGui::BeginTabItem("Preset")) {
+
+                if (ImGui::Button("Default Camera", ImVec2(220.0f, 32.0f))) {
+                    translate = { 0.0f, 5.0f, -10.0f };
+                    rotate = { 0.3f, 0.0f, 0.0f };
+                    fov = 0.45f;
+                    nearClip = 0.1f;
+                    farClip = 100.0f;
+                }
+
+                if (ImGui::Button("Terrain Check Camera", ImVec2(220.0f, 32.0f))) {
+                    translate = { 0.0f, 10.0f, -30.0f };
+                    rotate = { 0.35f, 0.0f, 0.0f };
+                    fov = 0.45f;
+                    nearClip = 0.1f;
+                    farClip = 500.0f;
+                }
+
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Current");
+        ImGui::BulletText("Pos  : %.2f, %.2f, %.2f", translate.x, translate.y, translate.z);
+        ImGui::BulletText("Rot  : %.2f, %.2f, %.2f", rotate.x, rotate.y, rotate.z);
+        ImGui::BulletText("Fov  : %.2f", fov);
+
+        camera->SetTranslate(translate);
+        camera->SetRotate(rotate);
+        camera->SetFovY(fov);
+        camera->SetNearClip(nearClip);
+        camera->SetFarClip(farClip);
+
+        ImGui::End();
     }
 
     ImGui::End();

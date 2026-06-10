@@ -12,6 +12,7 @@ public:
     static void Finalize();
 
     static Model* Load(const std::string& modelName);
+    static Model* Load(const std::string& directoryPath, const std::string& modelName);
     static Model* Find(const std::string& modelName);
 
 private:
