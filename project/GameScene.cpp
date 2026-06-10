@@ -146,7 +146,7 @@ void GameScene::Update() {
             ring_->Emit(effectPos);
         }
 
-        if (enableCylinder_ && ring_) {
+        if (enableCylinder_ && cylinder_) {
             cylinder_->Emit(effectPos);
         }
     }
@@ -167,8 +167,6 @@ void GameScene::Update() {
     if (sprite_) {
         sprite_->Update();
     }
-
-    system_->GetParticleManager()->Update(view, projection);
 
     if (ring_) {
         ring_->SetIsActive(enableRing_);
@@ -221,57 +219,133 @@ void GameScene::UpdateImGui() {
 #ifdef USE_IMGUI
     system_->GetImGuiManager()->Begin();
 
-    ImGui::Begin("Sound");
-    ImGui::SliderFloat("wavVolume", &wavVolume_, 0.0f, 1.0f);
-    ImGui::SliderFloat("mp4Volume", &mp4Volume_, 0.0f, 1.0f);
-    ImGui::SliderFloat("mp3Volume", &mp3Volume_, 0.0f, 1.0f);
-    ImGui::End();
+    ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(420.0f, 520.0f), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("PostEffect");
+    ImGui::Begin("CG2 Effect Debug Panel");
 
-    bool enableGrayScale = system_->GetDxCommon()->GetGrayScale();
+    ImGui::Text("Scene Control");
+    ImGui::Separator();
 
-    if (ImGui::Checkbox("GrayScale", &enableGrayScale)) {
-        system_->GetDxCommon()->SetGrayScale(enableGrayScale);
+    if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
+        Vector3 effectPos = { 0.0f, 1.0f, 0.0f };
+
+        system_->GetParticleManager()->Emit(effectPos, 8);
+
+        if (enableRing_ && ring_) {
+            ring_->Emit(effectPos);
+        }
+
+        if (enableCylinder_ && cylinder_) {
+            cylinder_->Emit(effectPos);
+        }
     }
 
-    ImGui::End();
+    ImGui::SameLine();
+    ImGui::TextDisabled("SPACE key also emits");
 
-    ImGui::Begin("Environment");
-    ImGui::SliderFloat(
-        "environmentCoefficient",
-        &environmentCoefficient_,
-        0.0f,
-        1.0f
-    );
+    ImGui::Spacing();
 
-    for (auto& object : objects_) {
-        object->SetEnvironmentCoefficient(environmentCoefficient_);
+    if (ImGui::BeginTabBar("MainTabs")) {
+
+        // ==================================================
+        // Effect
+        // ==================================================
+        if (ImGui::BeginTabItem("Effect")) {
+
+            ImGui::Text("Primitive Effects");
+            ImGui::Separator();
+
+            ImGui::Checkbox("Enable Ring", &enableRing_);
+            ImGui::Checkbox("Enable Cylinder", &enableCylinder_);
+
+            ImGui::Spacing();
+
+            ImGui::Text("Particle");
+            ImGui::BulletText("SPACE key : Emit particle");
+            ImGui::BulletText("Particle count : 8");
+
+            ImGui::Spacing();
+
+            ImGui::Text("Current Combination");
+            ImGui::BulletText("Particle");
+            if (enableRing_) {
+                ImGui::BulletText("Ring");
+            }
+            if (enableCylinder_) {
+                ImGui::BulletText("Cylinder");
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // ==================================================
+        // Post Effect
+        // ==================================================
+        if (ImGui::BeginTabItem("PostEffect")) {
+
+            ImGui::Text("Post Effect Settings");
+            ImGui::Separator();
+
+            bool enableGrayScale = system_->GetDxCommon()->GetGrayScale();
+
+            if (ImGui::Checkbox("GrayScale", &enableGrayScale)) {
+                system_->GetDxCommon()->SetGrayScale(enableGrayScale);
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // ==================================================
+        // Environment
+        // ==================================================
+        if (ImGui::BeginTabItem("Environment")) {
+
+            ImGui::Text("Environment Lighting");
+            ImGui::Separator();
+
+            if (ImGui::SliderFloat(
+                "Environment Coefficient",
+                &environmentCoefficient_,
+                0.0f,
+                1.0f
+            )) {
+                for (auto& object : objects_) {
+                    object->SetEnvironmentCoefficient(environmentCoefficient_);
+                }
+            }
+
+            ImGui::EndTabItem();
+        }
+
+        // ==================================================
+        // Sound
+        // ==================================================
+        if (ImGui::BeginTabItem("Sound")) {
+
+            ImGui::Text("Sound Volume");
+            ImGui::Separator();
+
+            ImGui::SliderFloat("Wav Volume", &wavVolume_, 0.0f, 1.0f);
+            ImGui::SliderFloat("Mp4 Volume", &mp4Volume_, 0.0f, 1.0f);
+            ImGui::SliderFloat("Mp3 Volume", &mp3Volume_, 0.0f, 1.0f);
+
+            ImGui::Spacing();
+            ImGui::TextDisabled("M key : Play mp4");
+            ImGui::TextDisabled("N key : Play mp3");
+            ImGui::TextDisabled("UP / DOWN : Change mp3 volume");
+
+            ImGui::EndTabItem();
+        }
+
+        ImGui::EndTabBar();
     }
-
-    ImGui::End();
-
-
-    ImGui::Begin("Ring");
-
-    ImGui::Checkbox("Enable Ring Effect", &enableRing_);
-
-    ImGui::Text("SPACEキーでParticleとRingを同時に発生");
-
-    ImGui::End();
-
-
-    ImGui::Begin("Cylinder");
-
-    ImGui::Checkbox("Enable Cylinder Effect", &enableCylinder_);
-    ImGui::Text("SPACEキーでCylinderを発生");
 
     ImGui::End();
 
     system_->GetImGuiManager()->End();
 #endif
 }
-
 void GameScene::Draw() {
     Draw3D();
     Draw2D();
