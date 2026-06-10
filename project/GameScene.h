@@ -7,6 +7,7 @@
 #include "Sprite.h"
 #include "Skybox.h"
 #include "Sound.h"
+#include "Ring.h"
 
 class GameScene {
 public:
@@ -22,6 +23,7 @@ private:
     void InitializeSkybox();
     void InitializeObjects();
     void InitializeSound();
+    void InitializeRing();
 
     void UpdateObjects();
     void UpdateSound();
@@ -37,6 +39,7 @@ private:
 
     std::unique_ptr<Sprite> sprite_;
     std::unique_ptr<Skybox> skybox_;
+    std::unique_ptr<Ring>   ring_;
 
     Sound sound_;
     Sound::SoundData wavSoundData_{};
@@ -49,4 +52,9 @@ private:
 
     uint32_t environmentTexturehandle_ = 0;
     float environmentCoefficient_ = 0.05f;
+
+    bool enableRing_ = true;
+    Vector3 ringPosition_ = { 0.0f, 2.0f, 0.0f };
+    Vector3 ringScale_ = { 2.0f, 2.0f, 1.0f };
+    Vector4 ringColor_ = { 1.0f, 1.0f, 1.0f, 0.7f };
 };
