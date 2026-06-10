@@ -63,11 +63,13 @@ void Object3dCommon::CreateRootSignature() {
     D3D12_ROOT_SIGNATURE_DESC descriptionRootSignature{};
     descriptionRootSignature.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-    // 0: Material (PS b0)
-    // 1: TransformationMatrix (VS b0)
-    // 2: DirectionalLight (PS b1)
-    // 3: Texture (PS t0)
-    D3D12_ROOT_PARAMETER rootParameters[5] = {};
+    // 0: Material       PS b0
+// 1: Transform      VS b0
+// 2: Light          PS b1
+// 3: Camera         PS b2
+// 4: Texture2D      PS t0
+// 5: Environment    PS t1
+    D3D12_ROOT_PARAMETER rootParameters[6] = {};
 
     // 0. Material
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -84,32 +86,40 @@ void Object3dCommon::CreateRootSignature() {
     rootParameters[2].Descriptor.ShaderRegister = 1;
     rootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-    // 3. Texture2D PS t0
+    // 3. Camera
+    rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    rootParameters[3].Descriptor.ShaderRegister = 2;
+    rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    // 4. Texture2D PS t0
     D3D12_DESCRIPTOR_RANGE textureRange{};
     textureRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     textureRange.BaseShaderRegister = 0;
     textureRange.NumDescriptors = 1;
     textureRange.RegisterSpace = 0;
-    textureRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    textureRange.OffsetInDescriptorsFromTableStart =
+        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    rootParameters[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[3].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[3].DescriptorTable.pDescriptorRanges = &textureRange;
-    rootParameters[3].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[4].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[4].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[4].DescriptorTable.pDescriptorRanges = &textureRange;
+    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-
-    // 4. Environment TextureCube PS t1
+    // 5. Environment TextureCube PS t1
     D3D12_DESCRIPTOR_RANGE environmentRange{};
     environmentRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     environmentRange.BaseShaderRegister = 1;
     environmentRange.NumDescriptors = 1;
     environmentRange.RegisterSpace = 0;
-    environmentRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    environmentRange.OffsetInDescriptorsFromTableStart =
+        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    rootParameters[4].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[4].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[4].DescriptorTable.pDescriptorRanges = &environmentRange;
-    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameters[5].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[5].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[5].DescriptorTable.pDescriptorRanges = &environmentRange;
+    rootParameters[5].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_STATIC_SAMPLER_DESC staticSampler{};
     staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;

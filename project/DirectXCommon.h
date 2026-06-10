@@ -51,6 +51,14 @@ public: // メンバ関数
     void PreDrawForRenderTexture();
     void DrawRenderTextureToSwapChain();
 
+    void SetGrayScale(bool enable) {
+        enableGrayScale_ = enable;
+    }
+
+    bool GetGrayScale() const {
+        return enableGrayScale_;
+    }
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -110,4 +118,9 @@ private: // メンバ変数
 
     ComPtr<ID3D12RootSignature> copyImageRootSignature_;
     ComPtr<ID3D12PipelineState> copyImagePipelineState_;
+
+    bool enableGrayScale_ = true;
+
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> normalCopyPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> grayScalePipelineState_;
 };

@@ -11,9 +11,9 @@ void GameScene::Initialize(GameSystem* system) {
     ModelManager::Initialize(system_->GetObject3dCommon());
 
     InitializeModels();
-    InitializeObjects();
     InitializeSprite();
     InitializeSkybox();
+    InitializeObjects();
     InitializeSound();
 }
 
@@ -47,6 +47,10 @@ void GameScene::InitializeObjects() {
         object->SetPosition({ 0.0f, 0.0f, 0.0f });
         object->SetRotation({ 1.57f, 0.0f, 0.0f });
         object->SetScale({ 10.0f, 1.0f, 10.0f });
+
+        object->SetEnvironmentTexture(environmentTexturehandle_);
+        object->SetEnvironmentCoefficient(environmentCoefficient_);
+
         objects_.push_back(std::move(object));
     }
 
@@ -56,6 +60,10 @@ void GameScene::InitializeObjects() {
         object->SetModel(modelAxis);
         object->SetPosition({ 2.0f, 0.0f, 0.0f });
         object->SetRotation({ 1.57f, 0.0f, 0.0f });
+
+        object->SetEnvironmentTexture(environmentTexturehandle_);
+        object->SetEnvironmentCoefficient(environmentCoefficient_);
+
         objects_.push_back(std::move(object));
     }
 
@@ -65,6 +73,10 @@ void GameScene::InitializeObjects() {
         object->SetModel(modelAxis);
         object->SetPosition({ -2.0f, 0.0f, 0.0f });
         object->SetRotation({ 1.57f, 0.0f, 0.0f });
+
+        object->SetEnvironmentTexture(environmentTexturehandle_);
+        object->SetEnvironmentCoefficient(environmentCoefficient_);
+
         objects_.push_back(std::move(object));
     }
 }
@@ -87,6 +99,11 @@ void GameScene::InitializeSkybox() {
     );
 
     skybox_->SetScale({ 100.0f, 100.0f, 100.0f });
+
+    environmentTexturehandle_ =
+        system_->GetTextureManager()->LoadTexture(
+            "Resources/skybox/rostock_laage_airport_4k.dds"
+        );
 }
 
 void GameScene::InitializeSound() {
@@ -167,6 +184,30 @@ void GameScene::UpdateImGui() {
     ImGui::SliderFloat("wavVolume", &wavVolume_, 0.0f, 1.0f);
     ImGui::SliderFloat("mp4Volume", &mp4Volume_, 0.0f, 1.0f);
     ImGui::SliderFloat("mp3Volume", &mp3Volume_, 0.0f, 1.0f);
+    ImGui::End();
+
+    ImGui::Begin("PostEffect");
+
+    bool enableGrayScale = system_->GetDxCommon()->GetGrayScale();
+
+    if (ImGui::Checkbox("GrayScale", &enableGrayScale)) {
+        system_->GetDxCommon()->SetGrayScale(enableGrayScale);
+    }
+
+    ImGui::End();
+
+    ImGui::Begin("Environment");
+    ImGui::SliderFloat(
+        "environmentCoefficient",
+        &environmentCoefficient_,
+        0.0f,
+        1.0f
+    );
+
+    for (auto& object : objects_) {
+        object->SetEnvironmentCoefficient(environmentCoefficient_);
+    }
+
     ImGui::End();
 
     system_->GetImGuiManager()->End();

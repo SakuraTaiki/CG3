@@ -1,4 +1,4 @@
-//03_00
+
 
 struct VertexShaderInput
 {
@@ -40,6 +40,11 @@ struct DirectionalLight
     float32_t4 color;
     float32_t3 direction;
     float intensity;
+};
+
+struct CameraForGPU
+{
+    float32_t3 worldPosition;
 };
 
 struct PixelShaderOutput

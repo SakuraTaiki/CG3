@@ -2,6 +2,7 @@
 
 ConstantBuffer<Material> gMaterial : register(b0);
 ConstantBuffer<DirectionalLight> gDirectionalLight : register(b1);
+ConstantBuffer<CameraForGPU> gCamera:register(b2);
 
 Texture2D<float32_t4> gTexture : register(t0);
 TextureCube<float32_t4> gEnvironmentTexture : register(t1);
@@ -26,7 +27,7 @@ PixelShaderOutput main(VertexShaderOutput input)
         output.color.rgb *= gDirectionalLight.color.rgb * cos * gDirectionalLight.intensity;
     }
 
-    float32_t3 cameraToPosition = normalize(input.worldPosition);
+    float32_t3 cameraToPosition = normalize(input.worldPosition-gCamera.worldPosition);
     float32_t3 reflectedVector = reflect(cameraToPosition, normalize(input.normal));
     float32_t4 environmentColor = gEnvironmentTexture.Sample(gSampler, reflectedVector);
 

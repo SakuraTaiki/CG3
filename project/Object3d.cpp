@@ -29,8 +29,24 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
 
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = 1;
-    materialData_->environmentCoefficient = 0.3f;
+    materialData_->environmentCoefficient = 0.05f;
     materialData_->uvTransform = Math::MakeIdentity4x4();
+
+    // Camera Buffer
+    resDesc.Width = (sizeof(CameraForGPU) + 0xff) & ~0xff;
+
+    device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &resDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&cameraResource_)
+    );
+
+    cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
+    cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
+    cameraData_->padding = 0.0f;
 }
 
 void Object3d::Update() {
@@ -43,8 +59,12 @@ void Object3d::Update() {
 
 
     if (camera_) {
-        worldViewProjectionmatrix = 
-            Math::Multiply(worldMatrix, Math::Multiply(worldMatrix, camera_->GetViewProjectionMatrix()));
+        worldViewProjectionmatrix =
+            Math::Multiply(worldMatrix, camera_->GetViewProjectionMatrix());
+
+        if (cameraData_) {
+            cameraData_->worldPosition = camera_->GetTranslate();
+        }
     }
     
 
@@ -60,26 +80,70 @@ void Object3d::SetUVTransform(const Transform& t) {
 }
 
 void Object3d::Draw() {
-    if (!model_) return;
+    if (!model_) {
+        return;
+    }
+
     auto commandList = object3dCommon_->GetDxCommon()->GetCommandList();
 
-    // 0. Material
-    commandList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
-    // 1. Transform
-    commandList->SetGraphicsRootConstantBufferView(1, transformationResource_->GetGPUVirtualAddress());
-    // 2. Light (Commonが持つ)
-    commandList->SetGraphicsRootConstantBufferView(2, object3dCommon_->GetLightGPUVirtualAddress());
-    // 3. Texture
-    // ★ここが修正ポイント: Common経由でTextureManagerを呼び出す
-    if (object3dCommon_->GetTextureManager()) {
-        auto gpuHandle = object3dCommon_->GetTextureManager()->GetSrvHandleGPU(model_->GetTextureHandle());
-        commandList->SetGraphicsRootDescriptorTable(3, gpuHandle);
+    // 0. Material : PS b0
+    commandList->SetGraphicsRootConstantBufferView(
+        0,
+        materialResource_->GetGPUVirtualAddress()
+    );
 
-        auto envHandle =
+    // 1. Transform : VS b0
+    commandList->SetGraphicsRootConstantBufferView(
+        1,
+        transformationResource_->GetGPUVirtualAddress()
+    );
+
+    // 2. Light : PS b1
+    commandList->SetGraphicsRootConstantBufferView(
+        2,
+        object3dCommon_->GetLightGPUVirtualAddress()
+    );
+
+    // 3. Camera : PS b2
+    commandList->SetGraphicsRootConstantBufferView(
+        3,
+        cameraResource_->GetGPUVirtualAddress()
+    );
+
+    if (object3dCommon_->GetTextureManager()) {
+        // 4. Texture2D : PS t0
+        auto gpuHandle =
             object3dCommon_->GetTextureManager()->GetSrvHandleGPU(
-                object3dCommon_->GetTextureManager()->LoadTexture(
-                    "Resources/skybox/rostock_laage_airport_4k.dds"));
-        commandList->SetGraphicsRootDescriptorTable(4, envHandle);
+                model_->GetTextureHandle()
+            );
+
+        commandList->SetGraphicsRootDescriptorTable(
+            4,
+            gpuHandle
+        );
+
+        // 5. Environment TextureCube : PS t1
+        if (environmentTextureHandle_ != 0) {
+            auto envHandle =
+                object3dCommon_->GetTextureManager()->GetSrvHandleGPU(
+                    environmentTextureHandle_
+                );
+
+            commandList->SetGraphicsRootDescriptorTable(
+                5,
+                envHandle
+            );
+        } else {
+            auto envHandle =
+                object3dCommon_->GetTextureManager()->GetSrvHandleGPU(
+                    model_->GetTextureHandle()
+                );
+
+            commandList->SetGraphicsRootDescriptorTable(
+                5,
+                envHandle
+            );
+        }
     }
 
     model_->Draw(commandList);

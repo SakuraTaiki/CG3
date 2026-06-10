@@ -18,9 +18,9 @@ public:
 
 private:
     void InitializeModels();
-    void InitializeObjects();
     void InitializeSprite();
     void InitializeSkybox();
+    void InitializeObjects();
     void InitializeSound();
 
     void UpdateObjects();
@@ -46,4 +46,7 @@ private:
     float wavVolume_ = 0.5f;
     float mp4Volume_ = 0.5f;
     float mp3Volume_ = 0.5f;
+
+    uint32_t environmentTexturehandle_ = 0;
+    float environmentCoefficient_ = 0.05f;
 };

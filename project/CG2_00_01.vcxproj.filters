@@ -87,6 +87,7 @@
     <None Include="Resources\shaders\hlsl\Object3d.hlsli" />
     <None Include="Resources\shaders\hlsl\Object3d.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\Object3d.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\CopyImage.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

@@ -9,6 +9,11 @@ struct TransformationMatrix {
     Matrix4x4 World;
 };
 
+struct CameraForGPU {
+    Vector3 worldPosition;
+    float padding;
+};
+
 struct Material {
     Vector4 color;
     int32_t enableLighting;
@@ -44,6 +49,18 @@ public:
         }
     }
 
+    void SetEnvironmentTexture(uint32_t textureHandle) {
+        environmentTextureHandle_ = textureHandle;
+    }
+
+    float GetEnvironmentCoefficient() const {
+        if (!materialData_) {
+            return 0.0f;
+        }
+
+        return materialData_->environmentCoefficient;
+    }
+
 private:
     Object3dCommon* object3dCommon_ = nullptr;
     Model* model_ = nullptr;
@@ -58,4 +75,9 @@ private:
 
     //カメラ
     Camera* camera_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
+    CameraForGPU* cameraData_ = nullptr;
+
+    uint32_t environmentTextureHandle_ = 0;
 };

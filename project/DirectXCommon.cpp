@@ -73,7 +73,15 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
     commandList_->SetDescriptorHeaps(1, heaps);
 
     commandList_->SetGraphicsRootSignature(copyImageRootSignature_.Get());
-    commandList_->SetPipelineState(copyImagePipelineState_.Get());
+
+    if (enableGrayScale_) {
+        commandList_->SetPipelineState(
+            grayScalePipelineState_.Get());
+    } else {
+        commandList_->SetPipelineState(
+            normalCopyPipelineState_.Get());
+    }
+
     commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     commandList_->SetGraphicsRootDescriptorTable(0, renderTextureSrvHandleGPU_);
 
@@ -463,33 +471,43 @@ void DirectXCommon::InitializeRenderTexture()
 
 void DirectXCommon::InitializeCopyImagePipeline()
 {
-
     HRESULT hr = S_FALSE;
 
     D3D12_DESCRIPTOR_RANGE descriptorRange{};
     descriptorRange.BaseShaderRegister = 0;
     descriptorRange.NumDescriptors = 1;
     descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    descriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    descriptorRange.OffsetInDescriptorsFromTableStart =
+        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
     D3D12_ROOT_PARAMETER rootParameter{};
-    rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameter.DescriptorTable.pDescriptorRanges = &descriptorRange;
+    rootParameter.ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameter.DescriptorTable.pDescriptorRanges =
+        &descriptorRange;
     rootParameter.DescriptorTable.NumDescriptorRanges = 1;
-    rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    rootParameter.ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_STATIC_SAMPLER_DESC staticSampler{};
-    staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    staticSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    staticSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    staticSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    staticSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    staticSampler.Filter =
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    staticSampler.AddressU =
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    staticSampler.AddressV =
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    staticSampler.AddressW =
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    staticSampler.ComparisonFunc =
+        D3D12_COMPARISON_FUNC_NEVER;
     staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
     staticSampler.ShaderRegister = 0;
-    staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    staticSampler.ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
-    rootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    rootSignatureDesc.Flags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     rootSignatureDesc.pParameters = &rootParameter;
     rootSignatureDesc.NumParameters = 1;
     rootSignatureDesc.pStaticSamplers = &staticSampler;
@@ -502,10 +520,17 @@ void DirectXCommon::InitializeCopyImagePipeline()
         &rootSignatureDesc,
         D3D_ROOT_SIGNATURE_VERSION_1,
         &signatureBlob,
-        &errorBlob);
+        &errorBlob
+    );
 
     if (FAILED(hr)) {
-        OutputDebugStringA(reinterpret_cast<char*>(errorBlob->GetBufferPointer()));
+        if (errorBlob) {
+            OutputDebugStringA(
+                reinterpret_cast<char*>(
+                    errorBlob->GetBufferPointer()
+                    )
+            );
+        }
         assert(false);
     }
 
@@ -513,32 +538,87 @@ void DirectXCommon::InitializeCopyImagePipeline()
         0,
         signatureBlob->GetBufferPointer(),
         signatureBlob->GetBufferSize(),
-        IID_PPV_ARGS(&copyImageRootSignature_));
+        IID_PPV_ARGS(&copyImageRootSignature_)
+    );
     assert(SUCCEEDED(hr));
 
-    auto vsBlob = CompileShader(L"Resources/shaders/hlsl/Fullscreen.VS.hlsl", L"vs_6_0");
-    auto psBlob = CompileShader(L"Resources/shaders/hlsl/Grayscale.PS.hlsl", L"ps_6_0");
+    auto vsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/Fullscreen.VS.hlsl",
+            L"vs_6_0"
+        );
+
+    auto normalPsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/CopyImage.PS.hlsl",
+            L"ps_6_0"
+        );
+
+    auto grayPsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/Grayscale.PS.hlsl",
+            L"ps_6_0"
+        );
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
-    psoDesc.pRootSignature = copyImageRootSignature_.Get();
+
+    psoDesc.pRootSignature =
+        copyImageRootSignature_.Get();
+
     psoDesc.InputLayout.pInputElementDescs = nullptr;
     psoDesc.InputLayout.NumElements = 0;
-    psoDesc.VS = { vsBlob->GetBufferPointer(), vsBlob->GetBufferSize() };
-    psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
-    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
+
+    psoDesc.VS = {
+        vsBlob->GetBufferPointer(),
+        vsBlob->GetBufferSize()
+    };
+
+    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask =
+        D3D12_COLOR_WRITE_ENABLE_ALL;
+
+    psoDesc.RasterizerState.FillMode =
+        D3D12_FILL_MODE_SOLID;
+    psoDesc.RasterizerState.CullMode =
+        D3D12_CULL_MODE_NONE;
+
     psoDesc.DepthStencilState.DepthEnable = false;
     psoDesc.DepthStencilState.StencilEnable = false;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    psoDesc.SampleMask =
+        D3D12_DEFAULT_SAMPLE_MASK;
+
+    psoDesc.PrimitiveTopologyType =
+        D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
     psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.RTVFormats[0] =
+        DXGI_FORMAT_R8G8B8A8_UNORM;
+
     psoDesc.SampleDesc.Count = 1;
 
-    hr = device_->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&copyImagePipelineState_));
+    // 通常表示用 PSO
+    psoDesc.PS = {
+        normalPsBlob->GetBufferPointer(),
+        normalPsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(&normalCopyPipelineState_)
+    );
     assert(SUCCEEDED(hr));
 
+    // グレースケール用 PSO
+    psoDesc.PS = {
+        grayPsBlob->GetBufferPointer(),
+        grayPsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(&grayScalePipelineState_)
+    );
+    assert(SUCCEEDED(hr));
 }
 
 void DirectXCommon::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
@@ -552,6 +632,7 @@ void DirectXCommon::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Transition.pResource = resource;
     barrier.Transition.StateBefore = beforeState;
+
     barrier.Transition.StateAfter = afterState;
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
