@@ -25,6 +25,7 @@ void GameSystem::Initialize() {
     object3dCommon_->Initialize(dxCommon_.get());
 
     camera_ = std::make_unique<Camera>();
+
     camera_->Update();
 
     object3dCommon_->SetDefaultCamera(camera_.get());
