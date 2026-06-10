@@ -119,7 +119,7 @@ void GameScene::Update() {
     input->Update();
 
     if (input->TriggerKey(DIK_SPACE)) {
-        system_->GetParticleManager()->Emit({ 0.0f, 0.0f, 0.0f }, 10);
+        system_->GetParticleManager()->Emit({ 0.0f, 1.0f, 0.0f }, 8);
     }
 
     UpdateSound();
