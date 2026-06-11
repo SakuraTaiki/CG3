@@ -9,6 +9,7 @@
 #include "Sound.h"
 #include "Ring.h"
 #include "Cylinder.h"
+#include "Skelton.h"
 
 class GameScene {
 public:
@@ -26,10 +27,12 @@ private:
     void InitializeSound();
     void InitializeRing();
     void InitializeCylinder();
+    void InitializeSkeletonDebug();
 
     void UpdateObjects();
     void UpdateSound();
     void UpdateImGui();
+    void UpdateSkeletonDebug();
 
     void Draw3D();
     void Draw2D();
@@ -52,6 +55,7 @@ private:
     std::unique_ptr<Ring>   ring_;
     std::unique_ptr<Cylinder> cylinder_;
     std::unique_ptr<Object3d> animatedObject_;
+    std::vector<std::unique_ptr<Object3d>> skeletonDebugObjects_;
     
 
     Sound sound_;
@@ -75,4 +79,9 @@ private:
     bool enableCylinder_ = true;
 
     Animation animatedCubeAnimation_;
+
+    Skeleton animatedSkeleton_;
+    float skeletonAnimationTime_ = 0.0f;
+
+    bool showSkeletonDebug_ = true;
 };
