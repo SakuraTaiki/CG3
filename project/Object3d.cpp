@@ -1,6 +1,7 @@
 #include "Object3d.h"
 #include "TextureManager.h" // GetSrvHandleGPUを使うために必要
 #include <cassert>
+#include <cmath>
 
 void Object3d::Initialize(Object3dCommon* object3dCommon) {
     assert(object3dCommon);
@@ -68,13 +69,40 @@ void Object3d::Update() {
     }
 
     if (model_) {
-        Matrix4x4 rootMatrix = model_->GetRootNode().localMatrix;
+        Matrix4x4 localMatrix = model_->GetRootNode().localMatrix;
 
-        Matrix4x4 worldWithRoot = Math::Multiply(rootMatrix, worldMatrix);
+        if (useAnimation_) {
+            animationTime_ += 1.0f / 60.0f;
+
+            if (animation_.duration > 0.0f) {
+                animationTime_ = std::fmod(animationTime_, animation_.duration);
+            }
+
+            auto it = animation_.nodeAnimations.find(model_->GetRootNode().name);
+
+            if (it != animation_.nodeAnimations.end()) {
+                const NodeAnimation& rootNodeAnimation = it->second;
+
+                Vector3 translate =
+                    CalculateValue(rootNodeAnimation.translate, animationTime_);
+
+                Quaternion rotate =
+                    CalculateValue(rootNodeAnimation.rotate, animationTime_);
+
+                Vector3 scale =
+                    CalculateValue(rootNodeAnimation.scale, animationTime_);
+
+                localMatrix =
+                    Math::MakeAffineMatrix(scale, rotate, translate);
+            }
+        }
+
+        Matrix4x4 worldWithRoot = Math::Multiply(localMatrix, worldMatrix);
         Matrix4x4 wvpWithRoot = worldWithRoot;
 
         if (camera_) {
-            wvpWithRoot = Math::Multiply(worldWithRoot, camera_->GetViewProjectionMatrix());
+            wvpWithRoot =
+                Math::Multiply(worldWithRoot, camera_->GetViewProjectionMatrix());
         }
 
         transformationData_->WVP = wvpWithRoot;
@@ -83,7 +111,6 @@ void Object3d::Update() {
         transformationData_->WVP = worldViewProjectionmatrix;
         transformationData_->World = worldMatrix;
     }
-
 }
 
 void Object3d::SetUVTransform(const Transform& t) {

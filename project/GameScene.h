@@ -35,6 +35,14 @@ private:
     void Draw2D();
 
 private:
+
+    enum class DrawMode {
+        NormalObj,
+        Animation
+    };
+
+    DrawMode drawMode_ = DrawMode::NormalObj;
+
     GameSystem* system_ = nullptr;
 
     std::vector<std::unique_ptr<Object3d>> objects_;
@@ -43,7 +51,7 @@ private:
     std::unique_ptr<Skybox> skybox_;
     std::unique_ptr<Ring>   ring_;
     std::unique_ptr<Cylinder> cylinder_;
-
+    std::unique_ptr<Object3d> animatedObject_;
     
 
     Sound sound_;
@@ -65,4 +73,6 @@ private:
 
     bool enableRing_ = true;
     bool enableCylinder_ = true;
+
+    Animation animatedCubeAnimation_;
 };

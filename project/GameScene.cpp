@@ -34,6 +34,8 @@ void GameScene::Finalize() {
 void GameScene::InitializeModels() {
     ModelManager::Load("Resources/terrain", "terrain.obj");
     ModelManager::Load("axis.obj");
+
+    ModelManager::Load("Resources/AnimatedCube", "AnimatedCube.gltf");
 }
 
 void GameScene::InitializeObjects() {
@@ -80,6 +82,26 @@ void GameScene::InitializeObjects() {
         object->SetEnvironmentCoefficient(environmentCoefficient_);
 
         objects_.push_back(std::move(object));
+    }
+
+    {
+        Model* modelAnimated =
+            ModelManager::Load("Resources/AnimatedCube", "AnimatedCube.gltf");
+
+        animatedCubeAnimation_ =
+            LoadAnimationFile("Resources/AnimatedCube", "AnimatedCube.gltf");
+
+        animatedObject_ = std::make_unique<Object3d>();
+        animatedObject_->Initialize(object3dCommon);
+        animatedObject_->SetModel(modelAnimated);
+        animatedObject_->SetAnimation(animatedCubeAnimation_);
+
+        animatedObject_->SetPosition({ 0.0f, 0.0f, 0.0f });
+        animatedObject_->SetRotation({ 0.0f, 0.0f, 0.0f });
+        animatedObject_->SetScale({ 1.0f, 1.0f, 1.0f });
+
+        animatedObject_->SetEnvironmentTexture(environmentTexturehandle_);
+        animatedObject_->SetEnvironmentCoefficient(environmentCoefficient_);
     }
 }
 
@@ -184,8 +206,17 @@ void GameScene::Update() {
 }
 
 void GameScene::UpdateObjects() {
-    for (auto& object : objects_) {
-        object->Update();
+
+    if (drawMode_ == DrawMode::NormalObj) {
+        for (auto& object : objects_) {
+            object->Update();
+        }
+    }
+
+    if (drawMode_ == DrawMode::Animation) {
+        if (animatedObject_) {
+            animatedObject_->Update();
+        }
     }
 }
 
@@ -243,6 +274,21 @@ void GameScene::UpdateImGui() {
 
     ImGui::SameLine();
     ImGui::TextDisabled("SPACE key also emits");
+
+    ImGui::Spacing();
+
+    ImGui::Text("Draw Mode");
+    ImGui::Separator();
+
+    int currentMode = static_cast<int>(drawMode_);
+
+    if (ImGui::RadioButton("Normal OBJ / Terrain", currentMode == 0)) {
+        drawMode_ = DrawMode::NormalObj;
+    }
+
+    if (ImGui::RadioButton("Animation glTF", currentMode == 1)) {
+        drawMode_ = DrawMode::Animation;
+    }
 
     ImGui::Spacing();
 
@@ -445,8 +491,16 @@ void GameScene::Draw3D() {
 
     system_->GetObject3dCommon()->PreDraw();
 
-    for (auto& object : objects_) {
-        object->Draw();
+    if (drawMode_ == DrawMode::NormalObj) {
+        for (auto& object : objects_) {
+            object->Draw();
+        }
+    }
+
+    if (drawMode_ == DrawMode::Animation) {
+        if (animatedObject_) {
+            animatedObject_->Draw();
+        }
     }
 
     if (skybox_) {
