@@ -36,7 +36,7 @@ void GameScene::InitializeModels() {
     ModelManager::Load("Resources/terrain", "terrain.obj");
     ModelManager::Load("axis.obj");
 
-    ModelManager::Load("Resources/AnimatedCube", "AnimatedCube.gltf");
+    ModelManager::Load("Resources/human", "walk.gltf");
 }
 
 void GameScene::InitializeObjects() {
@@ -87,10 +87,10 @@ void GameScene::InitializeObjects() {
 
     {
         Model* modelAnimated =
-            ModelManager::Load("Resources/AnimatedCube", "AnimatedCube.gltf");
+            ModelManager::Load("Resources/human", "walk.gltf");
 
         animatedCubeAnimation_ =
-            LoadAnimationFile("Resources/AnimatedCube", "AnimatedCube.gltf");
+            LoadAnimationFile("Resources/human", "walk.gltf");
 
         animatedSkeleton_ =
             CreateSkeleton(modelAnimated->GetRootNode());
