@@ -206,4 +206,101 @@ namespace Math {
         return v;
     }
 
+    Vector3 Lerp(const Vector3& a, const Vector3& b, float t) {
+        return {
+            a.x + (b.x - a.x) * t,
+            a.y + (b.y - a.y) * t,
+            a.z + (b.z - a.z) * t
+        };
+    }
+
+    Quaternion Normalize(const Quaternion& q) {
+        float length = std::sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w);
+        if (length == 0.0f) {
+            return { 0.0f, 0.0f, 0.0f, 1.0f };
+        }
+
+        return {
+            q.x / length,
+            q.y / length,
+            q.z / length,
+            q.w / length
+        };
+    }
+
+    Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t) {
+        Quaternion start = q0;
+        Quaternion end = q1;
+
+        float dot =
+            start.x * end.x +
+            start.y * end.y +
+            start.z * end.z +
+            start.w * end.w;
+
+        if (dot < 0.0f) {
+            end.x = -end.x;
+            end.y = -end.y;
+            end.z = -end.z;
+            end.w = -end.w;
+            dot = -dot;
+        }
+
+        if (dot > 0.9995f) {
+            Quaternion result{
+                start.x + (end.x - start.x) * t,
+                start.y + (end.y - start.y) * t,
+                start.z + (end.z - start.z) * t,
+                start.w + (end.w - start.w) * t
+            };
+            return Normalize(result);
+        }
+
+        float theta = std::acos(dot);
+        float sinTheta = std::sin(theta);
+
+        float scale0 = std::sin((1.0f - t) * theta) / sinTheta;
+        float scale1 = std::sin(t * theta) / sinTheta;
+
+        return {
+            start.x * scale0 + end.x * scale1,
+            start.y * scale0 + end.y * scale1,
+            start.z * scale0 + end.z * scale1,
+            start.w * scale0 + end.w * scale1
+        };
+    }
+
+    Matrix4x4 MakeRotateMatrix(const Quaternion& q) {
+        Quaternion nq = Normalize(q);
+
+        float x = nq.x;
+        float y = nq.y;
+        float z = nq.z;
+        float w = nq.w;
+
+        Matrix4x4 result = MakeIdentity4x4();
+
+        result.m[0][0] = 1.0f - 2.0f * y * y - 2.0f * z * z;
+        result.m[0][1] = 2.0f * x * y + 2.0f * w * z;
+        result.m[0][2] = 2.0f * x * z - 2.0f * w * y;
+
+        result.m[1][0] = 2.0f * x * y - 2.0f * w * z;
+        result.m[1][1] = 1.0f - 2.0f * x * x - 2.0f * z * z;
+        result.m[1][2] = 2.0f * y * z + 2.0f * w * x;
+
+        result.m[2][0] = 2.0f * x * z + 2.0f * w * y;
+        result.m[2][1] = 2.0f * y * z - 2.0f * w * x;
+        result.m[2][2] = 1.0f - 2.0f * x * x - 2.0f * y * y;
+
+        return result;
+    }
+
+    Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Quaternion& rotate, const Vector3& translate) {
+        Matrix4x4 scaleMatrix = Matrix4x4MakeScaleMatrix(scale);
+        Matrix4x4 rotateMatrix = MakeRotateMatrix(rotate);
+        Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
+
+        return Multiply(Multiply(scaleMatrix, rotateMatrix), translateMatrix);
+    }
+
 }

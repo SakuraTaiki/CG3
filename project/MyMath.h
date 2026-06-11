@@ -26,6 +26,10 @@ struct Transform {
     Vector3 translate;
 };
 
+struct Quaternion {
+    float x, y, z, w;
+};
+
 //=======================
 // 数学関数群
 //=======================
@@ -66,4 +70,12 @@ namespace Math {
 
     // 正規化
     Vector3 Normalize(const Vector3& v);
+
+    Vector3 Lerp(const Vector3& a, const Vector3& b, float t);
+
+    Quaternion Normalize(const Quaternion& q);
+    Quaternion Slerp(const Quaternion& q0, const Quaternion& q1, float t);
+
+    Matrix4x4 MakeRotateMatrix(const Quaternion& q);
+    Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Quaternion& rotate, const Vector3& translate);
 }

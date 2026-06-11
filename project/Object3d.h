@@ -3,6 +3,7 @@
 #include "Model.h"
 #include "MyMath.h"
 #include"Camera.h"
+#include "Animation.h"
 
 struct TransformationMatrix {
     Matrix4x4 WVP;
@@ -61,6 +62,13 @@ public:
         return materialData_->environmentCoefficient;
     }
 
+    //アニメーションセット
+    void SetAnimation(const Animation& animation) {
+        animation_ = animation;
+        useAnimation_ = true;
+        animationTime_ = 0.0f;
+    }
+
 private:
     Object3dCommon* object3dCommon_ = nullptr;
     Model* model_ = nullptr;
@@ -80,4 +88,9 @@ private:
     CameraForGPU* cameraData_ = nullptr;
 
     uint32_t environmentTextureHandle_ = 0;
+
+    //アニメーションメンバ
+    Animation animation_;
+    bool useAnimation_ = false;
+    float animationTime_ = 0.0f;
 };
