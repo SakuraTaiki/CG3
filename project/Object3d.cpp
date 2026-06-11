@@ -66,10 +66,24 @@ void Object3d::Update() {
             cameraData_->worldPosition = camera_->GetTranslate();
         }
     }
-    
 
-    transformationData_->WVP = worldViewProjectionmatrix;
-    transformationData_->World = worldMatrix;
+    if (model_) {
+        Matrix4x4 rootMatrix = model_->GetRootNode().localMatrix;
+
+        Matrix4x4 worldWithRoot = Math::Multiply(rootMatrix, worldMatrix);
+        Matrix4x4 wvpWithRoot = worldWithRoot;
+
+        if (camera_) {
+            wvpWithRoot = Math::Multiply(worldWithRoot, camera_->GetViewProjectionMatrix());
+        }
+
+        transformationData_->WVP = wvpWithRoot;
+        transformationData_->World = worldWithRoot;
+    } else {
+        transformationData_->WVP = worldViewProjectionmatrix;
+        transformationData_->World = worldMatrix;
+    }
+
 }
 
 void Object3d::SetUVTransform(const Transform& t) {
