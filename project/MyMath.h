@@ -62,6 +62,8 @@ namespace Math {
     // ビューポート行列 (Spriteで必要)
     Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth, float maxDepth);
 
+    Matrix4x4 Transpose(const Matrix4x4& m);
+
     // 正規化
     Vector3 Normalize(const Vector3& v);
 }

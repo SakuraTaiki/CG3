@@ -185,6 +185,18 @@ namespace Math {
         return m;
     }
 
+    Matrix4x4 Transpose(const Matrix4x4& m) {
+        Matrix4x4 result{};
+
+        for (int y = 0; y < 4; ++y) {
+            for (int x = 0; x < 4; ++x) {
+                result.m[y][x] = m.m[x][y];
+            }
+        }
+
+        return result;
+    }
+
     // 正規化
     Vector3 Normalize(const Vector3& v) {
         float len = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);

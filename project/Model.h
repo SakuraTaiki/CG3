@@ -12,6 +12,14 @@ struct ModelVertexData {
     Vector3 normal;
 };
 
+struct Node {
+    Matrix4x4 localMatrix;
+    std::string name;
+    std::vector<Node> children;
+};
+
+struct aiNode;
+
 class Model {
 public:
     // OBJファイルからモデル生成 (ディレクトリパスとファイル名を分けて渡す)
@@ -22,6 +30,8 @@ public:
 
     // ゲッター
     uint32_t GetTextureHandle() const { return textureHandle_; }
+
+    const Node& GetRootNode() const { return rootNode_; }
 
 private:
     void LoadObjFile(const std::string& directoryPath, const std::string& filename);
@@ -34,4 +44,7 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+
+    Node ReadNode(aiNode* node);
+    Node rootNode_;
 };
