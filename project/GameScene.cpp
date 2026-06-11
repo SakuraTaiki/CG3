@@ -1,5 +1,6 @@
 #include "GameScene.h"
 #include "ModelManager.h"
+#include <cmath>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -91,6 +92,11 @@ void GameScene::InitializeObjects() {
         animatedCubeAnimation_ =
             LoadAnimationFile("Resources/AnimatedCube", "AnimatedCube.gltf");
 
+        animatedSkeleton_ =
+            CreateSkeleton(modelAnimated->GetRootNode());
+
+        InitializeSkeletonDebug();
+
         animatedObject_ = std::make_unique<Object3d>();
         animatedObject_->Initialize(object3dCommon);
         animatedObject_->SetModel(modelAnimated);
@@ -155,6 +161,28 @@ void GameScene::InitializeCylinder()
 
 }
 
+void GameScene::InitializeSkeletonDebug() {
+    skeletonDebugObjects_.clear();
+
+    Object3dCommon* object3dCommon = system_->GetObject3dCommon();
+    Model* jointModel = ModelManager::Load("axis.obj");
+
+    for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
+        std::unique_ptr<Object3d> object = std::make_unique<Object3d>();
+        object->Initialize(object3dCommon);
+        object->SetModel(jointModel);
+
+        object->SetScale({ 0.15f, 0.15f, 0.15f });
+        object->SetRotation({ 0.0f, 0.0f, 0.0f });
+        object->SetPosition({ 0.0f, 0.0f, 0.0f });
+
+        object->SetEnvironmentTexture(environmentTexturehandle_);
+        object->SetEnvironmentCoefficient(environmentCoefficient_);
+
+        skeletonDebugObjects_.push_back(std::move(object));
+    }
+}
+
 void GameScene::Update() {
     Input* input = system_->GetInput();
     input->Update();
@@ -214,6 +242,25 @@ void GameScene::UpdateObjects() {
     }
 
     if (drawMode_ == DrawMode::Animation) {
+
+        skeletonAnimationTime_ += 1.0f / 60.0f;
+
+        if (animatedCubeAnimation_.duration > 0.0f) {
+            skeletonAnimationTime_ =
+                std::fmod(skeletonAnimationTime_, animatedCubeAnimation_.duration);
+        }
+
+        ApplyAnimation(
+            animatedSkeleton_,
+            animatedCubeAnimation_,
+            skeletonAnimationTime_);
+
+        UpdateSkelton(animatedSkeleton_);
+
+        if (showSkeletonDebug_) {
+            UpdateSkeletonDebug();
+        }
+
         if (animatedObject_) {
             animatedObject_->Update();
         }
@@ -291,6 +338,18 @@ void GameScene::UpdateImGui() {
     }
 
     ImGui::Spacing();
+
+    ImGui::Text("Skeleton");
+    ImGui::BulletText("Joint Count : %d", static_cast<int>(animatedSkeleton_.joints.size()));
+    ImGui::BulletText("Animation Time : %.2f", skeletonAnimationTime_);
+    ImGui::Spacing();
+
+    ImGui::Checkbox("Show Skeleton Debug", &showSkeletonDebug_);
+
+    ImGui::BulletText(
+        "Joint Count : %d",
+        static_cast<int>(animatedSkeleton_.joints.size())
+    );
 
     if (ImGui::BeginTabBar("MainTabs")) {
 
@@ -477,6 +536,30 @@ void GameScene::UpdateImGui() {
     system_->GetImGuiManager()->End();
 #endif
 }
+
+void GameScene::UpdateSkeletonDebug()
+{
+
+    if (skeletonDebugObjects_.size() != animatedSkeleton_.joints.size()) {
+        return;
+    }
+
+    for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
+        const Matrix4x4& mat =
+            animatedSkeleton_.joints[i].skeletonSpaceMatrix;
+
+        Vector3 jointPosition = {
+            mat.m[3][0],
+            mat.m[3][1],
+            mat.m[3][2]
+        };
+
+        skeletonDebugObjects_[i]->SetPosition(jointPosition);
+        skeletonDebugObjects_[i]->Update();
+    }
+
+}
+
 void GameScene::Draw() {
     Draw3D();
     Draw2D();
@@ -500,6 +583,12 @@ void GameScene::Draw3D() {
     if (drawMode_ == DrawMode::Animation) {
         if (animatedObject_) {
             animatedObject_->Draw();
+        }
+
+        if (showSkeletonDebug_) {
+            for (auto& debugObject : skeletonDebugObjects_) {
+                debugObject->Draw();
+            }
         }
     }
 
