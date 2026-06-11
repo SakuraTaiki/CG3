@@ -56,6 +56,7 @@ private:
     std::unique_ptr<Cylinder> cylinder_;
     std::unique_ptr<Object3d> animatedObject_;
     std::vector<std::unique_ptr<Object3d>> skeletonDebugObjects_;
+    std::vector<std::unique_ptr<Object3d>> skeletonBoneObjects_;
     
 
     Sound sound_;

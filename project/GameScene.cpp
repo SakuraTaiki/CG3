@@ -163,23 +163,39 @@ void GameScene::InitializeCylinder()
 
 void GameScene::InitializeSkeletonDebug() {
     skeletonDebugObjects_.clear();
+    skeletonBoneObjects_.clear();
 
     Object3dCommon* object3dCommon = system_->GetObject3dCommon();
     Model* jointModel = ModelManager::Load("axis.obj");
 
     for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
-        std::unique_ptr<Object3d> object = std::make_unique<Object3d>();
-        object->Initialize(object3dCommon);
-        object->SetModel(jointModel);
+        auto jointObj = std::make_unique<Object3d>();
+        jointObj->Initialize(object3dCommon);
+        jointObj->SetModel(jointModel);
+        jointObj->SetScale({ 0.3f, 0.3f, 0.3f });
+        jointObj->SetRotation({ 0.0f, 0.0f, 0.0f });
+        jointObj->SetPosition({ 0.0f, 0.0f, 0.0f });
+        jointObj->SetEnvironmentTexture(environmentTexturehandle_);
+        jointObj->SetEnvironmentCoefficient(environmentCoefficient_);
 
-        object->SetScale({ 0.15f, 0.15f, 0.15f });
-        object->SetRotation({ 0.0f, 0.0f, 0.0f });
-        object->SetPosition({ 0.0f, 0.0f, 0.0f });
+        skeletonDebugObjects_.push_back(std::move(jointObj));
+    }
 
-        object->SetEnvironmentTexture(environmentTexturehandle_);
-        object->SetEnvironmentCoefficient(environmentCoefficient_);
+    for (const Joint& joint : animatedSkeleton_.joints) {
+        if (!joint.parent) {
+            continue;
+        }
 
-        skeletonDebugObjects_.push_back(std::move(object));
+        auto boneObj = std::make_unique<Object3d>();
+        boneObj->Initialize(object3dCommon);
+        boneObj->SetModel(jointModel);
+        boneObj->SetScale({ 0.1f, 0.1f, 0.1f });
+        boneObj->SetRotation({ 0.0f, 0.0f, 0.0f });
+        boneObj->SetPosition({ 0.0f, 0.0f, 0.0f });
+        boneObj->SetEnvironmentTexture(environmentTexturehandle_);
+        boneObj->SetEnvironmentCoefficient(environmentCoefficient_);
+
+        skeletonBoneObjects_.push_back(std::move(boneObj));
     }
 }
 
@@ -537,16 +553,13 @@ void GameScene::UpdateImGui() {
 #endif
 }
 
-void GameScene::UpdateSkeletonDebug()
-{
-
+void GameScene::UpdateSkeletonDebug() {
     if (skeletonDebugObjects_.size() != animatedSkeleton_.joints.size()) {
         return;
     }
 
     for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
-        const Matrix4x4& mat =
-            animatedSkeleton_.joints[i].skeletonSpaceMatrix;
+        const Matrix4x4& mat = animatedSkeleton_.joints[i].skeletonSpaceMatrix;
 
         Vector3 jointPosition = {
             mat.m[3][0],
@@ -558,6 +571,41 @@ void GameScene::UpdateSkeletonDebug()
         skeletonDebugObjects_[i]->Update();
     }
 
+    size_t boneIndex = 0;
+
+    for (const Joint& joint : animatedSkeleton_.joints) {
+        if (!joint.parent) {
+            continue;
+        }
+
+        const Matrix4x4& childMat = joint.skeletonSpaceMatrix;
+        const Matrix4x4& parentMat =
+            animatedSkeleton_.joints[*joint.parent].skeletonSpaceMatrix;
+
+        Vector3 childPos = {
+            childMat.m[3][0],
+            childMat.m[3][1],
+            childMat.m[3][2]
+        };
+
+        Vector3 parentPos = {
+            parentMat.m[3][0],
+            parentMat.m[3][1],
+            parentMat.m[3][2]
+        };
+
+        Vector3 center = {
+            (childPos.x + parentPos.x) * 0.5f,
+            (childPos.y + parentPos.y) * 0.5f,
+            (childPos.z + parentPos.z) * 0.5f
+        };
+
+        skeletonBoneObjects_[boneIndex]->SetPosition(center);
+        skeletonBoneObjects_[boneIndex]->SetScale({ 0.15f, 0.15f, 0.15f });
+        skeletonBoneObjects_[boneIndex]->Update();
+
+        ++boneIndex;
+    }
 }
 
 void GameScene::Draw() {
@@ -588,6 +636,10 @@ void GameScene::Draw3D() {
         if (showSkeletonDebug_) {
             for (auto& debugObject : skeletonDebugObjects_) {
                 debugObject->Draw();
+            }
+
+            for (auto& boneObject : skeletonBoneObjects_) {
+                boneObject->Draw();
             }
         }
     }
