@@ -71,6 +71,8 @@ void Model::LoadObjFile(const std::string& directoryPath,
 {
     vertices_.clear();
 
+    indices_.clear();
+
     Assimp::Importer importer;
 
     std::string filePath = directoryPath + "/" + filename;
@@ -87,8 +89,8 @@ void Model::LoadObjFile(const std::string& directoryPath,
     rootNode_ = ReadNode(scene->mRootNode);
 
     //------------------------------------
-    // Mesh解析
-    //------------------------------------
+// Mesh解析
+//------------------------------------
     for (uint32_t meshIndex = 0;
         meshIndex < scene->mNumMeshes;
         ++meshIndex)
@@ -97,8 +99,57 @@ void Model::LoadObjFile(const std::string& directoryPath,
 
         assert(mesh->HasNormals());
 
+        uint32_t vertexOffset = static_cast<uint32_t>(vertices_.size());
+
         //--------------------------------
-        // Face解析
+        // Vertex解析
+        //--------------------------------
+        vertices_.resize(vertices_.size() + mesh->mNumVertices);
+
+        for (uint32_t vertexIndex = 0;
+            vertexIndex < mesh->mNumVertices;
+            ++vertexIndex)
+        {
+            aiVector3D position = mesh->mVertices[vertexIndex];
+            aiVector3D normal = mesh->mNormals[vertexIndex];
+
+            ModelVertexData vertex{};
+
+            vertex.position = {
+                position.x,
+                position.y,
+                position.z,
+                1.0f
+            };
+
+            vertex.normal = {
+                normal.x,
+                normal.y,
+                normal.z
+            };
+
+            if (mesh->HasTextureCoords(0)) {
+                aiVector3D texcoord = mesh->mTextureCoords[0][vertexIndex];
+                vertex.texcoord = {
+                    texcoord.x,
+                    texcoord.y
+                };
+            } else {
+                vertex.texcoord = {
+                    position.x,
+                    position.z
+                };
+            }
+
+            // 左手系変換
+            vertex.position.x *= -1.0f;
+            vertex.normal.x *= -1.0f;
+
+            vertices_[vertexOffset + vertexIndex] = vertex;
+        }
+
+        //--------------------------------
+        // Index解析
         //--------------------------------
         for (uint32_t faceIndex = 0;
             faceIndex < mesh->mNumFaces;
@@ -108,53 +159,13 @@ void Model::LoadObjFile(const std::string& directoryPath,
 
             assert(face.mNumIndices == 3);
 
-            //--------------------------------
-            // Vertex解析
-            //--------------------------------
             for (uint32_t element = 0;
                 element < face.mNumIndices;
                 ++element)
             {
                 uint32_t vertexIndex = face.mIndices[element];
 
-                aiVector3D position = mesh->mVertices[vertexIndex];
-                aiVector3D normal = mesh->mNormals[vertexIndex];
-
-                ModelVertexData vertex{};
-                vertex.position = {
-                    position.x,
-                    position.y,
-                    position.z,
-                    1.0f
-                };
-
-                vertex.normal = {
-                    normal.x,
-                    normal.y,
-                    normal.z
-                };
-
-                // UVがある場合
-                if (mesh->HasTextureCoords(0)) {
-                    aiVector3D texcoord = mesh->mTextureCoords[0][vertexIndex];
-                    vertex.texcoord = {
-                        texcoord.x,
-                        texcoord.y
-                    };
-                }
-                // UVが無い場合：位置から仮UVを作る
-                else {
-                    vertex.texcoord = {
-                        position.x,
-                        position.z
-                    };
-                }
-
-                // 左手系変換
-                vertex.position.x *= -1.0f;
-                vertex.normal.x *= -1.0f;
-
-                vertices_.push_back(vertex);
+                indices_.push_back(vertexOffset + vertexIndex);
             }
         }
     }
@@ -201,44 +212,90 @@ void Model::LoadObjFile(const std::string& directoryPath,
 
 void Model::CreateBuffers(DirectXCommon* dxCommon) {
     auto device = dxCommon->GetDevice();
-    UINT sizeIB = static_cast<UINT>(sizeof(ModelVertexData) * vertices_.size());
 
-    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
-    D3D12_RESOURCE_DESC resDesc = {};
+    UINT vertexBufferSize =
+        static_cast<UINT>(sizeof(ModelVertexData) * vertices_.size());
+
+    UINT indexBufferSize =
+        static_cast<UINT>(sizeof(uint32_t) * indices_.size());
+
+    D3D12_HEAP_PROPERTIES heapProps{};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC resDesc{};
     resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = sizeIB; // ここが0だとCreateCommittedResourceは失敗する
-    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+    resDesc.Height = 1;
+    resDesc.DepthOrArraySize = 1;
+    resDesc.MipLevels = 1;
+    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    resDesc.SampleDesc.Count = 1;
 
-    // ★重要：HRESULTで成功を確認する
-    HRESULT hr = device->CreateCommittedResource(
-        &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer_));
+    HRESULT hr;
 
-    if (FAILED(hr)) {
-        assert(false && "Failed to create Vertex Buffer");
-        return;
-    }
+    //--------------------------------
+    // VertexBuffer
+    //--------------------------------
+    resDesc.Width = vertexBufferSize;
 
-    // データ転送
-    ModelVertexData* vertMap = nullptr;
-    hr = vertexBuffer_->Map(0, nullptr, (void**)&vertMap);
-    if (SUCCEEDED(hr)) {
-        std::copy(vertices_.begin(), vertices_.end(), vertMap);
-        vertexBuffer_->Unmap(0, nullptr);
-    }
+    hr = device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &resDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&vertexBuffer_)
+    );
 
-    // View作成
+    assert(SUCCEEDED(hr));
+
+    ModelVertexData* vertexMap = nullptr;
+    vertexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&vertexMap));
+    std::copy(vertices_.begin(), vertices_.end(), vertexMap);
+    vertexBuffer_->Unmap(0, nullptr);
+
     vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-    vertexBufferView_.SizeInBytes = sizeIB;
+    vertexBufferView_.SizeInBytes = vertexBufferSize;
     vertexBufferView_.StrideInBytes = sizeof(ModelVertexData);
+
+    //--------------------------------
+    // IndexBuffer
+    //--------------------------------
+    resDesc.Width = indexBufferSize;
+
+    hr = device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &resDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&indexBuffer_)
+    );
+
+    assert(SUCCEEDED(hr));
+
+    uint32_t* indexMap = nullptr;
+    indexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&indexMap));
+    std::copy(indices_.begin(), indices_.end(), indexMap);
+    indexBuffer_->Unmap(0, nullptr);
+
+    indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
+    indexBufferView_.SizeInBytes = indexBufferSize;
+    indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 }
+
 void Model::Draw(ID3D12GraphicsCommandList* commandList) {
-    // ★安全策：バッファがない場合は描画しない
-    if (!vertexBuffer_) {
+    if (!vertexBuffer_ || !indexBuffer_) {
         return;
     }
 
     commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-    commandList->DrawInstanced(UINT(vertices_.size()), 1, 0, 0);
+    commandList->IASetIndexBuffer(&indexBufferView_);
+
+    commandList->DrawIndexedInstanced(
+        static_cast<UINT>(indices_.size()),
+        1,
+        0,
+        0,
+        0
+    );
 }
