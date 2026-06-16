@@ -47,10 +47,14 @@ private:
 
 private:
     std::vector<ModelVertexData> vertices_;
+    std::vector<uint32_t> indices_;
     uint32_t textureHandle_ = 0;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer_;
+    D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
     Node ReadNode(aiNode* node);
     Node rootNode_;
