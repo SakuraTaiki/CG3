@@ -259,29 +259,51 @@ void GameScene::UpdateObjects() {
     }
 
     if (drawMode_ == DrawMode::Animation) {
-
-        skeletonAnimationTime_ += 1.0f / 60.0f;
-
-        if (animatedCubeAnimation_.duration > 0.0f) {
-            skeletonAnimationTime_ =
-                std::fmod(skeletonAnimationTime_, animatedCubeAnimation_.duration);
-        }
-
-        ApplyAnimation(
-            animatedSkeleton_,
-            animatedCubeAnimation_,
-            skeletonAnimationTime_);
-
-        UpdateSkelton(animatedSkeleton_);
+        UpdateAnimationDebug();
 
         if (showSkeletonDebug_) {
             UpdateSkeletonDebug();
         }
 
+        SyncAnimatedSkeletonToObject();
+
         if (animatedObject_) {
             animatedObject_->Update();
         }
     }
+}
+
+
+void GameScene::UpdateAnimationDebug() {
+    if (animationPlaying_) {
+        skeletonAnimationTime_ += (1.0f / 60.0f) * animationSpeed_;
+
+        if (animatedCubeAnimation_.duration > 0.0f) {
+            if (animationLoop_) {
+                skeletonAnimationTime_ =
+                    std::fmod(skeletonAnimationTime_, animatedCubeAnimation_.duration);
+            } else if (skeletonAnimationTime_ > animatedCubeAnimation_.duration) {
+                skeletonAnimationTime_ = animatedCubeAnimation_.duration;
+                animationPlaying_ = false;
+            }
+        }
+
+        ApplyAnimation(
+            animatedSkeleton_,
+            animatedCubeAnimation_,
+            skeletonAnimationTime_
+        );
+    }
+
+    UpdateSkelton(animatedSkeleton_);
+}
+
+void GameScene::SyncAnimatedSkeletonToObject() {
+    if (!animatedObject_) {
+        return;
+    }
+
+    animatedObject_->SetSkeleton(animatedSkeleton_);
 }
 
 void GameScene::UpdateSound() {
@@ -308,6 +330,174 @@ void GameScene::UpdateSound() {
             mp3Volume_ = 0.0f;
         }
     }
+}
+
+void GameScene::DrawAnimationDebugImGui() {
+#ifdef USE_IMGUI
+    ImGui::Text("Animation Control");
+    ImGui::Separator();
+
+    if (ImGui::Button(animationPlaying_ ? "Pause" : "Play", ImVec2(100.0f, 28.0f))) {
+        animationPlaying_ = !animationPlaying_;
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Reset", ImVec2(100.0f, 28.0f))) {
+        skeletonAnimationTime_ = 0.0f;
+        ApplyAnimation(animatedSkeleton_, animatedCubeAnimation_, skeletonAnimationTime_);
+        UpdateSkelton(animatedSkeleton_);
+    }
+
+    ImGui::Checkbox("Loop", &animationLoop_);
+    ImGui::Checkbox("Auto Pause On Joint Edit", &autoPauseOnJointEdit_);
+    ImGui::Checkbox("Show Skeleton Debug", &showSkeletonDebug_);
+
+    ImGui::DragFloat("Speed", &animationSpeed_, 0.01f, 0.0f, 5.0f);
+
+    if (animatedCubeAnimation_.duration > 0.0f) {
+        ImGui::SliderFloat(
+            "Time",
+            &skeletonAnimationTime_,
+            0.0f,
+            animatedCubeAnimation_.duration
+        );
+
+        if (!animationPlaying_) {
+            ApplyAnimation(animatedSkeleton_, animatedCubeAnimation_, skeletonAnimationTime_);
+            UpdateSkelton(animatedSkeleton_);
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Text("Skeleton");
+
+    const int jointCount = static_cast<int>(animatedSkeleton_.joints.size());
+    ImGui::Text("Joint Count : %d", jointCount);
+
+    if (jointCount == 0) {
+        return;
+    }
+
+    if (selectedJointIndex_ < 0) {
+        selectedJointIndex_ = 0;
+    }
+
+    if (selectedJointIndex_ >= jointCount) {
+        selectedJointIndex_ = jointCount - 1;
+    }
+
+    const char* previewName =
+        animatedSkeleton_.joints[selectedJointIndex_].name.c_str();
+
+    if (ImGui::BeginCombo("Selected Joint", previewName)) {
+        for (int i = 0; i < jointCount; ++i) {
+            const bool isSelected = selectedJointIndex_ == i;
+
+            std::string label =
+                std::to_string(i) + " : " + animatedSkeleton_.joints[i].name;
+
+            if (ImGui::Selectable(label.c_str(), isSelected)) {
+                selectedJointIndex_ = i;
+            }
+
+            if (isSelected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+
+        ImGui::EndCombo();
+    }
+
+    Joint& joint = animatedSkeleton_.joints[selectedJointIndex_];
+
+    ImGui::Spacing();
+    ImGui::Text("Joint Detail");
+    ImGui::Separator();
+
+    ImGui::Text("Name   : %s", joint.name.c_str());
+    ImGui::Text("Index  : %d", joint.index);
+
+    if (joint.parent) {
+        ImGui::Text("Parent : %d", *joint.parent);
+    } else {
+        ImGui::Text("Parent : none");
+    }
+
+    Vector3 translate = joint.transform.translate;
+    Vector3 scale = joint.transform.scale;
+    Quaternion rotate = joint.transform.rotate;
+
+    bool edited = false;
+
+    edited |= ImGui::DragFloat3(
+        "Local Translate",
+        &translate.x,
+        0.01f,
+        -100.0f,
+        100.0f
+    );
+
+    edited |= ImGui::DragFloat3(
+        "Local Scale",
+        &scale.x,
+        0.01f,
+        0.001f,
+        100.0f
+    );
+
+    edited |= ImGui::DragFloat4(
+        "Local Rotate Quaternion",
+        &rotate.x,
+        0.01f,
+        -1.0f,
+        1.0f
+    );
+
+    if (ImGui::Button("Normalize Quaternion", ImVec2(180.0f, 28.0f))) {
+        rotate = Math::Normalize(rotate);
+        edited = true;
+    }
+
+    if (edited) {
+        if (autoPauseOnJointEdit_) {
+            animationPlaying_ = false;
+        }
+
+        joint.transform.translate = translate;
+        joint.transform.scale = scale;
+        joint.transform.rotate = Math::Normalize(rotate);
+
+        UpdateSkelton(animatedSkeleton_);
+    }
+
+    const Matrix4x4& skeletonMatrix = joint.skeletonSpaceMatrix;
+
+    Vector3 skeletonPosition = {
+        skeletonMatrix.m[3][0],
+        skeletonMatrix.m[3][1],
+        skeletonMatrix.m[3][2]
+    };
+
+    ImGui::Spacing();
+    ImGui::Text("Skeleton Space");
+    ImGui::BulletText(
+        "Position : %.3f, %.3f, %.3f",
+        skeletonPosition.x,
+        skeletonPosition.y,
+        skeletonPosition.z
+    );
+
+    if (ImGui::TreeNode("Children")) {
+        for (int32_t childIndex : joint.children) {
+            const Joint& child = animatedSkeleton_.joints[childIndex];
+            ImGui::BulletText("%d : %s", childIndex, child.name.c_str());
+        }
+
+        ImGui::TreePop();
+    }
+#endif
 }
 
 void GameScene::UpdateImGui() {
@@ -369,6 +559,11 @@ void GameScene::UpdateImGui() {
     );
 
     if (ImGui::BeginTabBar("MainTabs")) {
+
+        if (ImGui::BeginTabItem("Animation")) {
+            DrawAnimationDebugImGui();
+            ImGui::EndTabItem();
+        }
 
         // ==================================================
         // Effect
