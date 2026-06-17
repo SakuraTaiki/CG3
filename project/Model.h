@@ -4,12 +4,25 @@
 #include "MyMath.h"
 #include <string>
 #include <vector>
+#include<map>
 
 // 頂点データ構造体 (ShaderのInputLayoutに合わせる)
 struct ModelVertexData {
     Vector4 position;
     Vector2 texcoord;
     Vector3 normal;
+};
+
+struct VertexWeightData
+{
+    float weight;
+    uint32_t vertexIndex;
+};
+
+struct JointWeightData
+{
+    Matrix4x4 inverseBindPoseMatrix;
+    std::vector<VertexWeightData> vertexWeights;
 };
 
 struct QuaternionTransform {
@@ -40,11 +53,15 @@ public:
 
     const Node& GetRootNode() const { return rootNode_; }
 
+    const std::map<std::string, JointWeightData>& GetSkinClusterData() const {
+        return skinClusterData_;
+    }
+
 private:
     void LoadObjFile(const std::string& directoryPath, const std::string& filename);
     void CreateBuffers(DirectXCommon* dxCommon);
     std::string textureFilePath_;
-
+    std::map<std::string, JointWeightData> skinClusterData_;
 private:
     std::vector<ModelVertexData> vertices_;
     std::vector<uint32_t> indices_;
