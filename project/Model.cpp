@@ -73,6 +73,8 @@ void Model::LoadObjFile(const std::string& directoryPath,
 
     indices_.clear();
 
+    skinClusterData_.clear();
+
     Assimp::Importer importer;
 
     std::string filePath = directoryPath + "/" + filename;
@@ -89,8 +91,9 @@ void Model::LoadObjFile(const std::string& directoryPath,
     rootNode_ = ReadNode(scene->mRootNode);
 
     //------------------------------------
-// Mesh解析
-//------------------------------------
+    // Mesh解析
+    //------------------------------------
+
     for (uint32_t meshIndex = 0;
         meshIndex < scene->mNumMeshes;
         ++meshIndex)
@@ -168,6 +171,70 @@ void Model::LoadObjFile(const std::string& directoryPath,
                 indices_.push_back(vertexOffset + vertexIndex);
             }
         }
+
+        //--------------------------------
+// SkinCluster用 Bone解析
+//--------------------------------
+        for (uint32_t boneIndex = 0;
+            boneIndex < mesh->mNumBones;
+            ++boneIndex)
+        {
+            aiBone* bone = mesh->mBones[boneIndex];
+
+            std::string jointName = bone->mName.C_Str();
+
+            JointWeightData& jointWeightData =
+                skinClusterData_[jointName];
+
+            //--------------------------------
+            // InverseBindPoseMatrixの抽出
+            //--------------------------------
+            aiMatrix4x4 bindPoseMatrixAssimp =
+                bone->mOffsetMatrix.Inverse();
+
+            aiVector3D scale;
+            aiVector3D translate;
+            aiQuaternion rotate;
+
+            bindPoseMatrixAssimp.Decompose(
+                scale,
+                rotate,
+                translate
+            );
+
+            Matrix4x4 bindPoseMatrix =
+                Math::MakeAffineMatrix(
+                    { scale.x, scale.y, scale.z },
+                    { rotate.x, -rotate.y, -rotate.z, rotate.w },
+                    { -translate.x, translate.y, translate.z }
+                );
+
+            jointWeightData.inverseBindPoseMatrix =
+                Math::Inverse(bindPoseMatrix);
+
+            //--------------------------------
+            // Weight情報の抽出
+            //--------------------------------
+            for (uint32_t weightIndex = 0;
+                weightIndex < bone->mNumWeights;
+                ++weightIndex)
+            {
+                uint32_t localVertexIndex =
+                    bone->mWeights[weightIndex].mVertexId;
+
+                float weight =
+                    bone->mWeights[weightIndex].mWeight;
+
+                jointWeightData.vertexWeights.push_back(
+                    {
+                        weight,
+                        vertexOffset + localVertexIndex
+                    }
+                );
+            }
+        }
+
+
     }
 
     OutputDebugStringA(
