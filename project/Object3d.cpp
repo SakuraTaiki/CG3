@@ -22,6 +22,7 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
     transformationResource_->Map(0, nullptr, (void**)&transformationData_);
     transformationData_->WVP = Math::MakeIdentity4x4();
     transformationData_->World = Math::MakeIdentity4x4();
+    transformationData_->WorldInverseTranspose = Math::MakeIdentity4x4();
 
     // Material Buffer
     resDesc.Width = (sizeof(Material) + 0xff) & ~0xff;
@@ -48,6 +49,25 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
     cameraResource_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
     cameraData_->padding = 0.0f;
+}
+
+void Object3d::SetModel(Model* model) {
+    model_ = model;
+
+    if (!model_) {
+        hasSkinCluster_ = false;
+        return;
+    }
+
+    skeleton_ = CreateSkeleton(model_->GetRootNode());
+
+    hasSkinCluster_ = CreateSkinCluster(
+        skinCluster_,
+        object3dCommon_->GetDxCommon()->GetDevice(),
+        object3dCommon_->GetSrvManager(),
+        skeleton_,
+        *model_
+    );
 }
 
 void Object3d::Update() {
@@ -111,7 +131,26 @@ void Object3d::Update() {
         transformationData_->WVP = worldViewProjectionmatrix;
         transformationData_->World = worldMatrix;
     }
+
+    transformationData_->WorldInverseTranspose =
+        Math::Transpose(Math::Inverse(transformationData_->World));
+
+    if (model_ && hasSkinCluster_) {
+        if (useAnimation_) {
+            ApplyAnimation(skeleton_, animation_, animationTime_);
+        }
+
+        UpdateSkeleton();
+        UpdateSkinCluster(skinCluster_,skeleton_);
+    }
+
 }
+
+
+void Object3d::UpdateSkeleton() {
+    UpdateSkelton(skeleton_);
+}
+
 
 void Object3d::SetUVTransform(const Transform& t) {
     if (materialData_) {
@@ -187,5 +226,14 @@ void Object3d::Draw() {
         }
     }
 
-    model_->Draw(commandList);
+    if (hasSkinCluster_) {
+        commandList->SetGraphicsRootDescriptorTable(
+            6,
+            skinCluster_.paletteSrvHandle
+        );
+
+        model_->Draw(commandList, &skinCluster_.influenceBufferView);
+    } else {
+        model_->Draw(commandList);
+    }
 }

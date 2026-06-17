@@ -34,6 +34,10 @@ private:
     void UpdateImGui();
     void UpdateSkeletonDebug();
 
+    void UpdateAnimationDebug();
+    void DrawAnimationDebugImGui();
+    void SyncAnimatedSkeletonToObject();
+
     void Draw3D();
     void Draw2D();
 
@@ -85,4 +89,12 @@ private:
     float skeletonAnimationTime_ = 0.0f;
 
     bool showSkeletonDebug_ = true;
+
+    bool animationPlaying_ = true;
+    bool animationLoop_ = true;
+    float animationSpeed_ = 1.0f;
+
+    int selectedJointIndex_ = 0;
+    bool autoPauseOnJointEdit_ = true;
+    bool showJointDetail_ = true;
 };

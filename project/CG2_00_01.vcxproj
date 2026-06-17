@@ -195,6 +195,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="ParticleManager.cpp" />
     <ClCompile Include="Ring.cpp" />
     <ClCompile Include="Skelton.cpp" />
+    <ClCompile Include="SkinCluster.cpp" />
     <ClCompile Include="Skybox.cpp" />
     <ClCompile Include="Sound.cpp" />
     <ClCompile Include="Sprite.cpp" />
@@ -233,6 +234,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="resource.h" />
     <ClInclude Include="Ring.h" />
     <ClInclude Include="Skelton.h" />
+    <ClInclude Include="SkinCluster.h" />
     <ClInclude Include="Skybox.h" />
     <ClInclude Include="Sound.h" />
     <ClInclude Include="Sprite.h" />
