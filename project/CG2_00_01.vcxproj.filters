@@ -42,6 +42,7 @@
     <ClCompile Include="Cylinder.cpp" />
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="Skelton.cpp" />
+    <ClCompile Include="SkinCluster.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -80,6 +81,7 @@
     <ClInclude Include="Cylinder.h" />
     <ClInclude Include="Animation.h" />
     <ClInclude Include="Skelton.h" />
+    <ClInclude Include="SkinCluster.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

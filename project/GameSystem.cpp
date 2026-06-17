@@ -24,6 +24,8 @@ void GameSystem::Initialize() {
     object3dCommon_->SetTextureManager(textureManager_.get());
     object3dCommon_->Initialize(dxCommon_.get());
 
+    object3dCommon_->SetSrvManager(srvManager_.get());
+
     camera_ = std::make_unique<Camera>();
 
     camera_->Update();

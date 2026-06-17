@@ -4,10 +4,13 @@
 #include "MyMath.h"
 #include"Camera.h"
 #include "Animation.h"
+#include "Skelton.h"
+#include"SkinCluster.h"
 
 struct TransformationMatrix {
     Matrix4x4 WVP;
     Matrix4x4 World;
+    Matrix4x4 WorldInverseTranspose;
 };
 
 struct CameraForGPU {
@@ -25,13 +28,20 @@ struct Material {
     Matrix4x4 uvTransform;
 };
 
+
+
 class Object3d {
 public:
     void Initialize(Object3dCommon* object3dCommon);
     void Update();
     void Draw();
 
-    void SetModel(Model* model) { model_ = model; }
+    void SetModel(Model* model);
+
+    void SetSkeleton(const Skeleton& skeleton) {
+        skeleton_ = skeleton;
+    }
+
     void SetPosition(const Vector3& position) { transform_.translate = position; }
     void SetRotation(const Vector3& rotation) { transform_.rotate = rotation; }
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
@@ -69,6 +79,9 @@ public:
         animationTime_ = 0.0f;
     }
 
+
+    void UpdateSkeleton();
+
 private:
     Object3dCommon* object3dCommon_ = nullptr;
     Model* model_ = nullptr;
@@ -93,4 +106,8 @@ private:
     Animation animation_;
     bool useAnimation_ = false;
     float animationTime_ = 0.0f;
+
+    Skeleton skeleton_{};
+    SkinCluster skinCluster_{};
+    bool hasSkinCluster_ = false;
 };

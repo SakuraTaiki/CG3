@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include<map>
+#include<array>
 
 // 頂点データ構造体 (ShaderのInputLayoutに合わせる)
 struct ModelVertexData {
@@ -46,7 +47,10 @@ public:
     static Model* CreateFromOBJ(DirectXCommon* dxCommon, const std::string& directoryPath, const std::string& filename, TextureManager* textureManager);
 
     void Initialize(DirectXCommon* dxCommon, const std::string& directoryPath, const std::string& filename, TextureManager* textureManager);
-    void Draw(ID3D12GraphicsCommandList* commandList);
+    void Draw(
+        ID3D12GraphicsCommandList* commandList,
+        const D3D12_VERTEX_BUFFER_VIEW* influenceBufferView = nullptr
+        );
 
     // ゲッター
     uint32_t GetTextureHandle() const { return textureHandle_; }
@@ -56,6 +60,8 @@ public:
     const std::map<std::string, JointWeightData>& GetSkinClusterData() const {
         return skinClusterData_;
     }
+
+    size_t GetVertexCount() const { return vertices_.size(); }
 
 private:
     void LoadObjFile(const std::string& directoryPath, const std::string& filename);

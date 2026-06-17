@@ -350,12 +350,25 @@ void Model::CreateBuffers(DirectXCommon* dxCommon) {
     indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 }
 
-void Model::Draw(ID3D12GraphicsCommandList* commandList) {
+void Model::Draw(
+    ID3D12GraphicsCommandList* commandList,
+    const D3D12_VERTEX_BUFFER_VIEW* influenceBufferView
+    ) {
     if (!vertexBuffer_ || !indexBuffer_) {
         return;
     }
 
-    commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+    if (influenceBufferView) {
+        D3D12_VERTEX_BUFFER_VIEW vbvs[2] = {
+            vertexBufferView_,
+            *influenceBufferView
+        };
+
+        commandList->IASetVertexBuffers(0, 2, vbvs);
+    } else {
+        commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
+    }
+
     commandList->IASetIndexBuffer(&indexBufferView_);
 
     commandList->DrawIndexedInstanced(

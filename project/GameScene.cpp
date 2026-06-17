@@ -100,7 +100,8 @@ void GameScene::InitializeObjects() {
         animatedObject_ = std::make_unique<Object3d>();
         animatedObject_->Initialize(object3dCommon);
         animatedObject_->SetModel(modelAnimated);
-        animatedObject_->SetAnimation(animatedCubeAnimation_);
+        //animatedObject_->SetAnimation(animatedCubeAnimation_);
+        animatedObject_->SetSkeleton(animatedSkeleton_);
 
         animatedObject_->SetPosition({ 0.0f, 0.0f, 0.0f });
         animatedObject_->SetRotation({ 0.0f, 0.0f, 0.0f });

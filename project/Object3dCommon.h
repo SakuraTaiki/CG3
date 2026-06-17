@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include "MyMath.h"
 #include"Camera.h"
+#include "SrvManager.h"
 
 // 前方宣言
 class TextureManager;
@@ -40,6 +41,9 @@ public:
     void SetDefaultCamera(Camera* camera) { defaultCamera_ = camera; }
     Camera* GetDefaultCamera() const { return defaultCamera_; }
 
+    void SetSrvManager(SrvManager* srvManager) { srvManager_ = srvManager; }
+    SrvManager* GetSrvManager() const { return srvManager_; }
+
 private:
     void CreateRootSignature();
     void CreateGraphicsPipeline();
@@ -58,4 +62,6 @@ private:
 
     //デフォルトカメラ用メンバ変数
     Camera* defaultCamera_ = nullptr;
+
+    SrvManager* srvManager_ = nullptr;
 };
