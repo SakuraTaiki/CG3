@@ -14,17 +14,72 @@ class Primitive
 public:
     static const uint32_t kMaxParticles = 1024;
 
+    struct Settings
+    {
+        Vector4 color = {
+            1.0f, 0.85f, 0.35f, 1.0f
+        };
+
+        Vector4 endColor = {
+            1.0f, 0.10f, 0.01f, 0.0f
+        };
+
+        int count = 8;
+        float intensity = 1.0f;
+
+        float width = 0.05f;
+        float widthRandomness = 0.25f;
+
+        float minLength = 0.4f;
+        float maxLength = 1.5f;
+
+        float minLifeTime = 0.4f;
+        float maxLifeTime = 0.8f;
+
+        float moveSpeed = 0.0f;
+        float moveSpeedRandomness = 0.25f;
+
+        float rotationSpeed = 0.0f;
+        float rotationSpeedRandomness = 0.0f;
+
+        // ラジアン。0で上方向
+        float directionAngle = 0.0f;
+
+        // ラジアン。PIで全方向
+        float directionSpread = 3.14159265f;
+
+        float spawnRadius = 0.0f;
+
+        Vector3 acceleration = {
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        float endWidthScale = 1.0f;
+        float endLengthScale = 1.0f;
+
+        float scaleEasePower = 1.0f;
+
+        float fadeInRatio = 0.05f;
+        float fadePower = 1.0f;
+    };
+
     struct Particle
     {
         Transform transform;
+
         Vector3 initialScale;
         Vector3 velocity;
 
         Vector4 color;
 
-        float angularVelocity;
-        float lifeTime;
-        float maxTime;
+        float angularVelocity = 0.0f;
+        float lifeTime = 0.0f;
+        float maxTime = 1.0f;
+
+        // 発生時の設定を保存する
+        Settings settings{};
     };
 
     struct InstanceData
@@ -40,44 +95,6 @@ public:
         Vector3 normal;
     };
 
-
-    struct Settings
-    {
-        Vector4 color = {
-            1.0f,
-            0.85f,
-            0.35f,
-            1.0f
-        };
-
-        int count = 8;
-
-        float intensity = 1.0f;
-
-        float width = 0.05f;
-
-        float minLength = 0.4f;
-        float maxLength = 1.5f;
-
-        float minLifeTime = 0.4f;
-        float maxLifeTime = 0.8f;
-
-        // 外側へ飛ぶ速度
-        float moveSpeed = 0.0f;
-
-        // 毎秒の回転速度
-        float rotationSpeed = 0.0f;
-
-        // 消えるときの横幅
-        float endWidthScale = 1.0f;
-
-        // 消えるときの長さ
-        float endLengthScale = 1.0f;
-
-        // 1.0で直線的、数値を上げると早く消える
-        float fadePower = 1.0f;
-    };
-
     Settings& GetSettings()
     {
         return settings_;
@@ -88,10 +105,6 @@ public:
         return settings_;
     }
 
-    // Settingsのcountを使用するEmit
-    void Emit(const Vector3& position);
-
-public:
     void Initialize(
         DirectXCommon* dxCommon,
         TextureManager* textureManager
@@ -103,6 +116,8 @@ public:
     );
 
     void Draw();
+
+    void Emit(const Vector3& position);
 
     void Emit(
         const Vector3& position,

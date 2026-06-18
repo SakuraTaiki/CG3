@@ -5,63 +5,72 @@
 
 #include "MyMath.h"
 
-// Cylinder 用の粒子管理クラス。
-// 発生、寿命、拡大、フェードアウトなどの動きだけを担当する。
-class CylinderParticleSystem {
+class CylinderParticleSystem
+{
 public:
-    
-    struct Particle
-    {
-        Transform transform;
-
-        // 上昇処理用
-        Vector3 startPosition;
-
-        Vector4 color;
-
-        float lifeTime;
-        float maxTime;
-    };
-
-
     struct Settings
     {
         Vector4 color = {
-            0.4f,
-            0.7f,
-            1.0f,
-            0.6f
+            0.4f, 0.7f, 1.0f, 0.6f
+        };
+
+        Vector4 endColor = {
+            0.1f, 0.3f, 1.0f, 0.0f
         };
 
         float intensity = 1.0f;
 
-        // 円柱の半径
         float radius = 0.8f;
+        float endRadius = 1.2f;
 
-        // 発生直後の高さ
         float startHeight = 0.1f;
-
-        // 最終的な高さ
         float endHeight = 2.5f;
 
-        // 表示時間
-        float lifeTime = 0.7f;
+        // 円柱下側・上側の太さ
+        float bottomRadiusScale = 1.0f;
+        float topRadiusScale = 0.25f;
 
-        // 円柱全体が上へ移動する距離
+        float lifeTime = 0.7f;
         float riseDistance = 0.0f;
 
-        // 高さの伸び方
         float easePower = 1.0f;
-
-        // 透明になる速さ
+        float fadeInRatio = 0.05f;
         float fadePower = 1.0f;
 
-        // HitEffect中心からの相対位置
+        // 円柱全体のねじれ
+        float twistAmount = 0.0f;
+        float twistSpeed = 0.0f;
+
+        // シェーダー内の揺らぎ
+        float noiseStrength = 0.1f;
+        float noiseFrequency = 6.0f;
+        float noiseSpeed = 1.0f;
+
+        // 上下の透明化範囲
+        float topFade = 0.2f;
+        float bottomFade = 0.08f;
+
         Vector3 positionOffset = {
-            0.0f,
-            0.0f,
-            0.0f
+            0.0f, 0.0f, 0.0f
         };
+    };
+
+    struct Particle
+    {
+        Transform transform;
+        Vector3 startPosition;
+
+        Vector4 color;
+
+        float lifeTime = 0.0f;
+        float maxTime = 1.0f;
+
+        float progress = 0.0f;
+        float twistPhase = 0.0f;
+        float noisePhase = 0.0f;
+
+        // 発生時設定を保存する
+        Settings settings{};
     };
 
     Settings& GetSettings()
@@ -74,20 +83,22 @@ public:
         return settings_;
     }
 
-   
-
     void Emit(const Vector3& position);
     void Update();
 
-    const std::list<Particle>& GetParticles() const { return particles_; }
-    bool IsEmpty() const { return particles_.empty(); }
+    const std::list<Particle>& GetParticles() const
+    {
+        return particles_;
+    }
+
+    bool IsEmpty() const
+    {
+        return particles_.empty();
+    }
 
 private:
     static const uint32_t kMaxParticles = 64;
 
     std::list<Particle> particles_;
-
-   
-
     Settings settings_{};
 };

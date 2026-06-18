@@ -4,25 +4,18 @@
 #include <numbers>
 #include <vector>
 #include <cstring>
+#include <algorithm>
 
 using namespace Microsoft::WRL;
 
 void Ring::SetThickness(float thickness)
 {
-
-    if (thickness < 0.02f) {
-        thickness = 0.02f;
-    }
-
-    if (thickness > 0.95f) {
-        thickness = 0.95f;
-    }
-
-    if (settings_.thickness != thickness) {
-        settings_.thickness = thickness;
-        meshDirty_ = true;
-    }
-
+    settings_.thickness =
+        std::clamp(
+            thickness,
+            0.001f,
+            0.5f
+        );
 }
 
 void Ring::Initialize(DirectXCommon* dxCommon, TextureManager* textureManager) {
@@ -74,99 +67,148 @@ void Ring::Initialize(DirectXCommon* dxCommon, TextureManager* textureManager) {
     instancingBufferView_.StrideInBytes = sizeof(InstanceData);
 }
 
+
 void Ring::Update(
     const Matrix4x4& viewMatrix,
     const Matrix4x4& projectionMatrix
 ) {
-    // ImGuiで太さが変更された場合だけ再作成
-    if (meshDirty_) {
-        CreateMesh();
-        meshDirty_ = false;
-    }
+    constexpr float deltaTime =
+        1.0f / 60.0f;
 
     for (
         auto iterator = rings_.begin();
         iterator != rings_.end();
         ) {
-        iterator->lifeTime += 1.0f / 60.0f;
+        RingParticle& ring =
+            *iterator;
 
-        if (iterator->lifeTime >=
-            iterator->maxTime) {
+        ring.lifeTime +=
+            deltaTime;
 
-            iterator = rings_.erase(iterator);
+        if (ring.lifeTime >= ring.maxTime) {
+            iterator =
+                rings_.erase(iterator);
+
             continue;
         }
 
-        const float time =
-            iterator->lifeTime /
-            iterator->maxTime;
+        const Settings& settings =
+            ring.settings;
 
-        // EaseOut
-        const float inverseTime =
-            1.0f - time;
+        const float time =
+            std::clamp(
+                ring.lifeTime /
+                ring.maxTime,
+                0.0f,
+                1.0f
+            );
 
         const float easedTime =
             1.0f -
             std::pow(
-                inverseTime,
-                settings_.easePower
+                1.0f - time,
+                (std::max)(
+                    settings.easePower,
+                    0.01f
+                )
             );
 
         const float scale =
-            settings_.startScale +
+            settings.startScale +
             (
-                settings_.endScale -
-                settings_.startScale
-                ) * easedTime;
+                settings.endScale -
+                settings.startScale
+                ) *
+            easedTime;
 
-        iterator->transform.scale = {
+        ring.transform.scale = {
             scale,
             scale,
             1.0f
         };
 
-        iterator->transform.rotate.z +=
-            settings_.rotationSpeed *
-            (1.0f / 60.0f);
+        ring.transform.rotate.z +=
+            settings.rotationSpeed *
+            deltaTime;
+
+        ring.currentThickness =
+            settings.thickness +
+            (
+                settings.endThickness -
+                settings.thickness
+                ) *
+            easedTime;
+
+        ring.currentThickness =
+            std::clamp(
+                ring.currentThickness,
+                0.001f,
+                0.5f
+            );
+
+        ring.distortionPhase +=
+            settings.distortionSpeed *
+            deltaTime;
 
         float fadeIn = 1.0f;
 
-        if (settings_.fadeInRatio > 0.0f) {
+        if (settings.fadeInRatio > 0.0f) {
             fadeIn =
-                time /
-                settings_.fadeInRatio;
-
-            if (fadeIn > 1.0f) {
-                fadeIn = 1.0f;
-            }
+                std::clamp(
+                    time /
+                    settings.fadeInRatio,
+                    0.0f,
+                    1.0f
+                );
         }
 
         const float fadeOut =
             (1.0f - time) *
             (1.0f - time);
 
-        // ImGuiの色を即時反映
-        iterator->color.x =
-            settings_.color.x *
-            settings_.intensity;
+        const float red =
+            settings.color.x +
+            (
+                settings.endColor.x -
+                settings.color.x
+                ) *
+            time;
 
-        iterator->color.y =
-            settings_.color.y *
-            settings_.intensity;
+        const float green =
+            settings.color.y +
+            (
+                settings.endColor.y -
+                settings.color.y
+                ) *
+            time;
 
-        iterator->color.z =
-            settings_.color.z *
-            settings_.intensity;
+        const float blue =
+            settings.color.z +
+            (
+                settings.endColor.z -
+                settings.color.z
+                ) *
+            time;
 
-        iterator->color.w =
-            settings_.color.w *
-            fadeIn *
-            fadeOut;
+        const float alpha =
+            settings.color.w +
+            (
+                settings.endColor.w -
+                settings.color.w
+                ) *
+            time;
+
+        ring.color = {
+            red * settings.intensity,
+            green * settings.intensity,
+            blue * settings.intensity,
+            alpha * fadeIn * fadeOut
+        };
 
         ++iterator;
     }
 
-    Matrix4x4 cameraMatrix =
+    const Matrix4x4 cameraMatrix =
         Math::Inverse(viewMatrix);
 
     Matrix4x4 billboardMatrix =
@@ -174,22 +216,28 @@ void Ring::Update(
 
     billboardMatrix.m[0][0] =
         cameraMatrix.m[0][0];
+
     billboardMatrix.m[0][1] =
         cameraMatrix.m[0][1];
+
     billboardMatrix.m[0][2] =
         cameraMatrix.m[0][2];
 
     billboardMatrix.m[1][0] =
         cameraMatrix.m[1][0];
+
     billboardMatrix.m[1][1] =
         cameraMatrix.m[1][1];
+
     billboardMatrix.m[1][2] =
         cameraMatrix.m[1][2];
 
     billboardMatrix.m[2][0] =
         cameraMatrix.m[2][0];
+
     billboardMatrix.m[2][1] =
         cameraMatrix.m[2][1];
+
     billboardMatrix.m[2][2] =
         cameraMatrix.m[2][2];
 
@@ -201,7 +249,7 @@ void Ring::Update(
 
     uint32_t index = 0;
 
-    for (const auto& ring : rings_) {
+    for (const RingParticle& ring : rings_) {
         if (index >= kMaxRings) {
             break;
         }
@@ -211,7 +259,7 @@ void Ring::Update(
                 ring.transform.scale
             );
 
-        const Matrix4x4 rotationMatrix =
+        const Matrix4x4 rotateMatrix =
             Math::MakeRotateZMatrix(
                 ring.transform.rotate.z
             );
@@ -225,7 +273,7 @@ void Ring::Update(
             Math::Multiply(
                 Math::Multiply(
                     scaleMatrix,
-                    rotationMatrix
+                    rotateMatrix
                 ),
                 Math::Multiply(
                     billboardMatrix,
@@ -242,9 +290,24 @@ void Ring::Update(
         instancingDataMapped_[index].color =
             ring.color;
 
+        instancingDataMapped_[index].parameters0 = {
+            ring.currentThickness,
+            ring.settings.distortionStrength,
+            ring.settings.distortionFrequency,
+            ring.distortionPhase
+        };
+
+        instancingDataMapped_[index].parameters1 = {
+            ring.settings.edgeSoftness,
+            ring.settings.glowStrength,
+            0.0f,
+            0.0f
+        };
+
         ++index;
     }
 }
+
 
 void Ring::Draw() {
     if (!isActive_) {
@@ -271,6 +334,7 @@ void Ring::Draw() {
     commandList->DrawInstanced(vertexCount_, count, 0, 0);
 }
 
+
 void Ring::Emit(const Vector3& position)
 {
     if (!isActive_) {
@@ -283,7 +347,12 @@ void Ring::Emit(const Vector3& position)
 
     RingParticle ring{};
 
-    ring.transform.translate = position;
+    // 発生時設定を保存
+    ring.settings =
+        settings_;
+
+    ring.transform.translate =
+        position;
 
     ring.transform.scale = {
         settings_.startScale,
@@ -297,60 +366,134 @@ void Ring::Emit(const Vector3& position)
         0.0f
     };
 
-    ring.color = settings_.color;
+    ring.color =
+        settings_.color;
+
+    ring.currentThickness =
+        settings_.thickness;
+
+    ring.distortionPhase = 0.0f;
 
     ring.lifeTime = 0.0f;
-    ring.maxTime = settings_.lifeTime;
+
+    ring.maxTime =
+        (std::max)(
+            settings_.lifeTime,
+            0.001f
+        );
 
     rings_.push_back(ring);
 }
 
 
-void Ring::CreateRootSignature() {
-    D3D12_DESCRIPTOR_RANGE range = {};
-    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    range.NumDescriptors = 1;
-    range.BaseShaderRegister = 0;
+void Ring::CreateRootSignature()
+{
 
-    D3D12_ROOT_PARAMETER rootParam = {};
-    rootParam.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParam.DescriptorTable.NumDescriptorRanges = 1;
-    rootParam.DescriptorTable.pDescriptorRanges = &range;
-    rootParam.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    D3D12_DESCRIPTOR_RANGE descriptorRange{};
+    descriptorRange.RangeType =
+        D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 
-    D3D12_STATIC_SAMPLER_DESC sampler = {};
-    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-    sampler.ShaderRegister = 0;
-    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    descriptorRange.NumDescriptors = 1;
+    descriptorRange.BaseShaderRegister = 0;
+    descriptorRange.RegisterSpace = 0;
 
-    D3D12_ROOT_SIGNATURE_DESC desc = {};
-    desc.NumParameters = 1;
-    desc.pParameters = &rootParam;
-    desc.NumStaticSamplers = 1;
-    desc.pStaticSamplers = &sampler;
-    desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    descriptorRange.OffsetInDescriptorsFromTableStart =
+        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    ComPtr<ID3DBlob> blob;
-    ComPtr<ID3DBlob> errorBlob;
+    D3D12_ROOT_PARAMETER rootParameter{};
+    rootParameter.ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
-    HRESULT hr = D3D12SerializeRootSignature(
-        &desc,
-        D3D_ROOT_SIGNATURE_VERSION_1,
-        &blob,
-        &errorBlob
-    );
-    assert(SUCCEEDED(hr));
+    rootParameter.DescriptorTable.NumDescriptorRanges =
+        1;
 
-    hr = dxCommon_->GetDevice()->CreateRootSignature(
-        0,
-        blob->GetBufferPointer(),
-        blob->GetBufferSize(),
-        IID_PPV_ARGS(&rootSignature_)
-    );
-    assert(SUCCEEDED(hr));
+    rootParameter.DescriptorTable.pDescriptorRanges =
+        &descriptorRange;
+
+    rootParameter.ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_STATIC_SAMPLER_DESC staticSampler{};
+    staticSampler.Filter =
+        D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+
+    staticSampler.AddressU =
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
+    staticSampler.AddressV =
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
+    staticSampler.AddressW =
+        D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
+    staticSampler.MipLODBias = 0.0f;
+    staticSampler.MaxAnisotropy = 1;
+
+    staticSampler.ComparisonFunc =
+        D3D12_COMPARISON_FUNC_NEVER;
+
+    staticSampler.BorderColor =
+        D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+
+    staticSampler.MinLOD = 0.0f;
+    staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+
+    staticSampler.ShaderRegister = 0;
+    staticSampler.RegisterSpace = 0;
+
+    staticSampler.ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_ROOT_SIGNATURE_DESC description{};
+    description.NumParameters = 1;
+    description.pParameters =
+        &rootParameter;
+
+    description.NumStaticSamplers = 1;
+    description.pStaticSamplers =
+        &staticSampler;
+
+    description.Flags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    Microsoft::WRL::ComPtr<ID3DBlob>
+        signatureBlob;
+
+    Microsoft::WRL::ComPtr<ID3DBlob>
+        errorBlob;
+
+    HRESULT result =
+        D3D12SerializeRootSignature(
+            &description,
+            D3D_ROOT_SIGNATURE_VERSION_1,
+            &signatureBlob,
+            &errorBlob
+        );
+
+    if (FAILED(result)) {
+        if (errorBlob) {
+            OutputDebugStringA(
+                static_cast<const char*>(
+                    errorBlob->GetBufferPointer()
+                    )
+            );
+        }
+
+        assert(false);
+        return;
+    }
+
+    result =
+        dxCommon_->GetDevice()
+        ->CreateRootSignature(
+            0,
+            signatureBlob->GetBufferPointer(),
+            signatureBlob->GetBufferSize(),
+            IID_PPV_ARGS(&rootSignature_)
+        );
+
+    assert(SUCCEEDED(result));
+
 }
 
 void Ring::CreatePipelineState() {
@@ -365,15 +508,17 @@ void Ring::CreatePipelineState() {
         { "INSTANCE_WVP", 3, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 48, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
 
         { "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "INSTANCE_PARAMETERS", 0 , DXGI_FORMAT_R32G32B32A32_FLOAT ,1,80,D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,1},
+        {"INSTANCE_PARAMETERS",1,DXGI_FORMAT_R32G32B32A32_FLOAT,1,96,D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,1}
     };
 
     auto vsBlob = dxCommon_->CompileShader(
-        L"Resources/shaders/hlsl/Particle.VS.hlsl",
+        L"Resources/shaders/hlsl/Ring.VS.hlsl",
         L"vs_6_0"
     );
 
     auto psBlob = dxCommon_->CompileShader(
-        L"Resources/shaders/hlsl/Particle.PS.hlsl",
+        L"Resources/shaders/hlsl/Ring.PS.hlsl",
         L"ps_6_0"
     );
 
@@ -417,117 +562,50 @@ void Ring::CreatePipelineState() {
     assert(SUCCEEDED(hr));
 }
 
+
+
 void Ring::CreateMesh()
 {
-    const uint32_t kRingDivide = 64;
-
-    const float outerRadius = 1.0f;
-
-    const float innerRadius =
-        outerRadius - settings_.thickness;
-
-    const float radianPerDivide =
-        2.0f *
-        std::numbers::pi_v<float> /
-        static_cast<float>(kRingDivide);
-
-    std::vector<VertexData> vertices;
-    vertices.reserve(kRingDivide * 6);
-
-    for (
-        uint32_t index = 0;
-        index < kRingDivide;
-        ++index
-        ) {
-        const float currentRadian =
-            index * radianPerDivide;
-
-        const float nextRadian =
-            (index + 1) * radianPerDivide;
-
-        const float currentSin =
-            std::sin(currentRadian);
-
-        const float currentCos =
-            std::cos(currentRadian);
-
-        const float nextSin =
-            std::sin(nextRadian);
-
-        const float nextCos =
-            std::cos(nextRadian);
-
-        const float currentU =
-            static_cast<float>(index) /
-            static_cast<float>(kRingDivide);
-
-        const float nextU =
-            static_cast<float>(index + 1) /
-            static_cast<float>(kRingDivide);
-
-        VertexData outerCurrent = {
-            {
-                -currentSin * outerRadius,
-                currentCos * outerRadius,
-                0.0f,
-                1.0f
-            },
-            {currentU, 0.0f},
+    const VertexData vertices[] = {
+        {
+            {-1.0f,  1.0f, 0.0f, 1.0f},
+            {0.0f, 0.0f},
             {0.0f, 0.0f, -1.0f}
-        };
-
-        VertexData outerNext = {
-            {
-                -nextSin * outerRadius,
-                nextCos * outerRadius,
-                0.0f,
-                1.0f
-            },
-            {nextU, 0.0f},
+        },
+        {
+            { 1.0f,  1.0f, 0.0f, 1.0f},
+            {1.0f, 0.0f},
             {0.0f, 0.0f, -1.0f}
-        };
-
-        VertexData innerCurrent = {
-            {
-                -currentSin * innerRadius,
-                currentCos * innerRadius,
-                0.0f,
-                1.0f
-            },
-            {currentU, 1.0f},
+        },
+        {
+            {-1.0f, -1.0f, 0.0f, 1.0f},
+            {0.0f, 1.0f},
             {0.0f, 0.0f, -1.0f}
-        };
-
-        VertexData innerNext = {
-            {
-                -nextSin * innerRadius,
-                nextCos * innerRadius,
-                0.0f,
-                1.0f
-            },
-            {nextU, 1.0f},
+        },
+        {
+            {-1.0f, -1.0f, 0.0f, 1.0f},
+            {0.0f, 1.0f},
             {0.0f, 0.0f, -1.0f}
-        };
-
-        vertices.push_back(outerCurrent);
-        vertices.push_back(outerNext);
-        vertices.push_back(innerCurrent);
-
-        vertices.push_back(innerCurrent);
-        vertices.push_back(outerNext);
-        vertices.push_back(innerNext);
-    }
+        },
+        {
+            { 1.0f,  1.0f, 0.0f, 1.0f},
+            {1.0f, 0.0f},
+            {0.0f, 0.0f, -1.0f}
+        },
+        {
+            { 1.0f, -1.0f, 0.0f, 1.0f},
+            {1.0f, 1.0f},
+            {0.0f, 0.0f, -1.0f}
+        }
+    };
 
     vertexCount_ =
         static_cast<uint32_t>(
-            vertices.size()
+            std::size(vertices)
             );
 
     const UINT bufferSize =
-        static_cast<UINT>(
-            sizeof(VertexData) *
-            vertices.size()
-            );
+        sizeof(vertices);
 
     D3D12_HEAP_PROPERTIES heapProperties = {
         D3D12_HEAP_TYPE_UPLOAD,
@@ -541,7 +619,9 @@ void Ring::CreateMesh()
     resourceDescription.Dimension =
         D3D12_RESOURCE_DIMENSION_BUFFER;
 
-    resourceDescription.Width = bufferSize;
+    resourceDescription.Width =
+        bufferSize;
+
     resourceDescription.Height = 1;
     resourceDescription.DepthOrArraySize = 1;
     resourceDescription.MipLevels = 1;
@@ -569,12 +649,14 @@ void Ring::CreateMesh()
     vertexBuffer_->Map(
         0,
         nullptr,
-        reinterpret_cast<void**>(&mappedData)
+        reinterpret_cast<void**>(
+            &mappedData
+            )
     );
 
     std::memcpy(
         mappedData,
-        vertices.data(),
+        vertices,
         bufferSize
     );
 
@@ -584,7 +666,8 @@ void Ring::CreateMesh()
     );
 
     vertexBufferView_.BufferLocation =
-        vertexBuffer_->GetGPUVirtualAddress();
+        vertexBuffer_
+        ->GetGPUVirtualAddress();
 
     vertexBufferView_.SizeInBytes =
         bufferSize;

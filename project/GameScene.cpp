@@ -1724,22 +1724,29 @@ void GameScene::UpdateImGui() {
                 ImGui::SeparatorText("Ring");
 
                 ImGui::ColorEdit4(
-                    "Ring Color",
+                    "Ring Start Color",
                     &settings.color.x,
                     ImGuiColorEditFlags_Float |
                     ImGuiColorEditFlags_HDR
                 );
 
-                ImGui::DragFloat(
-                    "Glow Intensity",
-                    &settings.intensity,
-                    0.01f,
-                    0.0f,
-                    5.0f
+                ImGui::ColorEdit4(
+                    "Ring End Color",
+                    &settings.endColor.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
                 );
 
                 ImGui::DragFloat(
-                    "Start Scale",
+                    "Ring Glow Intensity",
+                    &settings.intensity,
+                    0.01f,
+                    0.0f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Ring Start Scale",
                     &settings.startScale,
                     0.01f,
                     0.01f,
@@ -1747,27 +1754,29 @@ void GameScene::UpdateImGui() {
                 );
 
                 ImGui::DragFloat(
-                    "End Scale",
+                    "Ring End Scale",
                     &settings.endScale,
                     0.01f,
                     0.01f,
                     20.0f
                 );
 
-                float thickness =
-                    settings.thickness;
+                ImGui::SliderFloat(
+                    "Ring Start Thickness",
+                    &settings.thickness,
+                    0.001f,
+                    0.5f
+                );
 
-                if (ImGui::SliderFloat(
-                    "Ring Thickness",
-                    &thickness,
-                    0.02f,
-                    0.95f
-                )) {
-                    ring_->SetThickness(thickness);
-                }
+                ImGui::SliderFloat(
+                    "Ring End Thickness",
+                    &settings.endThickness,
+                    0.001f,
+                    0.5f
+                );
 
                 ImGui::DragFloat(
-                    "Life Time",
+                    "Ring Life Time",
                     &settings.lifeTime,
                     0.01f,
                     0.05f,
@@ -1775,33 +1784,71 @@ void GameScene::UpdateImGui() {
                 );
 
                 ImGui::SliderFloat(
-                    "Fade In Ratio",
+                    "Ring Fade In Ratio",
                     &settings.fadeInRatio,
                     0.0f,
                     1.0f
                 );
 
                 ImGui::DragFloat(
-                    "Expand Ease Power",
+                    "Ring Ease Power",
                     &settings.easePower,
-                    0.05f,
-                    0.1f,
+                    0.01f,
+                    0.01f,
                     10.0f
                 );
 
                 ImGui::DragFloat(
-                    "Rotation Speed",
+                    "Ring Rotation Speed",
                     &settings.rotationSpeed,
-                    0.05f,
+                    0.01f,
                     -20.0f,
                     20.0f
                 );
 
+                ImGui::DragFloat(
+                    "Ring Edge Softness",
+                    &settings.edgeSoftness,
+                    0.001f,
+                    0.001f,
+                    0.25f
+                );
+
+                ImGui::DragFloat(
+                    "Ring Glow Strength",
+                    &settings.glowStrength,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Ring Distortion",
+                    &settings.distortionStrength,
+                    0.001f,
+                    0.0f,
+                    0.5f
+                );
+
+                ImGui::DragFloat(
+                    "Ring Distortion Frequency",
+                    &settings.distortionFrequency,
+                    0.1f,
+                    1.0f,
+                    32.0f
+                );
+
+                ImGui::DragFloat(
+                    "Ring Distortion Speed",
+                    &settings.distortionSpeed,
+                    0.01f,
+                    -10.0f,
+                    10.0f
+                );
+
                 if (ImGui::Button("Reset Ring")) {
-                    settings = Ring::Settings{};
-                    ring_->SetThickness(
-                        settings.thickness
-                    );
+                    settings =
+                        Ring::Settings{};
                 }
             }
 
@@ -1813,8 +1860,15 @@ void GameScene::UpdateImGui() {
                 ImGui::SeparatorText("Primitive");
 
                 ImGui::ColorEdit4(
-                    "Primitive Color",
+                    "Primitive Start Color",
                     &settings.color.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::ColorEdit4(
+                    "Primitive End Color",
+                    &settings.endColor.x,
                     ImGuiColorEditFlags_Float |
                     ImGuiColorEditFlags_HDR
                 );
@@ -1832,7 +1886,7 @@ void GameScene::UpdateImGui() {
                     &settings.intensity,
                     0.01f,
                     0.0f,
-                    5.0f
+                    10.0f
                 );
 
                 ImGui::DragFloat(
@@ -1841,6 +1895,13 @@ void GameScene::UpdateImGui() {
                     0.001f,
                     0.001f,
                     2.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Primitive Width Random",
+                    &settings.widthRandomness,
+                    0.0f,
+                    1.0f
                 );
 
                 ImGui::DragFloatRange2(
@@ -1869,9 +1930,54 @@ void GameScene::UpdateImGui() {
                     20.0f
                 );
 
+                ImGui::SliderFloat(
+                    "Primitive Speed Random",
+                    &settings.moveSpeedRandomness,
+                    0.0f,
+                    1.0f
+                );
+
                 ImGui::DragFloat(
                     "Primitive Rotation Speed",
                     &settings.rotationSpeed,
+                    0.01f,
+                    -20.0f,
+                    20.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Rotation Random",
+                    &settings.rotationSpeedRandomness,
+                    0.01f,
+                    0.0f,
+                    20.0f
+                );
+
+                ImGui::SliderAngle(
+                    "Primitive Direction",
+                    &settings.directionAngle,
+                    -180.0f,
+                    180.0f
+                );
+
+                ImGui::SliderAngle(
+                    "Primitive Direction Spread",
+                    &settings.directionSpread,
+                    0.0f,
+                    180.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Spawn Radius",
+                    &settings.spawnRadius,
+                    0.01f,
+                    0.0f,
+                    10.0f
+                );
+
+                ImGui::DragFloat3(
+                    "Primitive Acceleration",
+                    &settings.acceleration.x,
                     0.01f,
                     -20.0f,
                     20.0f
@@ -1894,15 +2000,31 @@ void GameScene::UpdateImGui() {
                 );
 
                 ImGui::DragFloat(
+                    "Primitive Scale Ease",
+                    &settings.scaleEasePower,
+                    0.01f,
+                    0.01f,
+                    10.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Primitive Fade In",
+                    &settings.fadeInRatio,
+                    0.0f,
+                    1.0f
+                );
+
+                ImGui::DragFloat(
                     "Primitive Fade Power",
                     &settings.fadePower,
                     0.01f,
-                    0.1f,
+                    0.01f,
                     10.0f
                 );
 
                 if (ImGui::Button("Reset Primitive")) {
-                    settings = Primitive::Settings{};
+                    settings =
+                        Primitive::Settings{};
                 }
             }
 
@@ -1914,8 +2036,15 @@ void GameScene::UpdateImGui() {
                 ImGui::SeparatorText("Cylinder");
 
                 ImGui::ColorEdit4(
-                    "Cylinder Color",
+                    "Cylinder Start Color",
                     &settings.color.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::ColorEdit4(
+                    "Cylinder End Color",
+                    &settings.endColor.x,
                     ImGuiColorEditFlags_Float |
                     ImGuiColorEditFlags_HDR
                 );
@@ -1925,12 +2054,20 @@ void GameScene::UpdateImGui() {
                     &settings.intensity,
                     0.01f,
                     0.0f,
-                    5.0f
+                    10.0f
                 );
 
                 ImGui::DragFloat(
-                    "Cylinder Radius",
+                    "Cylinder Start Radius",
                     &settings.radius,
+                    0.01f,
+                    0.01f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder End Radius",
+                    &settings.endRadius,
                     0.01f,
                     0.01f,
                     10.0f
@@ -1953,6 +2090,22 @@ void GameScene::UpdateImGui() {
                 );
 
                 ImGui::DragFloat(
+                    "Cylinder Bottom Radius Scale",
+                    &settings.bottomRadiusScale,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Top Radius Scale",
+                    &settings.topRadiusScale,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
                     "Cylinder Life Time",
                     &settings.lifeTime,
                     0.01f,
@@ -1969,19 +2122,79 @@ void GameScene::UpdateImGui() {
                 );
 
                 ImGui::DragFloat(
-                    "Cylinder Expand Ease",
+                    "Cylinder Ease Power",
                     &settings.easePower,
                     0.01f,
-                    0.1f,
+                    0.01f,
                     10.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Cylinder Fade In",
+                    &settings.fadeInRatio,
+                    0.0f,
+                    1.0f
                 );
 
                 ImGui::DragFloat(
                     "Cylinder Fade Power",
                     &settings.fadePower,
                     0.01f,
-                    0.1f,
+                    0.01f,
                     10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Twist Amount",
+                    &settings.twistAmount,
+                    0.01f,
+                    -20.0f,
+                    20.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Twist Speed",
+                    &settings.twistSpeed,
+                    0.01f,
+                    -20.0f,
+                    20.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Cylinder Noise Strength",
+                    &settings.noiseStrength,
+                    0.0f,
+                    1.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Noise Frequency",
+                    &settings.noiseFrequency,
+                    0.1f,
+                    1.0f,
+                    32.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Noise Speed",
+                    &settings.noiseSpeed,
+                    0.01f,
+                    -10.0f,
+                    10.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Cylinder Top Fade",
+                    &settings.topFade,
+                    0.001f,
+                    1.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Cylinder Bottom Fade",
+                    &settings.bottomFade,
+                    0.001f,
+                    1.0f
                 );
 
                 ImGui::DragFloat3(
@@ -1993,7 +2206,8 @@ void GameScene::UpdateImGui() {
                 );
 
                 if (ImGui::Button("Reset Cylinder")) {
-                    settings = Cylinder::Settings{};
+                    settings =
+                        Cylinder::Settings{};
                 }
             }
 

@@ -23,6 +23,22 @@ public:
     struct InstanceData {
         Matrix4x4 WVP;
         Vector4 color;
+
+        // x: bottomRadiusScale
+        // y: topRadiusScale
+        // z: twistAmount
+        // w: twistPhase
+        Vector4 shapeParameters;
+
+        // x: progress
+        // y: topFade
+        // z: bottomFade
+        Vector4 effectParameters;
+
+        // x: noiseStrength
+        // y: noiseFrequency
+        // z: noisePhase
+        Vector4 noiseParameters;
     };
 
 

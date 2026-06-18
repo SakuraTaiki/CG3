@@ -1,5 +1,6 @@
 #include "CylinderParticleSystem.h"
 
+#include <algorithm>
 #include <cmath>
 
 void CylinderParticleSystem::Emit(
@@ -10,6 +11,10 @@ void CylinderParticleSystem::Emit(
     }
 
     Particle particle{};
+
+    // 発生時の設定を保存
+    particle.settings =
+        settings_;
 
     particle.startPosition = {
         position.x +
@@ -32,9 +37,7 @@ void CylinderParticleSystem::Emit(
     };
 
     particle.transform.rotate = {
-        0.0f,
-        0.0f,
-        0.0f
+        0.0f, 0.0f, 0.0f
     };
 
     particle.color =
@@ -43,81 +46,163 @@ void CylinderParticleSystem::Emit(
     particle.lifeTime = 0.0f;
 
     particle.maxTime =
-        settings_.lifeTime;
+        std::max(
+            settings_.lifeTime,
+            0.001f
+        );
+
+    particle.progress = 0.0f;
+    particle.twistPhase = 0.0f;
+    particle.noisePhase = 0.0f;
 
     particles_.push_back(particle);
 }
 
 void CylinderParticleSystem::Update()
 {
-    const float deltaTime =
+    constexpr float deltaTime =
         1.0f / 60.0f;
 
     for (
         auto iterator = particles_.begin();
         iterator != particles_.end();
         ) {
-        iterator->lifeTime += deltaTime;
+        Particle& particle =
+            *iterator;
 
-        if (iterator->lifeTime >=
-            iterator->maxTime) {
+        particle.lifeTime +=
+            deltaTime;
 
+        if (
+            particle.lifeTime >=
+            particle.maxTime
+            ) {
             iterator =
                 particles_.erase(iterator);
 
             continue;
         }
 
-        const float time =
-            iterator->lifeTime /
-            iterator->maxTime;
+        const Settings& settings =
+            particle.settings;
 
-        // 最初に速く伸ばすEaseOut
+        const float time =
+            std::clamp(
+                particle.lifeTime /
+                particle.maxTime,
+                0.0f,
+                1.0f
+            );
+
+        particle.progress =
+            time;
+
         const float easedTime =
             1.0f -
             std::pow(
                 1.0f - time,
-                settings_.easePower
+                std::max(
+                    settings.easePower,
+                    0.01f
+                )
             );
 
-        const float height =
-            settings_.startHeight +
+        const float radius =
+            settings.radius +
             (
-                settings_.endHeight -
-                settings_.startHeight
-                ) * easedTime;
-
-        iterator->transform.scale = {
-            settings_.radius,
-            height,
-            settings_.radius
-        };
-
-        iterator->transform.translate =
-            iterator->startPosition;
-
-        iterator->transform.translate.y +=
-            settings_.riseDistance *
+                settings.endRadius -
+                settings.radius
+                ) *
             easedTime;
 
-        iterator->color.x =
-            settings_.color.x *
-            settings_.intensity;
+        const float height =
+            settings.startHeight +
+            (
+                settings.endHeight -
+                settings.startHeight
+                ) *
+            easedTime;
 
-        iterator->color.y =
-            settings_.color.y *
-            settings_.intensity;
+        particle.transform.scale = {
+            radius,
+            height,
+            radius
+        };
 
-        iterator->color.z =
-            settings_.color.z *
-            settings_.intensity;
+        particle.transform.translate =
+            particle.startPosition;
 
-        iterator->color.w =
-            settings_.color.w *
+        particle.transform.translate.y +=
+            settings.riseDistance *
+            easedTime;
+
+        particle.twistPhase +=
+            settings.twistSpeed *
+            deltaTime;
+
+        particle.noisePhase +=
+            settings.noiseSpeed *
+            deltaTime;
+
+        float fadeIn = 1.0f;
+
+        if (settings.fadeInRatio > 0.0f) {
+            fadeIn =
+                std::clamp(
+                    time /
+                    settings.fadeInRatio,
+                    0.0f,
+                    1.0f
+                );
+        }
+
+        const float fadeOut =
             std::pow(
                 1.0f - time,
-                settings_.fadePower
+                std::max(
+                    settings.fadePower,
+                    0.01f
+                )
             );
+
+        const float red =
+            settings.color.x +
+            (
+                settings.endColor.x -
+                settings.color.x
+                ) *
+            time;
+
+        const float green =
+            settings.color.y +
+            (
+                settings.endColor.y -
+                settings.color.y
+                ) *
+            time;
+
+        const float blue =
+            settings.color.z +
+            (
+                settings.endColor.z -
+                settings.color.z
+                ) *
+            time;
+
+        const float alpha =
+            settings.color.w +
+            (
+                settings.endColor.w -
+                settings.color.w
+                ) *
+            time;
+
+        particle.color = {
+            red * settings.intensity,
+            green * settings.intensity,
+            blue * settings.intensity,
+            alpha * fadeIn * fadeOut
+        };
 
         ++iterator;
     }
