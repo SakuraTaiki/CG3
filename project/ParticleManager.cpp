@@ -1,4 +1,6 @@
 #include "ParticleManager.h"
+
+#include<cmath>
 #include <cassert>
 #include <random>
 #include<numbers>
@@ -55,12 +57,49 @@ void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& proje
             it = particles_.erase(it);
             continue;
         }
+       
         it->transform.translate.x += it->velocity.x;
         it->transform.translate.y += it->velocity.y;
         it->transform.translate.z += it->velocity.z;
-        float alpha = 1.0f - (it->lifeTime / it->maxTime);
-        it->color.w = alpha;
-        ++it;
+
+        const float t = it->lifeTime / it->maxTime;
+
+        if (it->effectType == 0) {
+            // 火花
+            it->transform.scale.x =
+                it->startScale.x * (1.0f - t);
+
+            it->transform.scale.y =
+                it->startScale.y * (1.0f - 0.45f * t);
+
+            it->color.w = 1.0f - t;
+
+        } else if (it->effectType == 1) {
+            // 中心の閃光
+            const float scale = 0.35f + 1.65f * t;
+
+            it->transform.scale = {
+                it->startScale.x * scale,
+                it->startScale.y * scale,
+                1.0f
+            };
+
+            it->color.w = (1.0f - t) * (1.0f - t);
+
+        } else {
+            // 青い残光
+            const float scale = 0.7f + 0.8f * t;
+
+            it->transform.scale = {
+                it->startScale.x * scale,
+                it->startScale.y * scale,
+                1.0f
+            };
+
+            it->transform.rotate.z += 0.015f;
+            it->color.w = 0.45f * (1.0f - t);
+        }
+
     }
 
     // 2. データ書き込み
@@ -93,6 +132,10 @@ void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& proje
 
         instancingDataMapped_[index].WVP = wvp;
         instancingDataMapped_[index].color = particle.color;
+
+        instancingDataMapped_[index].effectType =
+            static_cast<float>(particle.effectType);
+
         index++;
     }
 }
@@ -120,59 +163,165 @@ void ParticleManager::Draw() {
     commandList->DrawInstanced(6, count, 0, 0);
 }
 
-void ParticleManager::Emit(const Vector3& pos, uint32_t count) {
+void ParticleManager::Emit(
+    const Vector3& pos,
+    uint32_t count
+) {
     std::uniform_real_distribution<float> distRotate(
         -std::numbers::pi_v<float>,
         std::numbers::pi_v<float>
     );
 
-    std::uniform_real_distribution<float> distScaleY(0.4f, 1.5f);
-    std::uniform_real_distribution<float> distColor(0.7f, 1.0f);
-    std::uniform_real_distribution<float> distTime(0.4f, 0.8f);
+    std::uniform_real_distribution<float> distScaleY(
+        0.55f,
+        1.55f
+    );
 
+    std::uniform_real_distribution<float> distSpeed(
+        0.035f,
+        0.11f
+    );
+
+    std::uniform_real_distribution<float> distColor(
+        0.75f,
+        1.0f
+    );
+
+    std::uniform_real_distribution<float> distTime(
+        0.22f,
+        0.48f
+    );
+
+    // 放射状の火花
     for (uint32_t i = 0; i < count; ++i) {
         if (particles_.size() >= kMaxParticles) {
             return;
         }
 
-        Particle p;
+        Particle particle{};
 
-        // 縦長Particle
-        p.transform.scale = {
-            0.05f,
+        particle.transform.scale = {
+            0.035f,
             distScaleY(engine),
             1.0f
         };
 
-        // Z回転をランダムにする
-        p.transform.rotate = {
+        particle.startScale = particle.transform.scale;
+
+        particle.transform.rotate = {
             0.0f,
             0.0f,
             distRotate(engine)
         };
 
-        p.transform.translate = pos;
+        particle.transform.translate = pos;
 
-        // 今回は動かさない
-        p.velocity = {
-            0.0f,
-            0.0f,
-            0.0f
+        const float speed = distSpeed(engine);
+        const float rotateZ = particle.transform.rotate.z;
+
+        particle.velocity = {
+            -std::sin(rotateZ) * speed,
+             std::cos(rotateZ) * speed,
+             0.0f
         };
 
-        p.color = {
+        particle.color = {
+            1.0f,
             distColor(engine),
-            distColor(engine),
-            distColor(engine),
+            0.25f + distColor(engine) * 0.35f,
             1.0f
         };
 
-        p.lifeTime = 0.0f;
-        p.maxTime = distTime(engine);
+        particle.lifeTime = 0.0f;
+        particle.maxTime = distTime(engine);
+        particle.effectType = 0;
 
-        particles_.push_back(p);
+        particles_.push_back(particle);
+    }
+
+    // 白と青の中心閃光
+    for (
+        uint32_t i = 0;
+        i < 3 && particles_.size() < kMaxParticles;
+        ++i
+        ) {
+        Particle particle{};
+
+        const float baseScale =
+            0.75f + static_cast<float>(i) * 0.32f;
+
+        particle.transform.scale = {
+            baseScale,
+            baseScale,
+            1.0f
+        };
+
+        particle.startScale = particle.transform.scale;
+
+        particle.transform.rotate = {
+            0.0f,
+            0.0f,
+            distRotate(engine)
+        };
+
+        particle.transform.translate = pos;
+        particle.velocity = { 0.0f, 0.0f, 0.0f };
+
+        if (i == 0) {
+            particle.color = {
+                1.0f, 1.0f, 1.0f, 1.0f
+            };
+        } else {
+            particle.color = {
+                0.25f, 0.65f, 1.0f, 0.85f
+            };
+        }
+
+        particle.lifeTime = 0.0f;
+        particle.maxTime =
+            0.12f + static_cast<float>(i) * 0.055f;
+
+        particle.effectType = 1;
+
+        particles_.push_back(particle);
+    }
+
+    // ゆっくり消える青い残光
+    if (particles_.size() < kMaxParticles) {
+        Particle particle{};
+
+        particle.transform.scale = {
+            1.35f,
+            1.35f,
+            1.0f
+        };
+
+        particle.startScale = particle.transform.scale;
+
+        particle.transform.rotate = {
+            0.0f,
+            0.0f,
+            distRotate(engine)
+        };
+
+        particle.transform.translate = pos;
+        particle.velocity = { 0.0f, 0.006f, 0.0f };
+
+        particle.color = {
+            0.15f,
+            0.45f,
+            1.0f,
+            0.45f
+        };
+
+        particle.lifeTime = 0.0f;
+        particle.maxTime = 0.55f;
+        particle.effectType = 2;
+
+        particles_.push_back(particle);
     }
 }
+
 
 void ParticleManager::CreateRootSignature() {
     D3D12_DESCRIPTOR_RANGE range = {};
@@ -225,11 +374,12 @@ void ParticleManager::CreatePipelineState() {
 
         // Color
         { "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+        { "EFFECT_TYPE"   , 0, DXGI_FORMAT_R32_FLOAT,1,80,D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,1},
     };
 
     // シェーダーコンパイル (パスにhlsl/を追加済み)
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shaders/hlsl/Particle.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shaders/hlsl/Particle.PS.hlsl", L"ps_6_0");
+    auto vsBlob = dxCommon_->CompileShader(L"Resources/shaders/hlsl/HitParticle.VS.hlsl", L"vs_6_0");
+    auto psBlob = dxCommon_->CompileShader(L"Resources/shaders/hlsl/HitParticle.PS.hlsl", L"ps_6_0");
     assert(vsBlob != nullptr && "VS Compile Failed");
     assert(psBlob != nullptr && "PS Compile Failed");
 

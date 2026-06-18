@@ -25,6 +25,19 @@ public:
         Vector4 color;
     };
 
+
+    using Settings =
+        CylinderParticleSystem::Settings;
+
+    Settings& GetSettings()
+    {
+        return particleSystem_.GetSettings();
+    }
+
+    const Settings& GetSettings() const
+    {
+        return particleSystem_.GetSettings();
+    }
     
     void Initialize(DirectXCommon* dxCommon, TextureManager* textureManager);
     void Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix);

@@ -14,7 +14,7 @@ void Cylinder::Initialize(DirectXCommon* dxCommon, TextureManager* textureManage
     dxCommon_ = dxCommon;
     textureManager_ = textureManager;
 
-    textureHandle_ = textureManager_->LoadTexture("Resources/uvChecker.png");
+    textureHandle_ = textureManager_->LoadTexture("Resources/white.png");
 
     CreateRootSignature();
     CreatePipelineState();

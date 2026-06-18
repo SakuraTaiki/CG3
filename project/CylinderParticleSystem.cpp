@@ -1,47 +1,124 @@
 #include "CylinderParticleSystem.h"
 
-void CylinderParticleSystem::Emit(const Vector3& position) {
+#include <cmath>
+
+void CylinderParticleSystem::Emit(
+    const Vector3& position
+) {
     if (particles_.size() >= kMaxParticles) {
         return;
     }
 
     Particle particle{};
 
-    particle.transform.translate = position;
-    particle.transform.scale = { 0.8f, 0.1f, 0.8f };
-    particle.transform.rotate = { 0.0f, 0.0f, 0.0f };
+    particle.startPosition = {
+        position.x +
+            settings_.positionOffset.x,
 
-    particle.color = { 0.4f, 0.7f, 1.0f, 0.6f };
+        position.y +
+            settings_.positionOffset.y,
+
+        position.z +
+            settings_.positionOffset.z
+    };
+
+    particle.transform.translate =
+        particle.startPosition;
+
+    particle.transform.scale = {
+        settings_.radius,
+        settings_.startHeight,
+        settings_.radius
+    };
+
+    particle.transform.rotate = {
+        0.0f,
+        0.0f,
+        0.0f
+    };
+
+    particle.color =
+        settings_.color;
 
     particle.lifeTime = 0.0f;
-    particle.maxTime = 0.7f;
+
+    particle.maxTime =
+        settings_.lifeTime;
 
     particles_.push_back(particle);
 }
 
-void CylinderParticleSystem::Update() {
-    for (auto it = particles_.begin(); it != particles_.end();) {
-        it->lifeTime += 1.0f / 60.0f;
+void CylinderParticleSystem::Update()
+{
+    const float deltaTime =
+        1.0f / 60.0f;
 
-        if (it->lifeTime >= it->maxTime) {
-            it = particles_.erase(it);
+    for (
+        auto iterator = particles_.begin();
+        iterator != particles_.end();
+        ) {
+        iterator->lifeTime += deltaTime;
+
+        if (iterator->lifeTime >=
+            iterator->maxTime) {
+
+            iterator =
+                particles_.erase(iterator);
+
             continue;
         }
 
-        float t = it->lifeTime / it->maxTime;
+        const float time =
+            iterator->lifeTime /
+            iterator->maxTime;
 
-        // 時間経過で上方向に伸ばす。
-        float height = 0.1f + t * maxHeight_;
+        // 最初に速く伸ばすEaseOut
+        const float easedTime =
+            1.0f -
+            std::pow(
+                1.0f - time,
+                settings_.easePower
+            );
 
-        it->transform.scale = {
-            0.8f,
+        const float height =
+            settings_.startHeight +
+            (
+                settings_.endHeight -
+                settings_.startHeight
+                ) * easedTime;
+
+        iterator->transform.scale = {
+            settings_.radius,
             height,
-            0.8f
+            settings_.radius
         };
 
-        // 寿命が近づくほど透明にする。
-        it->color.w = 0.6f * (1.0f - t);
+        iterator->transform.translate =
+            iterator->startPosition;
 
-        ++it;
+        iterator->transform.translate.y +=
+            settings_.riseDistance *
+            easedTime;
+
+        iterator->color.x =
+            settings_.color.x *
+            settings_.intensity;
+
+        iterator->color.y =
+            settings_.color.y *
+            settings_.intensity;
+
+        iterator->color.z =
+            settings_.color.z *
+            settings_.intensity;
+
+        iterator->color.w =
+            settings_.color.w *
+            std::pow(
+                1.0f - time,
+                settings_.fadePower
+            );
+
+        ++iterator;
     }
 }
