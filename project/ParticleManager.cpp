@@ -55,6 +55,7 @@ void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& proje
         it->lifeTime += 1.0f / 60.0f;
         if (it->lifeTime >= it->maxTime) {
             it = particles_.erase(it);
+            
             continue;
         }
        
@@ -62,21 +63,27 @@ void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& proje
         it->transform.translate.y += it->velocity.y;
         it->transform.translate.z += it->velocity.z;
 
-        const float t = it->lifeTime / it->maxTime;
+        const float time =
+            it->lifeTime /
+            it->maxTime;
 
         if (it->effectType == 0) {
             // 火花
             it->transform.scale.x =
-                it->startScale.x * (1.0f - t);
+                it->startScale.x *
+                (1.0f - time);
 
             it->transform.scale.y =
-                it->startScale.y * (1.0f - 0.45f * t);
+                it->startScale.y *
+                (1.0f - 0.45f * time);
 
-            it->color.w = 1.0f - t;
+            it->color.w =
+                1.0f - time;
 
         } else if (it->effectType == 1) {
-            // 中心の閃光
-            const float scale = 0.35f + 1.65f * t;
+            // 中心閃光
+            const float scale =
+                0.35f + 1.65f * time;
 
             it->transform.scale = {
                 it->startScale.x * scale,
@@ -84,22 +91,67 @@ void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& proje
                 1.0f
             };
 
-            it->color.w = (1.0f - t) * (1.0f - t);
+            it->color.w =
+                (1.0f - time) *
+                (1.0f - time);
+
+        } else if (it->effectType == 2) {
+            // 赤い残光
+            const float scale =
+                0.7f + 0.8f * time;
+
+            it->transform.scale = {
+                it->startScale.x * scale,
+                it->startScale.y * scale,
+                1.0f
+            };
+
+            it->transform.rotate.z +=
+                0.015f;
+
+            it->color.w =
+                0.45f * (1.0f - time);
 
         } else {
-            // 青い残光
-            const float scale = 0.7f + 0.8f * t;
+            // 炎粒子
+            const float pi =
+                std::numbers::pi_v<float>;
 
-            it->transform.scale = {
-                it->startScale.x * scale,
-                it->startScale.y * scale,
-                1.0f
-            };
+            // 中盤で少し膨らむ
+            const float pulse =
+                std::sin(time * pi);
 
-            it->transform.rotate.z += 0.015f;
-            it->color.w = 0.45f * (1.0f - t);
+            it->transform.scale.x =
+                it->startScale.x *
+                (0.75f + pulse * 0.45f);
+
+            // 上へ伸びながら消える
+            it->transform.scale.y =
+                it->startScale.y *
+                (0.8f + time * 0.65f);
+
+            // 少し回転させて揺らす
+            it->transform.rotate.z +=
+                0.008f;
+
+            // 最初の10%で現れる
+            float fadeIn =
+                time / 0.1f;
+
+            if (fadeIn > 1.0f) {
+                fadeIn = 1.0f;
+            }
+
+            const float fadeOut =
+                (1.0f - time) *
+                (1.0f - time);
+
+            it->color.w =
+                fadeIn * fadeOut;
         }
 
+        // 必ずループ末尾に必要
+        ++it;
     }
 
     // 2. データ書き込み
@@ -219,18 +271,27 @@ void ParticleManager::Emit(
         const float speed = distSpeed(engine);
         const float rotateZ = particle.transform.rotate.z;
 
-        particle.velocity = {
-            -std::sin(rotateZ) * speed,
-             std::cos(rotateZ) * speed,
-             0.0f
+            particle.velocity = {
+        -std::sin(rotateZ) *
+            speed * 0.55f,
+
+        std::abs(
+            std::cos(rotateZ)
+        ) * speed + 0.015f,
+
+        0.0f
         };
 
-        particle.color = {
-            1.0f,
-            distColor(engine),
-            0.25f + distColor(engine) * 0.35f,
-            1.0f
-        };
+       
+            const float randomColor =
+                distColor(engine);
+
+            particle.color = {
+                1.0f,
+                0.18f + randomColor * 0.45f,
+                0.02f,
+                1.0f
+            };
 
         particle.lifeTime = 0.0f;
         particle.maxTime = distTime(engine);
@@ -269,11 +330,11 @@ void ParticleManager::Emit(
 
         if (i == 0) {
             particle.color = {
-                1.0f, 1.0f, 1.0f, 1.0f
+                1.0f, 1.0f, 0.75f, 1.0f
             };
         } else {
             particle.color = {
-                0.25f, 0.65f, 1.0f, 0.85f
+                1.0f, 0.35f,0.04f, 0.9f
             };
         }
 
@@ -305,13 +366,13 @@ void ParticleManager::Emit(
         };
 
         particle.transform.translate = pos;
-        particle.velocity = { 0.0f, 0.006f, 0.0f };
+        particle.velocity = { 0.0f, 0.012f, 0.0f };
 
         particle.color = {
-            0.15f,
-            0.45f,
             1.0f,
-            0.45f
+            0.12f,
+            0.01f,
+            0.5f
         };
 
         particle.lifeTime = 0.0f;
@@ -320,7 +381,147 @@ void ParticleManager::Emit(
 
         particles_.push_back(particle);
     }
-}
+
+    // ========================================
+   // ここから炎の粒を追加
+   // ========================================
+    std::uniform_real_distribution<float>
+        flamePositionX(
+            -0.35f,
+            0.35f
+        );
+
+    std::uniform_real_distribution<float>
+        flamePositionY(
+            -0.15f,
+            0.20f
+        );
+
+    std::uniform_real_distribution<float>
+        flameWidth(
+            0.20f,
+            0.48f
+        );
+
+    std::uniform_real_distribution<float>
+        flameHeight(
+            0.45f,
+            1.10f
+        );
+
+    std::uniform_real_distribution<float>
+        flameVelocityX(
+            -0.008f,
+            0.008f
+        );
+
+    std::uniform_real_distribution<float>
+        flameVelocityY(
+            0.015f,
+            0.042f
+        );
+
+    std::uniform_real_distribution<float>
+        flameRotation(
+            -0.28f,
+            0.28f
+        );
+
+    std::uniform_real_distribution<float>
+        flameLifeTime(
+            0.32f,
+            0.68f
+        );
+
+    const uint32_t flameCount = 24;
+
+    for (
+        uint32_t index = 0;
+        index < flameCount;
+        ++index
+        ) {
+        if (particles_.size() >=
+            kMaxParticles) {
+            break;
+        }
+
+        Particle particle{};
+
+        particle.transform.scale = {
+            flameWidth(engine),
+            flameHeight(engine),
+            1.0f
+        };
+
+        particle.startScale =
+            particle.transform.scale;
+
+        particle.transform.rotate = {
+            0.0f,
+            0.0f,
+            flameRotation(engine)
+        };
+
+        particle.transform.translate = {
+            pos.x + flamePositionX(engine),
+            pos.y + flamePositionY(engine),
+            pos.z
+        };
+
+        particle.velocity = {
+            flameVelocityX(engine),
+            flameVelocityY(engine),
+            0.0f
+        };
+
+        switch (index % 3) {
+        case 0:
+            // 白黄色の芯
+            particle.color = {
+                1.0f,
+                0.92f,
+                0.35f,
+                1.0f
+            };
+            break;
+
+        case 1:
+            // オレンジ色の炎
+            particle.color = {
+                1.0f,
+                0.35f,
+                0.025f,
+                1.0f
+            };
+            break;
+
+        default:
+            // 赤い外炎
+            particle.color = {
+                1.0f,
+                0.08f,
+                0.005f,
+                0.75f
+            };
+            break;
+        }
+
+        particle.lifeTime = 0.0f;
+
+        particle.maxTime =
+            flameLifeTime(engine);
+
+        // HLSLの炎形状を選択
+        particle.effectType = 3;
+
+        particles_.push_back(particle);
+    }
+    // ========================================
+    // 炎の粒ここまで
+    // ========================================
+
+} // ParticleManager::Emit()の終わり
+
 
 
 void ParticleManager::CreateRootSignature() {

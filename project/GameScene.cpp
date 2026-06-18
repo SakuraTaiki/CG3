@@ -15,6 +15,39 @@
 
 
 #include <cmath>
+#include <algorithm>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <string>
+
+
+namespace
+{
+    std::string MakeSafePresetName(
+        const std::string& name
+    ) {
+        std::string result;
+
+        for (unsigned char character : name) {
+            if (
+                std::isalnum(character) ||
+                character == '_' ||
+                character == '-'
+                ) {
+                result +=
+                    static_cast<char>(character);
+            }
+        }
+
+        if (result.empty()) {
+            result = "NewPreset";
+        }
+
+        return result;
+    }
+}
+
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -32,6 +65,10 @@ void GameScene::Initialize(EngineContext* context) {
     InitializeRing();
     InitializeCylinder();
     InitializePrimitive();
+
+    ApplyFireHitEffectPreset();
+
+    RefreshEffectPresetList();
 }
 
 void GameScene::Finalize() {
@@ -230,28 +267,655 @@ void GameScene::InitializeSkeletonDebug() {
     }
 }
 
+
 void GameScene::EmitEffect(
     const Vector3& position
 ) {
-    // 新しく作成したHitEffect
+    const float size =
+        (std::max)(hitEffectSize_, 0.01f);
+
+    // 元から存在するHitEffect
     context_->GetParticleManager()->Emit(
         position,
         28
     );
 
-    // 元のPrimitive
+    // =====================================
+    // Primitive
+    // =====================================
     if (enablePrimitive_ && primitive_) {
+        Primitive::Settings& settings =
+            primitive_->GetSettings();
+
+        // 現在の設定を退避
+        const float originalWidth =
+            settings.width;
+
+        const float originalMinLength =
+            settings.minLength;
+
+        const float originalMaxLength =
+            settings.maxLength;
+
+        const float originalMoveSpeed =
+            settings.moveSpeed;
+
+        // サイズ倍率を適用
+        settings.width =
+            originalWidth * size;
+
+        settings.minLength =
+            originalMinLength * size;
+
+        settings.maxLength =
+            originalMaxLength * size;
+
+        settings.moveSpeed =
+            originalMoveSpeed * size;
+
         primitive_->Emit(position);
+
+        // ImGui上の設定値を元に戻す
+        settings.width =
+            originalWidth;
+
+        settings.minLength =
+            originalMinLength;
+
+        settings.maxLength =
+            originalMaxLength;
+
+        settings.moveSpeed =
+            originalMoveSpeed;
     }
 
+    // =====================================
+    // Ring
+    // =====================================
     if (enableRing_ && ring_) {
+        Ring::Settings& settings =
+            ring_->GetSettings();
+
+        // 現在の設定を退避
+        const float originalStartScale =
+            settings.startScale;
+
+        const float originalEndScale =
+            settings.endScale;
+
+        // サイズ倍率を適用
+        settings.startScale =
+            originalStartScale * size;
+
+        settings.endScale =
+            originalEndScale * size;
+
         ring_->Emit(position);
+
+        // ImGui上の設定値を元に戻す
+        settings.startScale =
+            originalStartScale;
+
+        settings.endScale =
+            originalEndScale;
     }
 
+    // =====================================
+    // Cylinder
+    // =====================================
     if (enableCylinder_ && cylinder_) {
+        Cylinder::Settings& settings =
+            cylinder_->GetSettings();
+
+        // 現在の設定を退避
+        const float originalRadius =
+            settings.radius;
+
+        const float originalStartHeight =
+            settings.startHeight;
+
+        const float originalEndHeight =
+            settings.endHeight;
+
+        const float originalRiseDistance =
+            settings.riseDistance;
+
+        const Vector3 originalPositionOffset =
+            settings.positionOffset;
+
+        // サイズ倍率を適用
+        settings.radius =
+            originalRadius * size;
+
+        settings.startHeight =
+            originalStartHeight * size;
+
+        settings.endHeight =
+            originalEndHeight * size;
+
+        settings.riseDistance =
+            originalRiseDistance * size;
+
+        settings.positionOffset = {
+            originalPositionOffset.x * size,
+            originalPositionOffset.y * size,
+            originalPositionOffset.z * size
+        };
+
         cylinder_->Emit(position);
+
+        // ImGui上の設定値を元に戻す
+        settings.radius =
+            originalRadius;
+
+        settings.startHeight =
+            originalStartHeight;
+
+        settings.endHeight =
+            originalEndHeight;
+
+        settings.riseDistance =
+            originalRiseDistance;
+
+        settings.positionOffset =
+            originalPositionOffset;
     }
 }
+
+bool GameScene::SaveEffectPreset(const std::string& presetName)
+{
+    namespace fs = std::filesystem;
+
+    std::string safeName;
+
+    for (unsigned char character : presetName) {
+        if (
+            std::isalnum(character) ||
+            character == '_' ||
+            character == '-'
+            ) {
+            safeName += static_cast<char>(character);
+        }
+    }
+
+    if (safeName.empty()) {
+        safeName = "NewPreset";
+    }
+
+    const fs::path directory =
+        "Resources/Settings/HitEffects";
+
+    fs::create_directories(directory);
+
+    const fs::path filePath =
+        directory / (safeName + ".txt");
+
+    std::ofstream file(filePath);
+
+    if (!file.is_open()) {
+        effectSettingsMessage_ =
+            "Preset save failed";
+
+        return false;
+    }
+
+    file << "EffectPosition "
+        << hitEffectPosition_.x << " "
+        << hitEffectPosition_.y << " "
+        << hitEffectPosition_.z << "\n";
+
+    file << "EffectSize "
+        << hitEffectSize_ << "\n";
+
+    file << "EnablePrimitive "
+        << enablePrimitive_ << "\n";
+
+    file << "EnableRing "
+        << enableRing_ << "\n";
+
+    file << "EnableCylinder "
+        << enableCylinder_ << "\n";
+
+    if (primitive_) {
+        const Primitive::Settings& settings =
+            primitive_->GetSettings();
+
+        file << "PrimitiveColor "
+            << settings.color.x << " "
+            << settings.color.y << " "
+            << settings.color.z << " "
+            << settings.color.w << "\n";
+
+        file << "PrimitiveCount "
+            << settings.count << "\n";
+
+        file << "PrimitiveIntensity "
+            << settings.intensity << "\n";
+
+        file << "PrimitiveWidth "
+            << settings.width << "\n";
+
+        file << "PrimitiveLength "
+            << settings.minLength << " "
+            << settings.maxLength << "\n";
+
+        file << "PrimitiveLifeTime "
+            << settings.minLifeTime << " "
+            << settings.maxLifeTime << "\n";
+
+        file << "PrimitiveMoveSpeed "
+            << settings.moveSpeed << "\n";
+
+        file << "PrimitiveRotationSpeed "
+            << settings.rotationSpeed << "\n";
+
+        file << "PrimitiveEndScale "
+            << settings.endWidthScale << " "
+            << settings.endLengthScale << "\n";
+
+        file << "PrimitiveFadePower "
+            << settings.fadePower << "\n";
+    }
+
+    if (ring_) {
+        const Ring::Settings& settings =
+            ring_->GetSettings();
+
+        file << "RingColor "
+            << settings.color.x << " "
+            << settings.color.y << " "
+            << settings.color.z << " "
+            << settings.color.w << "\n";
+
+        file << "RingIntensity "
+            << settings.intensity << "\n";
+
+        file << "RingScale "
+            << settings.startScale << " "
+            << settings.endScale << "\n";
+
+        file << "RingThickness "
+            << settings.thickness << "\n";
+
+        file << "RingLifeTime "
+            << settings.lifeTime << "\n";
+
+        file << "RingFadeInRatio "
+            << settings.fadeInRatio << "\n";
+
+        file << "RingEasePower "
+            << settings.easePower << "\n";
+
+        file << "RingRotationSpeed "
+            << settings.rotationSpeed << "\n";
+    }
+
+    if (cylinder_) {
+        const Cylinder::Settings& settings =
+            cylinder_->GetSettings();
+
+        file << "CylinderColor "
+            << settings.color.x << " "
+            << settings.color.y << " "
+            << settings.color.z << " "
+            << settings.color.w << "\n";
+
+        file << "CylinderIntensity "
+            << settings.intensity << "\n";
+
+        file << "CylinderRadius "
+            << settings.radius << "\n";
+
+        file << "CylinderHeight "
+            << settings.startHeight << " "
+            << settings.endHeight << "\n";
+
+        file << "CylinderLifeTime "
+            << settings.lifeTime << "\n";
+
+        file << "CylinderRiseDistance "
+            << settings.riseDistance << "\n";
+
+        file << "CylinderEasePower "
+            << settings.easePower << "\n";
+
+        file << "CylinderFadePower "
+            << settings.fadePower << "\n";
+
+        file << "CylinderPositionOffset "
+            << settings.positionOffset.x << " "
+            << settings.positionOffset.y << " "
+            << settings.positionOffset.z << "\n";
+    }
+
+    file.close();
+
+    effectSettingsMessage_ =
+        "Saved : " + safeName;
+
+    RefreshEffectPresetList();
+
+    return true;
+}
+
+bool GameScene::LoadEffectPreset(const std::string& presetName)
+{
+    namespace fs = std::filesystem;
+
+    std::string safeName;
+
+    for (unsigned char character : presetName) {
+        if (
+            std::isalnum(character) ||
+            character == '_' ||
+            character == '-'
+            ) {
+            safeName += static_cast<char>(character);
+        }
+    }
+
+    if (safeName.empty()) {
+        safeName = "NewPreset";
+    }
+
+    const fs::path filePath =
+        fs::path("Resources/Settings/HitEffects") /
+        (safeName + ".txt");
+
+    std::ifstream file(filePath);
+
+    if (!file.is_open()) {
+        effectSettingsMessage_ =
+            "Preset not found : " + safeName;
+
+        return false;
+    }
+
+    std::string key;
+
+    while (file >> key) {
+        if (key == "EffectPosition") {
+            file
+                >> hitEffectPosition_.x
+                >> hitEffectPosition_.y
+                >> hitEffectPosition_.z;
+        } else if (key == "EffectSize") {
+            file >> hitEffectSize_;
+
+            hitEffectSize_ =
+                std::clamp(
+                    hitEffectSize_,
+                    0.1f,
+                    5.0f
+                );
+        } else if (key == "EnablePrimitive") {
+            file >> enablePrimitive_;
+        } else if (key == "EnableRing") {
+            file >> enableRing_;
+        } else if (key == "EnableCylinder") {
+            file >> enableCylinder_;
+        } else if (
+            key == "PrimitiveColor" &&
+            primitive_
+            ) {
+            Primitive::Settings& settings =
+                primitive_->GetSettings();
+
+            file
+                >> settings.color.x
+                >> settings.color.y
+                >> settings.color.z
+                >> settings.color.w;
+        } else if (
+            key == "PrimitiveCount" &&
+            primitive_
+            ) {
+            file >> primitive_->GetSettings().count;
+        } else if (
+            key == "PrimitiveIntensity" &&
+            primitive_
+            ) {
+            file >> primitive_->GetSettings().intensity;
+        } else if (
+            key == "PrimitiveWidth" &&
+            primitive_
+            ) {
+            file >> primitive_->GetSettings().width;
+        } else if (
+            key == "PrimitiveLength" &&
+            primitive_
+            ) {
+            Primitive::Settings& settings =
+                primitive_->GetSettings();
+
+            file
+                >> settings.minLength
+                >> settings.maxLength;
+        } else if (
+            key == "PrimitiveLifeTime" &&
+            primitive_
+            ) {
+            Primitive::Settings& settings =
+                primitive_->GetSettings();
+
+            file
+                >> settings.minLifeTime
+                >> settings.maxLifeTime;
+        } else if (
+            key == "PrimitiveMoveSpeed" &&
+            primitive_
+            ) {
+            file >> primitive_->GetSettings().moveSpeed;
+        } else if (
+            key == "PrimitiveRotationSpeed" &&
+            primitive_
+            ) {
+            file >> primitive_->GetSettings().rotationSpeed;
+        } else if (
+            key == "PrimitiveEndScale" &&
+            primitive_
+            ) {
+            Primitive::Settings& settings =
+                primitive_->GetSettings();
+
+            file
+                >> settings.endWidthScale
+                >> settings.endLengthScale;
+        } else if (
+            key == "PrimitiveFadePower" &&
+            primitive_
+            ) {
+            file >> primitive_->GetSettings().fadePower;
+        } else if (
+            key == "RingColor" &&
+            ring_
+            ) {
+            Ring::Settings& settings =
+                ring_->GetSettings();
+
+            file
+                >> settings.color.x
+                >> settings.color.y
+                >> settings.color.z
+                >> settings.color.w;
+        } else if (
+            key == "RingIntensity" &&
+            ring_
+            ) {
+            file >> ring_->GetSettings().intensity;
+        } else if (
+            key == "RingScale" &&
+            ring_
+            ) {
+            Ring::Settings& settings =
+                ring_->GetSettings();
+
+            file
+                >> settings.startScale
+                >> settings.endScale;
+        } else if (
+            key == "RingThickness" &&
+            ring_
+            ) {
+            float thickness = 0.18f;
+            file >> thickness;
+            ring_->SetThickness(thickness);
+        } else if (
+            key == "RingLifeTime" &&
+            ring_
+            ) {
+            file >> ring_->GetSettings().lifeTime;
+        } else if (
+            key == "RingFadeInRatio" &&
+            ring_
+            ) {
+            file >> ring_->GetSettings().fadeInRatio;
+        } else if (
+            key == "RingEasePower" &&
+            ring_
+            ) {
+            file >> ring_->GetSettings().easePower;
+        } else if (
+            key == "RingRotationSpeed" &&
+            ring_
+            ) {
+            file >> ring_->GetSettings().rotationSpeed;
+        } else if (
+            key == "CylinderColor" &&
+            cylinder_
+            ) {
+            Cylinder::Settings& settings =
+                cylinder_->GetSettings();
+
+            file
+                >> settings.color.x
+                >> settings.color.y
+                >> settings.color.z
+                >> settings.color.w;
+        } else if (
+            key == "CylinderIntensity" &&
+            cylinder_
+            ) {
+            file >> cylinder_->GetSettings().intensity;
+        } else if (
+            key == "CylinderRadius" &&
+            cylinder_
+            ) {
+            file >> cylinder_->GetSettings().radius;
+        } else if (
+            key == "CylinderHeight" &&
+            cylinder_
+            ) {
+            Cylinder::Settings& settings =
+                cylinder_->GetSettings();
+
+            file
+                >> settings.startHeight
+                >> settings.endHeight;
+        } else if (
+            key == "CylinderLifeTime" &&
+            cylinder_
+            ) {
+            file >> cylinder_->GetSettings().lifeTime;
+        } else if (
+            key == "CylinderRiseDistance" &&
+            cylinder_
+            ) {
+            file >> cylinder_->GetSettings().riseDistance;
+        } else if (
+            key == "CylinderEasePower" &&
+            cylinder_
+            ) {
+            file >> cylinder_->GetSettings().easePower;
+        } else if (
+            key == "CylinderFadePower" &&
+            cylinder_
+            ) {
+            file >> cylinder_->GetSettings().fadePower;
+        } else if (
+            key == "CylinderPositionOffset" &&
+            cylinder_
+            ) {
+            Vector3& offset =
+                cylinder_->GetSettings().positionOffset;
+
+            file
+                >> offset.x
+                >> offset.y
+                >> offset.z;
+        } else {
+            std::string unusedLine;
+            std::getline(file, unusedLine);
+        }
+    }
+
+    if (primitive_) {
+        primitive_->SetIsActive(enablePrimitive_);
+    }
+
+    if (ring_) {
+        ring_->SetIsActive(enableRing_);
+    }
+
+    if (cylinder_) {
+        cylinder_->SetIsActive(enableCylinder_);
+    }
+
+    effectSettingsMessage_ =
+        "Loaded : " + safeName;
+
+    return true;
+}
+
+void GameScene::RefreshEffectPresetList()
+{
+
+    namespace fs = std::filesystem;
+
+    const fs::path directory =
+        "Resources/Settings/HitEffects";
+
+    fs::create_directories(directory);
+
+    effectPresetNames_.clear();
+
+    for (
+        const fs::directory_entry& entry :
+        fs::directory_iterator(directory)
+        ) {
+        if (!entry.is_regular_file()) {
+            continue;
+        }
+
+        if (entry.path().extension() != ".txt") {
+            continue;
+        }
+
+        effectPresetNames_.push_back(
+            entry.path().stem().string()
+        );
+    }
+
+    std::sort(
+        effectPresetNames_.begin(),
+        effectPresetNames_.end()
+    );
+
+    if (effectPresetNames_.empty()) {
+        selectedEffectPreset_ = 0;
+    } else {
+        selectedEffectPreset_ =
+            std::clamp(
+                selectedEffectPreset_,
+                0,
+                static_cast<int>(
+                    effectPresetNames_.size()
+                    ) - 1
+            );
+    }
+
+}
+
 
 void GameScene::Update() {
     Input* input = context_->GetInput();
@@ -268,8 +932,12 @@ void GameScene::Update() {
     const Matrix4x4& view = context_->GetCamera()->GetViewMatrix();
     const Matrix4x4& projection = context_->GetCamera()->GetProjectionMatrix();
 
-    if (skybox_) {
-        skybox_->SetCamera(view, projection);
+    if (enableSkybox_ && skybox_) {
+        skybox_->SetCamera(
+            view,
+            projection
+        );
+
         skybox_->Update();
     }
 
@@ -357,6 +1025,108 @@ void GameScene::SyncAnimatedSkeletonToObject() {
     }
 
     animatedObject_->SetSkeleton(animatedSkeleton_);
+}
+
+void GameScene::ApplyFireHitEffectPreset()
+{
+
+    // =====================================
+    // Primitive：炎の筋
+    // =====================================
+    if (primitive_) {
+        Primitive::Settings& settings =
+            primitive_->GetSettings();
+
+        settings.color = {
+            1.0f,
+            0.32f,
+            0.02f,
+            1.0f
+        };
+
+        settings.count = 18;
+        settings.intensity = 1.8f;
+
+        settings.width = 0.035f;
+
+        settings.minLength = 0.3f;
+        settings.maxLength = 1.15f;
+
+        settings.minLifeTime = 0.18f;
+        settings.maxLifeTime = 0.42f;
+
+        settings.moveSpeed = 1.2f;
+        settings.rotationSpeed = 0.0f;
+
+        settings.endWidthScale = 0.1f;
+        settings.endLengthScale = 0.45f;
+
+        settings.fadePower = 2.2f;
+    }
+
+    // =====================================
+    // Ring：炎の衝撃波
+    // =====================================
+    if (ring_) {
+        Ring::Settings& settings =
+            ring_->GetSettings();
+
+        settings.color = {
+            1.0f,
+            0.22f,
+            0.01f,
+            0.8f
+        };
+
+        settings.intensity = 1.8f;
+
+        settings.startScale = 0.25f;
+        settings.endScale = 1.35f;
+
+        settings.lifeTime = 0.32f;
+        settings.fadeInRatio = 0.05f;
+
+        settings.easePower = 4.0f;
+        settings.rotationSpeed = 0.0f;
+
+        ring_->SetThickness(0.12f);
+    }
+
+    // =====================================
+    // Cylinder：上へ伸びる炎柱
+    // =====================================
+    if (cylinder_) {
+        Cylinder::Settings& settings =
+            cylinder_->GetSettings();
+
+        settings.color = {
+            1.0f,
+            0.18f,
+            0.01f,
+            0.38f
+        };
+
+        settings.intensity = 1.5f;
+
+        settings.radius = 0.48f;
+
+        settings.startHeight = 0.05f;
+        settings.endHeight = 1.8f;
+
+        settings.lifeTime = 0.55f;
+
+        settings.riseDistance = 0.45f;
+
+        settings.easePower = 3.0f;
+        settings.fadePower = 2.0f;
+
+        settings.positionOffset = {
+            0.0f,
+            -0.15f,
+            0.0f
+        };
+    }
+
 }
 
 void GameScene::UpdateSound() {
@@ -555,12 +1325,17 @@ void GameScene::DrawAnimationDebugImGui() {
 
 void GameScene::UpdateImGui() {
 #ifdef USE_IMGUI
+
     context_->GetImGuiManager()->Begin();
 
     ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(420.0f, 520.0f), ImGuiCond_FirstUseEver);
 
-    ImGui::Begin("CG2 Effect Debug Panel");
+    ImGui::Begin(
+        "CG2 Effect Debug Panel",
+        nullptr,
+        ImGuiWindowFlags_AlwaysVerticalScrollbar
+    );
 
     ImGui::Text("Scene Control");
     ImGui::Separator();
@@ -637,9 +1412,141 @@ void GameScene::UpdateImGui() {
                 20.0f
             );
 
+            DrawHitEffectSizeImGui();
+
+
+            ImGui::SeparatorText("Effect Presets");
+
+            ImGui::InputText(
+                "Preset Name",
+                effectPresetNameBuffer_.data(),
+                effectPresetNameBuffer_.size()
+            );
+
+            if (ImGui::Button(
+                "Save As Preset",
+                ImVec2(150.0f, 30.0f)
+            )) {
+                SaveEffectPreset(
+                    effectPresetNameBuffer_.data()
+                );
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button(
+                "Refresh Presets",
+                ImVec2(150.0f, 30.0f)
+            )) {
+                RefreshEffectPresetList();
+            }
+
+            if (!effectPresetNames_.empty()) {
+                const char* previewName =
+                    effectPresetNames_[
+                        selectedEffectPreset_
+                    ].c_str();
+
+                if (ImGui::BeginCombo(
+                    "Saved Presets",
+                    previewName
+                )) {
+                    for (
+                        int index = 0;
+                        index <
+                        static_cast<int>(
+                            effectPresetNames_.size()
+                            );
+                            ++index
+                        ) {
+                        const bool selected =
+                            selectedEffectPreset_ ==
+                            index;
+
+                        if (ImGui::Selectable(
+                            effectPresetNames_[index]
+                            .c_str(),
+                            selected
+                        )) {
+                            selectedEffectPreset_ =
+                                index;
+                        }
+
+                        if (selected) {
+                            ImGui::SetItemDefaultFocus();
+                        }
+                    }
+
+                    ImGui::EndCombo();
+                }
+
+                if (ImGui::Button(
+                    "Load Selected Preset",
+                    ImVec2(200.0f, 30.0f)
+                )) {
+                    LoadEffectPreset(
+                        effectPresetNames_[
+                            selectedEffectPreset_
+                        ]
+                    );
+                }
+
+                ImGui::SameLine();
+
+                if (ImGui::Button(
+                    "Load And Preview",
+                    ImVec2(180.0f, 30.0f)
+                )) {
+                    LoadEffectPreset(
+                        effectPresetNames_[
+                            selectedEffectPreset_
+                        ]
+                    );
+
+                    EmitEffect(
+                        hitEffectPosition_
+                    );
+                }
+            } else {
+                ImGui::TextDisabled(
+                    "No saved presets"
+                );
+            }
+
+            if (!effectSettingsMessage_.empty()) {
+                ImGui::TextDisabled(
+                    "%s",
+                    effectSettingsMessage_.c_str()
+                );
+            }
+
+            if (!effectSettingsMessage_.empty()) {
+                ImGui::TextDisabled(
+                    "%s",
+                    effectSettingsMessage_.c_str()
+                );
+            }
+
+
             if (ImGui::Button(
                 "Emit Effect",
                 ImVec2(180.0f, 32.0f)
+            )) {
+                EmitEffect(hitEffectPosition_);
+            }
+
+            if (ImGui::Button(
+                "Apply Fire Preset",
+                ImVec2(180.0f, 30.0f)
+            )) {
+                ApplyFireHitEffectPreset();
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button(
+                "Preview Fire",
+                ImVec2(180.0f, 30.0f)
             )) {
                 EmitEffect(hitEffectPosition_);
             }
@@ -949,6 +1856,11 @@ void GameScene::UpdateImGui() {
         // ==================================================
         if (ImGui::BeginTabItem("Environment")) {
 
+            ImGui::Checkbox(
+                "Enable Skybox",
+                &enableSkybox_
+            );
+
             ImGui::Text("Environment Lighting");
             ImGui::Separator();
 
@@ -990,8 +1902,8 @@ void GameScene::UpdateImGui() {
     }
 
     //==============================
-// Camera Debug Window
-//==============================
+    // Camera Debug Window
+    //==============================
     {
         Camera* camera = context_->GetCamera();
 
@@ -1171,7 +2083,7 @@ void GameScene::Draw3D() {
         }
     }
 
-    if (skybox_) {
+    if (enableSkybox_ && skybox_) {
         skybox_->Draw();
     }
 
@@ -1208,4 +2120,33 @@ void GameScene::Draw2D() {
     context_->GetImGuiManager()->Draw();
 
     dxCommon->PostDraw();
+}
+
+void GameScene::DrawHitEffectSizeImGui()
+{
+
+#ifdef USE_IMGUI
+    ImGui::SeparatorText("Hit Effect Size");
+
+    ImGui::SliderFloat(
+        "Effect Size",
+        &hitEffectSize_,
+        0.1f,
+        5.0f,
+        "%.2f"
+    );
+
+    if (ImGui::Button("Reset Effect Size")) {
+        hitEffectSize_ = 1.0f;
+    }
+
+    ImGui::SameLine();
+
+    ImGui::TextDisabled(
+        "Current : %.2f x",
+        hitEffectSize_
+    );
+#endif
+
+
 }

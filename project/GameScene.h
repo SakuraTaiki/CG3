@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <array>
 #include <vector>
 
 #include "IScene.h"
@@ -49,12 +50,28 @@ private:
     void DrawAnimationDebugImGui();
     void SyncAnimatedSkeletonToObject();
 
+    void ApplyFireHitEffectPreset();
+
     // SPACE キーや ImGui ボタンから呼ばれるエフェクト発生処理。
     void EmitEffect(const Vector3& position);
+
+    bool SaveEffectPreset(
+        const std::string& presetName
+    );
+
+    bool LoadEffectPreset(
+        const std::string& presetName
+    );
+
+    void RefreshEffectPresetList();
 
     // 描画処理。
     void Draw3D();
     void Draw2D();
+
+    void DrawHitEffectSizeImGui();
+
+    float hitEffectSize_ = 1.0f;
 
 private:
     enum class DrawMode {
@@ -80,6 +97,18 @@ private:
     // Skeleton 確認用の表示 Object。
     std::vector<std::unique_ptr<Object3d>> skeletonDebugObjects_;
     std::vector<std::unique_ptr<Object3d>> skeletonBoneObjects_;
+
+    std::vector<std::string>
+        effectPresetNames_;
+
+    int selectedEffectPreset_ = 0;
+
+    std::array<char, 64>
+        effectPresetNameBuffer_ = {
+            'F', 'i', 'r', 'e', '\0'
+    };
+
+    std::string effectSettingsMessage_;
 
     Sound sound_;
     Sound::SoundData wavSoundData_{};
@@ -124,4 +153,8 @@ private:
     bool autoPauseOnJointEdit_ = true;
     bool showJointDetail_ = true;
     bool showDebugSprite_ = false;
+    bool enableSkybox_ = true;
+
+
+    
 };
