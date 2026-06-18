@@ -1,0 +1,65 @@
+PresetVersion 2
+EffectPosition 0 3 0
+EffectSize 2.01
+HitEffectType 1
+EnablePrimitive 1
+EnableRing 1
+EnableCylinder 1
+PrimitiveColor 1 0.32 0.02 1
+PrimitiveEndColor 1 0.330294 0.00999999 0
+PrimitiveCount 98
+PrimitiveIntensity 1.8
+PrimitiveWidth 0.035
+PrimitiveWidthRandomness 0.25
+PrimitiveLength 0.3 1.15
+PrimitiveLifeTime 0.18 0.42
+PrimitiveMoveSpeed 1.2
+PrimitiveMoveSpeedRandomness 0.25
+PrimitiveRotationSpeed 0
+PrimitiveRotationSpeedRandomness 0
+PrimitiveDirection 0 3.14159
+PrimitiveSpawnRadius 0
+PrimitiveAcceleration 0 0 0
+PrimitiveEndScale 0.1 0.45
+PrimitiveScaleEasePower 1
+PrimitiveFadeInRatio 0.05
+PrimitiveFadePower 2.2
+RingColor 0.737941 0.00999999 1 0.8
+RingEndColor 0.1 0.25 1 0
+RingIntensity 1.8
+RingScale 0.25 0.89
+RingThickness 0.12
+RingEndThickness 0.05
+RingLifeTime 0.32
+RingFadeInRatio 0.05
+RingEasePower 4
+RingRotationSpeed 0
+RingEdgeSoftness 0.03
+RingGlowStrength 0.25
+RingDistortion 0 8 1
+CylinderColor 1 0.18 0.01 0.38
+CylinderEndColor 0.1 0.3 1 0
+CylinderIntensity 1.5
+CylinderRadius 0.48
+CylinderEndRadius 1.2
+CylinderHeight 0.05 1.8
+CylinderRadiusScale 1 0.25
+CylinderLifeTime 0.55
+CylinderRiseDistance 0.45
+CylinderEasePower 3
+CylinderFadeInRatio 0.05
+CylinderFadePower 2
+CylinderTwist 0 0
+CylinderNoise 0.1 6 1
+CylinderVerticalFade 0.2 0.08
+CylinderPositionOffset 0 -0.15 0
+SakuraColor 1 0.35 0.65 1
+SakuraSubColor 1 0.75 0.88 1
+SakuraPetalCount 48
+SakuraSize 0.08 0.22
+SakuraSpawnRadius 0.25
+SakuraSpeed 0.065 0.025
+SakuraLifeTime 0.55 1.1
+SakuraGravity 0.0012
+SakuraRotationSpeed 0.12
+SakuraFlash 1.6 0.28

@@ -1,10 +1,10 @@
 EffectPosition 0 3 0
-EffectSize 1.32
+EffectSize 1
 EnablePrimitive 1
 EnableRing 1
 EnableCylinder 1
-PrimitiveColor 0.995098 0.51993 0.0975586 1
-PrimitiveCount 45
+PrimitiveColor 1 0.32 0.02 1
+PrimitiveCount 98
 PrimitiveIntensity 1.8
 PrimitiveWidth 0.035
 PrimitiveLength 0.3 1.15
@@ -13,15 +13,15 @@ PrimitiveMoveSpeed 1.2
 PrimitiveRotationSpeed 0
 PrimitiveEndScale 0.1 0.45
 PrimitiveFadePower 2.2
-RingColor 0.685121 0.107843 1 0.8
+RingColor 1 0.22 0.01 0.8
 RingIntensity 1.8
-RingScale 0.25 1.24
+RingScale 0.25 1.35
 RingThickness 0.12
 RingLifeTime 0.32
 RingFadeInRatio 0.05
 RingEasePower 4
 RingRotationSpeed 0
-CylinderColor 0.854412 0.00999999 1 0.38
+CylinderColor 1 0.18 0.01 0.38
 CylinderIntensity 1.5
 CylinderRadius 0.48
 CylinderHeight 0.05 1.8
