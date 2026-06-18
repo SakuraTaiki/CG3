@@ -4,6 +4,7 @@
 #include <cassert>
 #include <random>
 #include<numbers>
+#include <algorithm>
 
 using namespace Microsoft::WRL;
 
@@ -49,148 +50,253 @@ void ParticleManager::Initialize(DirectXCommon* dxCommon, TextureManager* textur
     }
 }
 
-void ParticleManager::Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix) {
-    // 1. パーティクル更新
-    for (auto it = particles_.begin(); it != particles_.end();) {
-        it->lifeTime += 1.0f / 60.0f;
-        if (it->lifeTime >= it->maxTime) {
-            it = particles_.erase(it);
-            
+
+void ParticleManager::Update(
+    const Matrix4x4& viewMatrix,
+    const Matrix4x4& projectionMatrix
+) {
+    constexpr float deltaTime =
+        1.0f / 60.0f;
+
+    for (
+        auto iterator = particles_.begin();
+        iterator != particles_.end();
+        ) {
+        Particle& particle = *iterator;
+
+        particle.lifeTime += deltaTime;
+
+        if (particle.lifeTime >= particle.maxTime) {
+            iterator = particles_.erase(iterator);
             continue;
         }
-       
-        it->transform.translate.x += it->velocity.x;
-        it->transform.translate.y += it->velocity.y;
-        it->transform.translate.z += it->velocity.z;
+
+        particle.velocity.x += particle.acceleration.x;
+        particle.velocity.y += particle.acceleration.y;
+        particle.velocity.z += particle.acceleration.z;
+
+        particle.transform.translate.x +=
+            particle.velocity.x;
+
+        particle.transform.translate.y +=
+            particle.velocity.y;
+
+        particle.transform.translate.z +=
+            particle.velocity.z;
 
         const float time =
-            it->lifeTime /
-            it->maxTime;
+            particle.lifeTime /
+            particle.maxTime;
 
-        if (it->effectType == 0) {
-            // 火花
-            it->transform.scale.x =
-                it->startScale.x *
+        if (particle.effectType == 0) {
+            particle.transform.scale.x =
+                particle.startScale.x *
                 (1.0f - time);
 
-            it->transform.scale.y =
-                it->startScale.y *
+            particle.transform.scale.y =
+                particle.startScale.y *
                 (1.0f - 0.45f * time);
 
-            it->color.w =
+            particle.color.w =
                 1.0f - time;
-
-        } else if (it->effectType == 1) {
-            // 中心閃光
+        } else if (particle.effectType == 1) {
             const float scale =
                 0.35f + 1.65f * time;
 
-            it->transform.scale = {
-                it->startScale.x * scale,
-                it->startScale.y * scale,
+            particle.transform.scale = {
+                particle.startScale.x * scale,
+                particle.startScale.y * scale,
                 1.0f
             };
 
-            it->color.w =
+            particle.color.w =
                 (1.0f - time) *
                 (1.0f - time);
-
-        } else if (it->effectType == 2) {
-            // 赤い残光
+        } else if (particle.effectType == 2) {
             const float scale =
                 0.7f + 0.8f * time;
 
-            it->transform.scale = {
-                it->startScale.x * scale,
-                it->startScale.y * scale,
+            particle.transform.scale = {
+                particle.startScale.x * scale,
+                particle.startScale.y * scale,
                 1.0f
             };
 
-            it->transform.rotate.z +=
+            particle.transform.rotate.z +=
                 0.015f;
 
-            it->color.w =
+            particle.color.w =
                 0.45f * (1.0f - time);
-
-        } else {
-            // 炎粒子
+        } else if (particle.effectType == 3) {
             const float pi =
                 std::numbers::pi_v<float>;
 
-            // 中盤で少し膨らむ
             const float pulse =
                 std::sin(time * pi);
 
-            it->transform.scale.x =
-                it->startScale.x *
+            particle.transform.scale.x =
+                particle.startScale.x *
                 (0.75f + pulse * 0.45f);
 
-            // 上へ伸びながら消える
-            it->transform.scale.y =
-                it->startScale.y *
+            particle.transform.scale.y =
+                particle.startScale.y *
                 (0.8f + time * 0.65f);
 
-            // 少し回転させて揺らす
-            it->transform.rotate.z +=
+            particle.transform.rotate.z +=
                 0.008f;
 
-            // 最初の10%で現れる
             float fadeIn =
                 time / 0.1f;
 
-            if (fadeIn > 1.0f) {
-                fadeIn = 1.0f;
-            }
+            fadeIn =
+                (std::min)(fadeIn, 1.0f);
 
             const float fadeOut =
                 (1.0f - time) *
                 (1.0f - time);
 
-            it->color.w =
+            particle.color.w =
                 fadeIn * fadeOut;
+        } else if (particle.effectType == 4) {
+            // 桜の花弁
+            particle.transform.rotate.z +=
+                particle.angularVelocity;
+
+            const float flutter =
+                0.72f +
+                std::sin(
+                    time * 18.0f +
+                    particle.startScale.x * 31.0f
+                ) * 0.28f;
+
+            particle.transform.scale.x =
+                particle.startScale.x *
+                (std::max)(flutter, 0.15f);
+
+            particle.transform.scale.y =
+                particle.startScale.y *
+                (0.9f + 0.15f * std::sin(time * 12.0f));
+
+            // 横へゆらゆら流す
+            particle.transform.translate.x +=
+                std::sin(
+                    time * 13.0f +
+                    particle.transform.rotate.z
+                ) * 0.004f;
+
+            const float fadeIn =
+                (std::min)(time / 0.08f, 1.0f);
+
+            const float fadeOut =
+                (1.0f - time) *
+                (1.0f - time);
+
+            particle.color.w =
+                fadeIn * fadeOut;
+        } else if (particle.effectType == 5) {
+            // 桜エフェクトの中心閃光
+            const float pulse =
+                std::sin(
+                    time *
+                    std::numbers::pi_v<float>
+                );
+
+            const float scale =
+                0.25f + pulse * 1.35f;
+
+            particle.transform.scale = {
+                particle.startScale.x * scale,
+                particle.startScale.y * scale,
+                1.0f
+            };
+
+            particle.transform.rotate.z +=
+                particle.angularVelocity;
+
+            particle.color.w =
+                (1.0f - time) *
+                (1.0f - time);
         }
 
-        // 必ずループ末尾に必要
-        ++it;
+        ++iterator;
     }
 
-    // 2. データ書き込み
     uint32_t index = 0;
-    Matrix4x4 cameraMatrix = Math::Inverse(viewMatrix);
-    Matrix4x4 billboardMat = Math::MakeIdentity4x4();
-    billboardMat.m[0][0] = cameraMatrix.m[0][0]; billboardMat.m[0][1] = cameraMatrix.m[0][1]; billboardMat.m[0][2] = cameraMatrix.m[0][2];
-    billboardMat.m[1][0] = cameraMatrix.m[1][0]; billboardMat.m[1][1] = cameraMatrix.m[1][1]; billboardMat.m[1][2] = cameraMatrix.m[1][2];
-    billboardMat.m[2][0] = cameraMatrix.m[2][0]; billboardMat.m[2][1] = cameraMatrix.m[2][1]; billboardMat.m[2][2] = cameraMatrix.m[2][2];
 
-    for (const auto& particle : particles_) {
-        if (index >= kMaxParticles) break;
+    const Matrix4x4 cameraMatrix =
+        Math::Inverse(viewMatrix);
 
-        Matrix4x4 scaleMat =
-            Math::Matrix4x4MakeScaleMatrix(particle.transform.scale);
+    Matrix4x4 billboardMatrix =
+        Math::MakeIdentity4x4();
 
-        Matrix4x4 rotateMat =
-            Math::MakeRotateZMatrix(particle.transform.rotate.z);
+    billboardMatrix.m[0][0] = cameraMatrix.m[0][0];
+    billboardMatrix.m[0][1] = cameraMatrix.m[0][1];
+    billboardMatrix.m[0][2] = cameraMatrix.m[0][2];
 
-        Matrix4x4 transMat =
-            Math::MakeTranslateMatrix(particle.transform.translate);
+    billboardMatrix.m[1][0] = cameraMatrix.m[1][0];
+    billboardMatrix.m[1][1] = cameraMatrix.m[1][1];
+    billboardMatrix.m[1][2] = cameraMatrix.m[1][2];
 
-        Matrix4x4 worldMat =
-            Math::Multiply(
-                Math::Multiply(scaleMat, rotateMat),
-                Math::Multiply(billboardMat, transMat)
+    billboardMatrix.m[2][0] = cameraMatrix.m[2][0];
+    billboardMatrix.m[2][1] = cameraMatrix.m[2][1];
+    billboardMatrix.m[2][2] = cameraMatrix.m[2][2];
+
+    for (const Particle& particle : particles_) {
+        if (index >= kMaxParticles) {
+            break;
+        }
+
+        const Matrix4x4 scaleMatrix =
+            Math::Matrix4x4MakeScaleMatrix(
+                particle.transform.scale
             );
 
-        Matrix4x4 wvp = Math::Multiply(worldMat, Math::Multiply(viewMatrix, projectionMatrix));
+        const Matrix4x4 rotationMatrix =
+            Math::MakeRotateZMatrix(
+                particle.transform.rotate.z
+            );
 
-        instancingDataMapped_[index].WVP = wvp;
-        instancingDataMapped_[index].color = particle.color;
+        const Matrix4x4 translationMatrix =
+            Math::MakeTranslateMatrix(
+                particle.transform.translate
+            );
+
+        const Matrix4x4 worldMatrix =
+            Math::Multiply(
+                Math::Multiply(
+                    scaleMatrix,
+                    rotationMatrix
+                ),
+                Math::Multiply(
+                    billboardMatrix,
+                    translationMatrix
+                )
+            );
+
+        const Matrix4x4 viewProjection =
+            Math::Multiply(
+                viewMatrix,
+                projectionMatrix
+            );
+
+        instancingDataMapped_[index].WVP =
+            Math::Multiply(
+                worldMatrix,
+                viewProjection
+            );
+
+        instancingDataMapped_[index].color =
+            particle.color;
 
         instancingDataMapped_[index].effectType =
-            static_cast<float>(particle.effectType);
+            static_cast<float>(
+                particle.effectType
+                );
 
-        index++;
+        ++index;
     }
 }
+
 
 void ParticleManager::Draw() {
     if (particles_.empty()) return;
@@ -521,6 +627,194 @@ void ParticleManager::Emit(
     // ========================================
 
 } // ParticleManager::Emit()の終わり
+
+void ParticleManager::EmitSakura(const Vector3& position, float sizeMultiplier)
+{
+
+    sizeMultiplier =
+        (std::max)(sizeMultiplier, 0.01f);
+
+    const SakuraSettings& settings =
+        sakuraSettings_;
+
+    std::uniform_real_distribution<float>
+        random01(0.0f, 1.0f);
+
+    std::uniform_real_distribution<float>
+        randomAngle(
+            -std::numbers::pi_v<float>,
+            std::numbers::pi_v<float>
+        );
+
+    std::uniform_real_distribution<float>
+        randomSize(
+            settings.minSize,
+            settings.maxSize
+        );
+
+    std::uniform_real_distribution<float>
+        randomLifeTime(
+            settings.minLifeTime,
+            settings.maxLifeTime
+        );
+
+    std::uniform_real_distribution<float>
+        randomRotationSpeed(
+            -settings.rotationSpeed,
+            settings.rotationSpeed
+        );
+
+    std::uniform_real_distribution<float>
+        randomHeight(-0.35f, 0.35f);
+
+    std::uniform_real_distribution<float>
+        randomDepth(-0.25f, 0.25f);
+
+    // 中心閃光
+    if (particles_.size() < kMaxParticles) {
+        Particle flash{};
+
+        flash.transform.scale = {
+            settings.flashSize * sizeMultiplier,
+            settings.flashSize * sizeMultiplier,
+            1.0f
+        };
+
+        flash.startScale =
+            flash.transform.scale;
+
+        flash.transform.rotate = {
+            0.0f,
+            0.0f,
+            randomAngle(engine)
+        };
+
+        flash.transform.translate =
+            position;
+
+        flash.velocity = {
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        flash.acceleration = {
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        flash.color = {
+            1.0f,
+            0.82f,
+            0.92f,
+            1.0f
+        };
+
+        flash.angularVelocity = 0.025f;
+        flash.lifeTime = 0.0f;
+        flash.maxTime = settings.flashLifeTime;
+        flash.effectType = 5;
+
+        particles_.push_back(flash);
+    }
+
+    // 桜の花弁
+    const int petalCount =
+        std::clamp(
+            settings.petalCount,
+            1,
+            256
+        );
+
+    for (int index = 0; index < petalCount; ++index) {
+        if (particles_.size() >= kMaxParticles) {
+            break;
+        }
+
+        Particle petal{};
+
+        const float angle =
+            randomAngle(engine);
+
+        const float radius =
+            std::sqrt(random01(engine)) *
+            settings.spawnRadius *
+            sizeMultiplier;
+
+        const float size =
+            randomSize(engine) *
+            sizeMultiplier;
+
+        const float speed =
+            settings.spreadSpeed *
+            (0.55f + random01(engine) * 0.9f) *
+            sizeMultiplier;
+
+        petal.transform.scale = {
+            size,
+            size * (1.25f + random01(engine) * 0.45f),
+            1.0f
+        };
+
+        petal.startScale =
+            petal.transform.scale;
+
+        petal.transform.rotate = {
+            0.0f,
+            0.0f,
+            randomAngle(engine)
+        };
+
+        petal.transform.translate = {
+            position.x + std::cos(angle) * radius,
+            position.y + randomHeight(engine) * sizeMultiplier,
+            position.z + randomDepth(engine) * sizeMultiplier
+        };
+
+        petal.velocity = {
+            std::cos(angle) * speed,
+            settings.upwardSpeed *
+                (0.35f + random01(engine)),
+            std::sin(angle) * speed * 0.35f
+        };
+
+        petal.acceleration = {
+            0.0f,
+            -settings.gravity,
+            0.0f
+        };
+
+        const float colorBlend =
+            random01(engine);
+
+        petal.color = {
+            settings.color.x +
+                (settings.subColor.x - settings.color.x) *
+                colorBlend,
+
+            settings.color.y +
+                (settings.subColor.y - settings.color.y) *
+                colorBlend,
+
+            settings.color.z +
+                (settings.subColor.z - settings.color.z) *
+                colorBlend,
+
+            1.0f
+        };
+
+        petal.angularVelocity =
+            randomRotationSpeed(engine);
+
+        petal.lifeTime = 0.0f;
+        petal.maxTime = randomLifeTime(engine);
+        petal.effectType = 4;
+
+        particles_.push_back(petal);
+    }
+
+}
 
 
 
