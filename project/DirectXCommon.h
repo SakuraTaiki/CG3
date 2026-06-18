@@ -74,6 +74,9 @@ private: // メンバ関数(内部処理)
     void InitializeCopyImagePipeline();
     void TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState);
 
+    void ResizeIfNeeded();
+    void WaitForGPU();
+
 private: // メンバ変数
     WinApp* winApp_ = nullptr;
 
@@ -121,4 +124,9 @@ private: // メンバ変数
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> normalCopyPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> grayScalePipelineState_;
+
+    uint32_t width_ = 1280;
+
+    uint32_t height_ = 720;
+       
 };

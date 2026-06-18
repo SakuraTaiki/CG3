@@ -5,12 +5,31 @@
 #include <format>
 #include <thread>
 #include "MyMath.h"
+#include <algorithm>
 
 using namespace Microsoft::WRL;
 
 void DirectXCommon::Initialize(WinApp* winApp) {
     assert(winApp);
-    winApp_ = winApp;
+
+    winApp_ =
+        winApp;
+
+    width_ =
+        static_cast<uint32_t>(
+            (std::max)(
+                winApp_->GetWidth(),
+                1
+            )
+            );
+
+    height_ =
+        static_cast<uint32_t>(
+            (std::max)(
+                winApp_->GetHeight(),
+                1
+            )
+            );
 
     fpsLimiter_.Initialize();
 
@@ -25,9 +44,21 @@ void DirectXCommon::Initialize(WinApp* winApp) {
 
     InitializeRenderTexture();
     InitializeCopyImagePipeline();
+
+    // 初期ウィンドウ生成時のWM_SIZEを消費
+    uint32_t ignoredWidth = 0;
+    uint32_t ignoredHeight = 0;
+
+    winApp_->ConsumeResize(
+        ignoredWidth,
+        ignoredHeight
+    );
+
 }
 void DirectXCommon::PreDrawForRenderTexture()
 {
+
+    ResizeIfNeeded();
 
     TransitionResource(
         renderTextureResource_.Get(),
@@ -46,15 +77,15 @@ void DirectXCommon::PreDrawForRenderTexture()
     commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
     D3D12_VIEWPORT viewport{};
-    viewport.Width = static_cast<float>(WinApp::kClientWidth);
-    viewport.Height = static_cast<float>(WinApp::kClientHeight);
+    viewport.Width = static_cast<float>(width_);
+    viewport.Height = static_cast<float>(height_);
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     commandList_->RSSetViewports(1, &viewport);
 
     D3D12_RECT scissorRect{};
-    scissorRect.right = WinApp::kClientWidth;
-    scissorRect.bottom = WinApp::kClientHeight;
+    scissorRect.right = width_;
+    scissorRect.bottom = height_;
     commandList_->RSSetScissorRects(1, &scissorRect);
 
 
@@ -146,8 +177,8 @@ void DirectXCommon::InitializeCommand() {
 
 void DirectXCommon::InitializeSwapChain() {
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
-    swapChainDesc.Width = WinApp::kClientWidth;
-    swapChainDesc.Height = WinApp::kClientHeight;
+    swapChainDesc.Width = width_;
+    swapChainDesc.Height = height_;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -193,8 +224,8 @@ void DirectXCommon::InitializeDepthStencilView() {
 
     // 深度リソース生成
     D3D12_RESOURCE_DESC resourceDesc{};
-    resourceDesc.Width = WinApp::kClientWidth;
-    resourceDesc.Height = WinApp::kClientHeight;
+    resourceDesc.Width = width_;
+    resourceDesc.Height = height_;
     resourceDesc.MipLevels = 1;
     resourceDesc.DepthOrArraySize = 1;
     resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -256,15 +287,15 @@ void DirectXCommon::PreDraw() {
 
     // ビューポート / シザー
     D3D12_VIEWPORT viewport{};
-    viewport.Width = (float)WinApp::kClientWidth;
-    viewport.Height = (float)WinApp::kClientHeight;
+    viewport.Width = (float)width_;
+    viewport.Height = (float)height_;
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
     commandList_->RSSetViewports(1, &viewport);
 
     D3D12_RECT scissorRect{};
-    scissorRect.right = WinApp::kClientWidth;
-    scissorRect.bottom = WinApp::kClientHeight;
+    scissorRect.right = width_;
+    scissorRect.bottom = height_;
     commandList_->RSSetScissorRects(1, &scissorRect);
 }
 
@@ -316,8 +347,8 @@ void DirectXCommon::InitializeRenderTexture()
     const Vector4 clearColor{ 0.1f, 0.25f, 0.5f, 1.0f };
 
     D3D12_RESOURCE_DESC resourceDesc{};
-    resourceDesc.Width = WinApp::kClientWidth;
-    resourceDesc.Height = WinApp::kClientHeight;
+    resourceDesc.Width = width_;
+    resourceDesc.Height = height_;
     resourceDesc.MipLevels = 1;
     resourceDesc.DepthOrArraySize = 1;
     resourceDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -542,5 +573,121 @@ void DirectXCommon::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
     commandList_->ResourceBarrier(1, &barrier);
+
+}
+
+void DirectXCommon::ResizeIfNeeded()
+{
+
+    if (!winApp_) {
+        return;
+    }
+
+    uint32_t newWidth = 0;
+    uint32_t newHeight = 0;
+
+    if (
+        !winApp_->ConsumeResize(
+            newWidth,
+            newHeight
+        )
+        ) {
+        return;
+    }
+
+    if (
+        newWidth == 0 ||
+        newHeight == 0
+        ) {
+        return;
+    }
+
+    if (
+        newWidth == width_ &&
+        newHeight == height_
+        ) {
+        return;
+    }
+
+    WaitForGPU();
+
+    width_ =
+        newWidth;
+
+    height_ =
+        newHeight;
+
+    // ResizeBuffers前に参照をすべて解放
+    for (
+        auto& resource :
+        swapChainResources_
+        ) {
+        resource.Reset();
+    }
+
+    depthStencilResource_.Reset();
+    renderTextureResource_.Reset();
+
+    rtvDescriptorHeap_.Reset();
+    dsvDescriptorHeap_.Reset();
+
+    renderTextureSrvHeap_.Reset();
+
+    HRESULT result =
+        swapChain_->ResizeBuffers(
+            static_cast<UINT>(
+                GetBackBufferCount()
+                ),
+            width_,
+            height_,
+            DXGI_FORMAT_R8G8B8A8_UNORM,
+            0
+        );
+
+    assert(SUCCEEDED(result));
+
+    InitializeRenderTargetView();
+    InitializeDepthStencilView();
+    InitializeRenderTexture();
+
+}
+
+void DirectXCommon::WaitForGPU()
+{
+
+    if (
+        !commandQueue_ ||
+        !fence_
+        ) {
+        return;
+    }
+
+    ++fenceValue_;
+
+    HRESULT result =
+        commandQueue_->Signal(
+            fence_.Get(),
+            fenceValue_
+        );
+
+    assert(SUCCEEDED(result));
+
+    if (
+        fence_->GetCompletedValue() <
+        fenceValue_
+        ) {
+        result =
+            fence_->SetEventOnCompletion(
+                fenceValue_,
+                fenceEvent_
+            );
+
+        assert(SUCCEEDED(result));
+
+        WaitForSingleObject(
+            fenceEvent_,
+            INFINITE
+        );
+    }
 
 }

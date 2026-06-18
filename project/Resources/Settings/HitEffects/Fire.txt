@@ -4,7 +4,7 @@ EnablePrimitive 1
 EnableRing 1
 EnableCylinder 1
 PrimitiveColor 1 0.32 0.02 1
-PrimitiveCount 18
+PrimitiveCount 98
 PrimitiveIntensity 1.8
 PrimitiveWidth 0.035
 PrimitiveLength 0.3 1.15
