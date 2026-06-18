@@ -1,5 +1,7 @@
 #pragma once
 
+// DXCが使用するWindows型とSAL注釈を先に定義する
+#include <Windows.h>
 #include <dxcapi.h>
 #include <string>
 #include <wrl.h>

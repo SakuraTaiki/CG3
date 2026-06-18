@@ -35,6 +35,8 @@ void GameScene::Initialize(EngineContext* context) {
 
 void GameScene::Finalize() {
     objects_.clear();
+    skeletonDebugObjects_.clear();
+    skeletonBoneObjects_.clear();
 
     skybox_.reset();
     sprite_.reset();
