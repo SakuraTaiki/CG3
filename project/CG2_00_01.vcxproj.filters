@@ -53,6 +53,7 @@
     <ClCompile Include="CylinderParticleSystem.cpp" />
     <ClCompile Include="DirectXShaderCompiler.cpp" />
     <ClCompile Include="FpsLimiter.cpp" />
+    <ClCompile Include="Primitive.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -104,6 +105,7 @@
     <ClInclude Include="CylinderParticleSystem.h" />
     <ClInclude Include="DirectXShaderCompiler.h" />
     <ClInclude Include="FpsLimiter.h" />
+    <ClInclude Include="Primitive.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
@@ -120,6 +122,9 @@
     <None Include="Resources\shaders\hlsl\Object3d.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\Object3d.VS.hlsl" />
     <None Include="Resources\shaders\hlsl\CopyImage.PS.hlsl" />
+    <None Include="HitParticle.hlsli" />
+    <None Include="HitParticle.VS.hlsl" />
+    <None Include="HitParticle.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

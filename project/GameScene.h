@@ -12,7 +12,9 @@
 #include "Sound.h"
 #include "Ring.h"
 #include "Cylinder.h"
+#include "Primitive.h"
 #include "Skelton.h"
+
 
 // 実際のゲーム・デモ内容を持つ Scene。
 // EngineContext 経由で Input / Graphics / Camera などを使う。
@@ -33,6 +35,7 @@ private:
     void InitializeSound();
     void InitializeRing();
     void InitializeCylinder();
+    void InitializePrimitive();
     void InitializeSkeletonDebug();
 
     // 更新処理。
@@ -94,8 +97,17 @@ private:
     Vector3 ringScale_ = { 2.0f, 2.0f, 1.0f };
     Vector4 ringColor_ = { 1.0f, 1.0f, 1.0f, 0.7f };
 
+    Vector3 hitEffectPosition_ = {
+    0.0f,
+    3.0f,
+    0.0f
+    };
+
     bool enableRing_ = true;
     bool enableCylinder_ = true;
+
+    std::unique_ptr<Primitive> primitive_;
+    bool enablePrimitive_ = true;
 
     Animation animatedCubeAnimation_;
 
@@ -111,4 +123,5 @@ private:
     int selectedJointIndex_ = 0;
     bool autoPauseOnJointEdit_ = true;
     bool showJointDetail_ = true;
+    bool showDebugSprite_ = false;
 };

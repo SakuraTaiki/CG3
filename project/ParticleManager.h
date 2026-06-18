@@ -10,10 +10,17 @@
 struct Particle
 {
 	Transform transform;
+
+	// 発生時の大きさを保存するため追加
+	Vector3 startScale;
+
 	Vector3 velocity;
 	Vector4 color;
 	float lifeTime;
 	float maxTime;
+
+	// 0:火花 1:中心閃光 2:残光
+	uint32_t effectType;
 };
 
 class ParticleManager
@@ -25,6 +32,9 @@ public:
 	struct InstanceData {
 		Matrix4x4 WVP;
 		Vector4 color;
+
+		float effectType;
+		float padding[3];
 	};
 
 	struct VertexData

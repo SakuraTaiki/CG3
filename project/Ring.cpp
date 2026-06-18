@@ -7,6 +7,24 @@
 
 using namespace Microsoft::WRL;
 
+void Ring::SetThickness(float thickness)
+{
+
+    if (thickness < 0.02f) {
+        thickness = 0.02f;
+    }
+
+    if (thickness > 0.95f) {
+        thickness = 0.95f;
+    }
+
+    if (settings_.thickness != thickness) {
+        settings_.thickness = thickness;
+        meshDirty_ = true;
+    }
+
+}
+
 void Ring::Initialize(DirectXCommon* dxCommon, TextureManager* textureManager) {
     assert(dxCommon);
     assert(textureManager);
@@ -14,7 +32,7 @@ void Ring::Initialize(DirectXCommon* dxCommon, TextureManager* textureManager) {
     dxCommon_ = dxCommon;
     textureManager_ = textureManager;
 
-    textureHandle_ = textureManager_->LoadTexture("Resources/uvChecker.png");
+    textureHandle_ = textureManager_->LoadTexture("Resources/white.png");
 
     CreateRootSignature();
     CreatePipelineState();
@@ -56,40 +74,130 @@ void Ring::Initialize(DirectXCommon* dxCommon, TextureManager* textureManager) {
     instancingBufferView_.StrideInBytes = sizeof(InstanceData);
 }
 
-void Ring::Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix) {
-
-    for (auto it = rings_.begin(); it != rings_.end();) {
-        it->lifeTime += 1.0f / 60.0f;
-        if (it->lifeTime >= it->maxTime) {
-            it = rings_.erase(it);
-            continue;
-        }
-        float t = it->lifeTime / it->maxTime;
-
-        //時間でRingを広げる
-        float scale = 0.2f + t * expandSpeed_;
-        it->transform.scale = { scale, scale, 1.0f };
-
-        // 徐々に消す
-        it->color.w = 1.0f - t;
-
-        ++it;
+void Ring::Update(
+    const Matrix4x4& viewMatrix,
+    const Matrix4x4& projectionMatrix
+) {
+    // ImGuiで太さが変更された場合だけ再作成
+    if (meshDirty_) {
+        CreateMesh();
+        meshDirty_ = false;
     }
 
-    Matrix4x4 cameraMatrix = Math::Inverse(viewMatrix);
+    for (
+        auto iterator = rings_.begin();
+        iterator != rings_.end();
+        ) {
+        iterator->lifeTime += 1.0f / 60.0f;
 
-    Matrix4x4 billboardMat = Math::MakeIdentity4x4();
-    billboardMat.m[0][0] = cameraMatrix.m[0][0];
-    billboardMat.m[0][1] = cameraMatrix.m[0][1];
-    billboardMat.m[0][2] = cameraMatrix.m[0][2];
+        if (iterator->lifeTime >=
+            iterator->maxTime) {
 
-    billboardMat.m[1][0] = cameraMatrix.m[1][0];
-    billboardMat.m[1][1] = cameraMatrix.m[1][1];
-    billboardMat.m[1][2] = cameraMatrix.m[1][2];
+            iterator = rings_.erase(iterator);
+            continue;
+        }
 
-    billboardMat.m[2][0] = cameraMatrix.m[2][0];
-    billboardMat.m[2][1] = cameraMatrix.m[2][1];
-    billboardMat.m[2][2] = cameraMatrix.m[2][2];
+        const float time =
+            iterator->lifeTime /
+            iterator->maxTime;
+
+        // EaseOut
+        const float inverseTime =
+            1.0f - time;
+
+        const float easedTime =
+            1.0f -
+            std::pow(
+                inverseTime,
+                settings_.easePower
+            );
+
+        const float scale =
+            settings_.startScale +
+            (
+                settings_.endScale -
+                settings_.startScale
+                ) * easedTime;
+
+        iterator->transform.scale = {
+            scale,
+            scale,
+            1.0f
+        };
+
+        iterator->transform.rotate.z +=
+            settings_.rotationSpeed *
+            (1.0f / 60.0f);
+
+        float fadeIn = 1.0f;
+
+        if (settings_.fadeInRatio > 0.0f) {
+            fadeIn =
+                time /
+                settings_.fadeInRatio;
+
+            if (fadeIn > 1.0f) {
+                fadeIn = 1.0f;
+            }
+        }
+
+        const float fadeOut =
+            (1.0f - time) *
+            (1.0f - time);
+
+        // ImGuiの色を即時反映
+        iterator->color.x =
+            settings_.color.x *
+            settings_.intensity;
+
+        iterator->color.y =
+            settings_.color.y *
+            settings_.intensity;
+
+        iterator->color.z =
+            settings_.color.z *
+            settings_.intensity;
+
+        iterator->color.w =
+            settings_.color.w *
+            fadeIn *
+            fadeOut;
+
+        ++iterator;
+    }
+
+    Matrix4x4 cameraMatrix =
+        Math::Inverse(viewMatrix);
+
+    Matrix4x4 billboardMatrix =
+        Math::MakeIdentity4x4();
+
+    billboardMatrix.m[0][0] =
+        cameraMatrix.m[0][0];
+    billboardMatrix.m[0][1] =
+        cameraMatrix.m[0][1];
+    billboardMatrix.m[0][2] =
+        cameraMatrix.m[0][2];
+
+    billboardMatrix.m[1][0] =
+        cameraMatrix.m[1][0];
+    billboardMatrix.m[1][1] =
+        cameraMatrix.m[1][1];
+    billboardMatrix.m[1][2] =
+        cameraMatrix.m[1][2];
+
+    billboardMatrix.m[2][0] =
+        cameraMatrix.m[2][0];
+    billboardMatrix.m[2][1] =
+        cameraMatrix.m[2][1];
+    billboardMatrix.m[2][2] =
+        cameraMatrix.m[2][2];
+
+    const Matrix4x4 viewProjectionMatrix =
+        Math::Multiply(
+            viewMatrix,
+            projectionMatrix
+        );
 
     uint32_t index = 0;
 
@@ -98,21 +206,43 @@ void Ring::Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix
             break;
         }
 
-        Matrix4x4 scaleMat = Math::Matrix4x4MakeScaleMatrix(scale_);
-        Matrix4x4 transMat = Math::MakeTranslateMatrix(position_);
-
-        Matrix4x4 worldMat =
-            Math::Multiply(
-                scaleMat,
-                Math::Multiply(billboardMat, transMat)
+        const Matrix4x4 scaleMatrix =
+            Math::Matrix4x4MakeScaleMatrix(
+                ring.transform.scale
             );
 
-        Matrix4x4 wvp =
-            Math::Multiply(worldMat, Math::Multiply(viewMatrix, projectionMatrix));
+        const Matrix4x4 rotationMatrix =
+            Math::MakeRotateZMatrix(
+                ring.transform.rotate.z
+            );
 
-        instancingDataMapped_[index].WVP = wvp;
-        instancingDataMapped_[index].color = color_;
-        index++;
+        const Matrix4x4 translateMatrix =
+            Math::MakeTranslateMatrix(
+                ring.transform.translate
+            );
+
+        const Matrix4x4 worldMatrix =
+            Math::Multiply(
+                Math::Multiply(
+                    scaleMatrix,
+                    rotationMatrix
+                ),
+                Math::Multiply(
+                    billboardMatrix,
+                    translateMatrix
+                )
+            );
+
+        instancingDataMapped_[index].WVP =
+            Math::Multiply(
+                worldMatrix,
+                viewProjectionMatrix
+            );
+
+        instancingDataMapped_[index].color =
+            ring.color;
+
+        ++index;
     }
 }
 
@@ -143,23 +273,38 @@ void Ring::Draw() {
 
 void Ring::Emit(const Vector3& position)
 {
+    if (!isActive_) {
+        return;
+    }
+
     if (rings_.size() >= kMaxRings) {
         return;
     }
 
-    RingParticle ring;
+    RingParticle ring{};
 
     ring.transform.translate = position;
-    ring.transform.scale = { 0.2f,0.2f,1.0f };
-    ring.transform.rotate = { 0.0f,0.0f,0.0f };
 
-    ring.color = { 1.0f, 1.0f, 1.0f, 0.8f };
+    ring.transform.scale = {
+        settings_.startScale,
+        settings_.startScale,
+        1.0f
+    };
+
+    ring.transform.rotate = {
+        0.0f,
+        0.0f,
+        0.0f
+    };
+
+    ring.color = settings_.color;
 
     ring.lifeTime = 0.0f;
-    ring.maxTime = 0.5f;
+    ring.maxTime = settings_.lifeTime;
 
     rings_.push_back(ring);
 }
+
 
 void Ring::CreateRootSignature() {
     D3D12_DESCRIPTOR_RANGE range = {};
@@ -272,63 +417,119 @@ void Ring::CreatePipelineState() {
     assert(SUCCEEDED(hr));
 }
 
-void Ring::CreateMesh() {
-    const uint32_t kRingDivide = 32;
-    const float kOuterRadius = 1.0f;
-    const float kInnerRadius = 0.5f;
+void Ring::CreateMesh()
+{
+    const uint32_t kRingDivide = 64;
+
+    const float outerRadius = 1.0f;
+
+    const float innerRadius =
+        outerRadius - settings_.thickness;
+
     const float radianPerDivide =
-        2.0f * std::numbers::pi_v<float> / float(kRingDivide);
+        2.0f *
+        std::numbers::pi_v<float> /
+        static_cast<float>(kRingDivide);
 
     std::vector<VertexData> vertices;
     vertices.reserve(kRingDivide * 6);
 
-    for (uint32_t index = 0; index < kRingDivide; ++index) {
-        float sin = std::sin(index * radianPerDivide);
-        float cos = std::cos(index * radianPerDivide);
-        float sinNext = std::sin((index + 1) * radianPerDivide);
-        float cosNext = std::cos((index + 1) * radianPerDivide);
+    for (
+        uint32_t index = 0;
+        index < kRingDivide;
+        ++index
+        ) {
+        const float currentRadian =
+            index * radianPerDivide;
 
-        float u = float(index) / float(kRingDivide);
-        float uNext = float(index + 1) / float(kRingDivide);
+        const float nextRadian =
+            (index + 1) * radianPerDivide;
 
-        VertexData v0 = {
-            { -sin * kOuterRadius, cos * kOuterRadius, 0.0f, 1.0f },
-            { u, 0.0f },
-            { 0.0f, 0.0f, -1.0f }
+        const float currentSin =
+            std::sin(currentRadian);
+
+        const float currentCos =
+            std::cos(currentRadian);
+
+        const float nextSin =
+            std::sin(nextRadian);
+
+        const float nextCos =
+            std::cos(nextRadian);
+
+        const float currentU =
+            static_cast<float>(index) /
+            static_cast<float>(kRingDivide);
+
+        const float nextU =
+            static_cast<float>(index + 1) /
+            static_cast<float>(kRingDivide);
+
+        VertexData outerCurrent = {
+            {
+                -currentSin * outerRadius,
+                currentCos * outerRadius,
+                0.0f,
+                1.0f
+            },
+            {currentU, 0.0f},
+            {0.0f, 0.0f, -1.0f}
         };
 
-        VertexData v1 = {
-            { -sinNext * kOuterRadius, cosNext * kOuterRadius, 0.0f, 1.0f },
-            { uNext, 0.0f },
-            { 0.0f, 0.0f, -1.0f }
+        VertexData outerNext = {
+            {
+                -nextSin * outerRadius,
+                nextCos * outerRadius,
+                0.0f,
+                1.0f
+            },
+            {nextU, 0.0f},
+            {0.0f, 0.0f, -1.0f}
         };
 
-        VertexData v2 = {
-            { -sin * kInnerRadius, cos * kInnerRadius, 0.0f, 1.0f },
-            { u, 1.0f },
-            { 0.0f, 0.0f, -1.0f }
+        VertexData innerCurrent = {
+            {
+                -currentSin * innerRadius,
+                currentCos * innerRadius,
+                0.0f,
+                1.0f
+            },
+            {currentU, 1.0f},
+            {0.0f, 0.0f, -1.0f}
         };
 
-        VertexData v3 = {
-            { -sinNext * kInnerRadius, cosNext * kInnerRadius, 0.0f, 1.0f },
-            { uNext, 1.0f },
-            { 0.0f, 0.0f, -1.0f }
+        VertexData innerNext = {
+            {
+                -nextSin * innerRadius,
+                nextCos * innerRadius,
+                0.0f,
+                1.0f
+            },
+            {nextU, 1.0f},
+            {0.0f, 0.0f, -1.0f}
         };
 
-        vertices.push_back(v0);
-        vertices.push_back(v1);
-        vertices.push_back(v2);
+        vertices.push_back(outerCurrent);
+        vertices.push_back(outerNext);
+        vertices.push_back(innerCurrent);
 
-        vertices.push_back(v2);
-        vertices.push_back(v1);
-        vertices.push_back(v3);
+        vertices.push_back(innerCurrent);
+        vertices.push_back(outerNext);
+        vertices.push_back(innerNext);
     }
 
-    vertexCount_ = static_cast<uint32_t>(vertices.size());
+    vertexCount_ =
+        static_cast<uint32_t>(
+            vertices.size()
+            );
 
-    UINT size = UINT(sizeof(VertexData) * vertices.size());
+    const UINT bufferSize =
+        static_cast<UINT>(
+            sizeof(VertexData) *
+            vertices.size()
+            );
 
-    D3D12_HEAP_PROPERTIES heapProps = {
+    D3D12_HEAP_PROPERTIES heapProperties = {
         D3D12_HEAP_TYPE_UPLOAD,
         D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
         D3D12_MEMORY_POOL_UNKNOWN,
@@ -336,31 +537,58 @@ void Ring::CreateMesh() {
         1
     };
 
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = size;
-    resDesc.Height = 1;
-    resDesc.DepthOrArraySize = 1;
-    resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    resDesc.SampleDesc.Count = 1;
+    D3D12_RESOURCE_DESC resourceDescription{};
+    resourceDescription.Dimension =
+        D3D12_RESOURCE_DIMENSION_BUFFER;
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
+    resourceDescription.Width = bufferSize;
+    resourceDescription.Height = 1;
+    resourceDescription.DepthOrArraySize = 1;
+    resourceDescription.MipLevels = 1;
+
+    resourceDescription.Layout =
+        D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    resourceDescription.SampleDesc.Count = 1;
+
+    HRESULT result =
+        dxCommon_->GetDevice()
+        ->CreateCommittedResource(
+            &heapProperties,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDescription,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&vertexBuffer_)
+        );
+
+    assert(SUCCEEDED(result));
+
+    VertexData* mappedData = nullptr;
+
+    vertexBuffer_->Map(
+        0,
         nullptr,
-        IID_PPV_ARGS(&vertexBuffer_)
+        reinterpret_cast<void**>(&mappedData)
     );
-    assert(SUCCEEDED(hr));
 
-    VertexData* data = nullptr;
-    vertexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&data));
-    memcpy(data, vertices.data(), size);
-    vertexBuffer_->Unmap(0, nullptr);
+    std::memcpy(
+        mappedData,
+        vertices.data(),
+        bufferSize
+    );
 
-    vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-    vertexBufferView_.SizeInBytes = size;
-    vertexBufferView_.StrideInBytes = sizeof(VertexData);
+    vertexBuffer_->Unmap(
+        0,
+        nullptr
+    );
+
+    vertexBufferView_.BufferLocation =
+        vertexBuffer_->GetGPUVirtualAddress();
+
+    vertexBufferView_.SizeInBytes =
+        bufferSize;
+
+    vertexBufferView_.StrideInBytes =
+        sizeof(VertexData);
 }

@@ -31,6 +31,7 @@ void GameScene::Initialize(EngineContext* context) {
     InitializeSound();
     InitializeRing();
     InitializeCylinder();
+    InitializePrimitive();
 }
 
 void GameScene::Finalize() {
@@ -129,7 +130,7 @@ void GameScene::InitializeObjects() {
 
 void GameScene::InitializeSprite() {
     uint32_t texHandle =
-        context_->GetTextureManager()->LoadTexture("Resources/uvChecker.png");
+        context_->GetTextureManager()->LoadTexture("Resources/white.png");
 
     sprite_ = std::make_unique<Sprite>();
     sprite_->Initialize(context_->GetSpriteCommon(), texHandle);
@@ -177,6 +178,20 @@ void GameScene::InitializeCylinder()
 
 }
 
+void GameScene::InitializePrimitive()
+{
+    primitive_ = std::make_unique<Primitive>();
+
+    primitive_->Initialize(
+        context_->GetDxCommon(),
+        context_->GetTextureManager()
+    );
+
+    primitive_->SetIsActive(
+        enablePrimitive_
+    );
+}
+
 void GameScene::InitializeSkeletonDebug() {
     skeletonDebugObjects_.clear();
     skeletonBoneObjects_.clear();
@@ -215,8 +230,19 @@ void GameScene::InitializeSkeletonDebug() {
     }
 }
 
-void GameScene::EmitEffect(const Vector3& position) {
-    context_->GetParticleManager()->Emit(position, 8);
+void GameScene::EmitEffect(
+    const Vector3& position
+) {
+    // 新しく作成したHitEffect
+    context_->GetParticleManager()->Emit(
+        position,
+        28
+    );
+
+    // 元のPrimitive
+    if (enablePrimitive_ && primitive_) {
+        primitive_->Emit(position);
+    }
 
     if (enableRing_ && ring_) {
         ring_->Emit(position);
@@ -231,7 +257,7 @@ void GameScene::Update() {
     Input* input = context_->GetInput();
 
     if (input->TriggerKey(DIK_SPACE)) {
-        EmitEffect({ 0.0f, 1.0f, 0.0f });
+        EmitEffect({ 0.0f, 3.0f, 0.0f });
     }
 
     UpdateSound();
@@ -259,6 +285,17 @@ void GameScene::Update() {
     if (cylinder_) {
         cylinder_->SetIsActive(enableCylinder_);
         cylinder_->Update(view, projection);
+    }
+
+    if (primitive_) {
+        primitive_->SetIsActive(
+            enablePrimitive_
+        );
+
+        primitive_->Update(
+            view,
+            projection
+        );
     }
 
     context_->GetParticleManager()->Update(view, projection);
@@ -529,7 +566,7 @@ void GameScene::UpdateImGui() {
     ImGui::Separator();
 
     if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
-        EmitEffect({ 0.0f, 1.0f, 0.0f });
+        EmitEffect({ 0.0f, 3.0f, 0.0f });
     }
 
     ImGui::SameLine();
@@ -575,28 +612,316 @@ void GameScene::UpdateImGui() {
         // Effect
         // ==================================================
         if (ImGui::BeginTabItem("Effect")) {
+            ImGui::Checkbox(
+                "Enable Primitive",
+                &enablePrimitive_
+            );
 
-            ImGui::Text("Primitive Effects");
-            ImGui::Separator();
+            ImGui::Checkbox(
+                "Enable Ring",
+                &enableRing_
+            );
 
-            ImGui::Checkbox("Enable Ring", &enableRing_);
-            ImGui::Checkbox("Enable Cylinder", &enableCylinder_);
+            ImGui::Checkbox(
+                "Enable Cylinder",
+                &enableCylinder_
+            );
 
-            ImGui::Spacing();
+            ImGui::SeparatorText("Emit");
 
-            ImGui::Text("Particle");
-            ImGui::BulletText("SPACE key : Emit particle");
-            ImGui::BulletText("Particle count : 8");
+            ImGui::DragFloat3(
+                "Effect Position",
+                &hitEffectPosition_.x,
+                0.05f,
+                -20.0f,
+                20.0f
+            );
 
-            ImGui::Spacing();
-
-            ImGui::Text("Current Combination");
-            ImGui::BulletText("Particle");
-            if (enableRing_) {
-                ImGui::BulletText("Ring");
+            if (ImGui::Button(
+                "Emit Effect",
+                ImVec2(180.0f, 32.0f)
+            )) {
+                EmitEffect(hitEffectPosition_);
             }
-            if (enableCylinder_) {
-                ImGui::BulletText("Cylinder");
+
+            if (ring_) {
+                Ring::Settings& settings =
+                    ring_->GetSettings();
+
+                ImGui::SeparatorText("Ring");
+
+                ImGui::ColorEdit4(
+                    "Ring Color",
+                    &settings.color.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::DragFloat(
+                    "Glow Intensity",
+                    &settings.intensity,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Start Scale",
+                    &settings.startScale,
+                    0.01f,
+                    0.01f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "End Scale",
+                    &settings.endScale,
+                    0.01f,
+                    0.01f,
+                    20.0f
+                );
+
+                float thickness =
+                    settings.thickness;
+
+                if (ImGui::SliderFloat(
+                    "Ring Thickness",
+                    &thickness,
+                    0.02f,
+                    0.95f
+                )) {
+                    ring_->SetThickness(thickness);
+                }
+
+                ImGui::DragFloat(
+                    "Life Time",
+                    &settings.lifeTime,
+                    0.01f,
+                    0.05f,
+                    5.0f
+                );
+
+                ImGui::SliderFloat(
+                    "Fade In Ratio",
+                    &settings.fadeInRatio,
+                    0.0f,
+                    1.0f
+                );
+
+                ImGui::DragFloat(
+                    "Expand Ease Power",
+                    &settings.easePower,
+                    0.05f,
+                    0.1f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Rotation Speed",
+                    &settings.rotationSpeed,
+                    0.05f,
+                    -20.0f,
+                    20.0f
+                );
+
+                if (ImGui::Button("Reset Ring")) {
+                    settings = Ring::Settings{};
+                    ring_->SetThickness(
+                        settings.thickness
+                    );
+                }
+            }
+
+
+            if (primitive_) {
+                Primitive::Settings& settings =
+                    primitive_->GetSettings();
+
+                ImGui::SeparatorText("Primitive");
+
+                ImGui::ColorEdit4(
+                    "Primitive Color",
+                    &settings.color.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::DragInt(
+                    "Primitive Count",
+                    &settings.count,
+                    1.0f,
+                    1,
+                    128
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Glow",
+                    &settings.intensity,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Width",
+                    &settings.width,
+                    0.001f,
+                    0.001f,
+                    2.0f
+                );
+
+                ImGui::DragFloatRange2(
+                    "Primitive Length",
+                    &settings.minLength,
+                    &settings.maxLength,
+                    0.01f,
+                    0.01f,
+                    10.0f
+                );
+
+                ImGui::DragFloatRange2(
+                    "Primitive Life Time",
+                    &settings.minLifeTime,
+                    &settings.maxLifeTime,
+                    0.01f,
+                    0.01f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Move Speed",
+                    &settings.moveSpeed,
+                    0.01f,
+                    0.0f,
+                    20.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Rotation Speed",
+                    &settings.rotationSpeed,
+                    0.01f,
+                    -20.0f,
+                    20.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive End Width Scale",
+                    &settings.endWidthScale,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive End Length Scale",
+                    &settings.endLengthScale,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Primitive Fade Power",
+                    &settings.fadePower,
+                    0.01f,
+                    0.1f,
+                    10.0f
+                );
+
+                if (ImGui::Button("Reset Primitive")) {
+                    settings = Primitive::Settings{};
+                }
+            }
+
+
+            if (cylinder_) {
+                Cylinder::Settings& settings =
+                    cylinder_->GetSettings();
+
+                ImGui::SeparatorText("Cylinder");
+
+                ImGui::ColorEdit4(
+                    "Cylinder Color",
+                    &settings.color.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Glow",
+                    &settings.intensity,
+                    0.01f,
+                    0.0f,
+                    5.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Radius",
+                    &settings.radius,
+                    0.01f,
+                    0.01f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Start Height",
+                    &settings.startHeight,
+                    0.01f,
+                    0.01f,
+                    20.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder End Height",
+                    &settings.endHeight,
+                    0.01f,
+                    0.01f,
+                    30.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Life Time",
+                    &settings.lifeTime,
+                    0.01f,
+                    0.05f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Rise Distance",
+                    &settings.riseDistance,
+                    0.01f,
+                    -10.0f,
+                    20.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Expand Ease",
+                    &settings.easePower,
+                    0.01f,
+                    0.1f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Cylinder Fade Power",
+                    &settings.fadePower,
+                    0.01f,
+                    0.1f,
+                    10.0f
+                );
+
+                ImGui::DragFloat3(
+                    "Cylinder Position Offset",
+                    &settings.positionOffset.x,
+                    0.01f,
+                    -20.0f,
+                    20.0f
+                );
+
+                if (ImGui::Button("Reset Cylinder")) {
+                    settings = Cylinder::Settings{};
+                }
             }
 
             ImGui::EndTabItem();
@@ -858,6 +1183,10 @@ void GameScene::Draw3D() {
         cylinder_->Draw();
     }
 
+    if (primitive_) {
+        primitive_->Draw();
+    }
+
     context_->GetParticleManager()->Draw();
 }
 
@@ -872,7 +1201,7 @@ void GameScene::Draw2D() {
 
     context_->GetSpriteCommon()->PreDraw();
 
-    if (sprite_) {
+    if (sprite_&&showDebugSprite_) {
         sprite_->Draw();
     }
 
