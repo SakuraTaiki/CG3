@@ -27,6 +27,16 @@ public:
     void Update() override;
     void Draw() override;
 
+
+    enum class HitEffectType
+    {
+        Fire,
+        Sakura
+    };
+
+    HitEffectType hitEffectType_ =
+        HitEffectType::Fire;
+
 private:
     // 初期化処理を役割ごとに分ける。
     void InitializeModels();

@@ -274,152 +274,173 @@ void GameScene::EmitEffect(
     const float size =
         (std::max)(hitEffectSize_, 0.01f);
 
-    // 元から存在するHitEffect
-    context_->GetParticleManager()->Emit(
-        position,
-        28
-    );
+    // Primitive／Ring／Cylinderを
+    // 現在のImGui設定で発生させる
+    const auto emitComponents = [&]() {
 
-    // =====================================
-    // Primitive
-    // =====================================
-    if (enablePrimitive_ && primitive_) {
-        Primitive::Settings& settings =
-            primitive_->GetSettings();
+        // =====================================
+        // Primitive
+        // =====================================
+        if (enablePrimitive_ && primitive_) {
+            Primitive::Settings& settings =
+                primitive_->GetSettings();
 
-        // 現在の設定を退避
-        const float originalWidth =
-            settings.width;
+            const float originalWidth =
+                settings.width;
 
-        const float originalMinLength =
-            settings.minLength;
+            const float originalMinLength =
+                settings.minLength;
 
-        const float originalMaxLength =
-            settings.maxLength;
+            const float originalMaxLength =
+                settings.maxLength;
 
-        const float originalMoveSpeed =
-            settings.moveSpeed;
+            const float originalMoveSpeed =
+                settings.moveSpeed;
 
-        // サイズ倍率を適用
-        settings.width =
-            originalWidth * size;
+            settings.width =
+                originalWidth * size;
 
-        settings.minLength =
-            originalMinLength * size;
+            settings.minLength =
+                originalMinLength * size;
 
-        settings.maxLength =
-            originalMaxLength * size;
+            settings.maxLength =
+                originalMaxLength * size;
 
-        settings.moveSpeed =
-            originalMoveSpeed * size;
+            settings.moveSpeed =
+                originalMoveSpeed * size;
 
-        primitive_->Emit(position);
+            primitive_->Emit(position);
 
-        // ImGui上の設定値を元に戻す
-        settings.width =
-            originalWidth;
+            settings.width =
+                originalWidth;
 
-        settings.minLength =
-            originalMinLength;
+            settings.minLength =
+                originalMinLength;
 
-        settings.maxLength =
-            originalMaxLength;
+            settings.maxLength =
+                originalMaxLength;
 
-        settings.moveSpeed =
-            originalMoveSpeed;
-    }
+            settings.moveSpeed =
+                originalMoveSpeed;
+        }
 
-    // =====================================
-    // Ring
-    // =====================================
-    if (enableRing_ && ring_) {
-        Ring::Settings& settings =
-            ring_->GetSettings();
+        // =====================================
+        // Ring
+        // =====================================
+        if (enableRing_ && ring_) {
+            Ring::Settings& settings =
+                ring_->GetSettings();
 
-        // 現在の設定を退避
-        const float originalStartScale =
-            settings.startScale;
+            const float originalStartScale =
+                settings.startScale;
 
-        const float originalEndScale =
-            settings.endScale;
+            const float originalEndScale =
+                settings.endScale;
 
-        // サイズ倍率を適用
-        settings.startScale =
-            originalStartScale * size;
+            settings.startScale =
+                originalStartScale * size;
 
-        settings.endScale =
-            originalEndScale * size;
+            settings.endScale =
+                originalEndScale * size;
 
-        ring_->Emit(position);
+            ring_->Emit(position);
 
-        // ImGui上の設定値を元に戻す
-        settings.startScale =
-            originalStartScale;
+            settings.startScale =
+                originalStartScale;
 
-        settings.endScale =
-            originalEndScale;
-    }
+            settings.endScale =
+                originalEndScale;
+        }
 
-    // =====================================
-    // Cylinder
-    // =====================================
-    if (enableCylinder_ && cylinder_) {
-        Cylinder::Settings& settings =
-            cylinder_->GetSettings();
+        // =====================================
+        // Cylinder
+        // =====================================
+        if (enableCylinder_ && cylinder_) {
+            Cylinder::Settings& settings =
+                cylinder_->GetSettings();
 
-        // 現在の設定を退避
-        const float originalRadius =
-            settings.radius;
+            const float originalRadius =
+                settings.radius;
 
-        const float originalStartHeight =
-            settings.startHeight;
+            const float originalStartHeight =
+                settings.startHeight;
 
-        const float originalEndHeight =
-            settings.endHeight;
+            const float originalEndHeight =
+                settings.endHeight;
 
-        const float originalRiseDistance =
-            settings.riseDistance;
+            const float originalRiseDistance =
+                settings.riseDistance;
 
-        const Vector3 originalPositionOffset =
-            settings.positionOffset;
+            const Vector3 originalPositionOffset =
+                settings.positionOffset;
 
-        // サイズ倍率を適用
-        settings.radius =
-            originalRadius * size;
+            settings.radius =
+                originalRadius * size;
 
-        settings.startHeight =
-            originalStartHeight * size;
+            settings.startHeight =
+                originalStartHeight * size;
 
-        settings.endHeight =
-            originalEndHeight * size;
+            settings.endHeight =
+                originalEndHeight * size;
 
-        settings.riseDistance =
-            originalRiseDistance * size;
+            settings.riseDistance =
+                originalRiseDistance * size;
 
-        settings.positionOffset = {
-            originalPositionOffset.x * size,
-            originalPositionOffset.y * size,
-            originalPositionOffset.z * size
+            settings.positionOffset = {
+                originalPositionOffset.x * size,
+                originalPositionOffset.y * size,
+                originalPositionOffset.z * size
+            };
+
+            cylinder_->Emit(position);
+
+            settings.radius =
+                originalRadius;
+
+            settings.startHeight =
+                originalStartHeight;
+
+            settings.endHeight =
+                originalEndHeight;
+
+            settings.riseDistance =
+                originalRiseDistance;
+
+            settings.positionOffset =
+                originalPositionOffset;
+        }
         };
 
-        cylinder_->Emit(position);
+    // =====================================
+    // 桜のHitEffect
+    // =====================================
+    if (
+        hitEffectType_ ==
+        HitEffectType::Sakura
+        ) {
+        context_
+            ->GetParticleManager()
+            ->EmitSakura(
+                position,
+                size
+            );
 
-        // ImGui上の設定値を元に戻す
-        settings.radius =
-            originalRadius;
+        emitComponents();
 
-        settings.startHeight =
-            originalStartHeight;
-
-        settings.endHeight =
-            originalEndHeight;
-
-        settings.riseDistance =
-            originalRiseDistance;
-
-        settings.positionOffset =
-            originalPositionOffset;
+        return;
     }
+
+    // =====================================
+    // 炎のHitEffect
+    // =====================================
+    context_
+        ->GetParticleManager()
+        ->Emit(
+            position,
+            28
+        );
+
+    emitComponents();
 }
 
 bool GameScene::SaveEffectPreset(const std::string& presetName)
@@ -1401,6 +1422,151 @@ void GameScene::UpdateImGui() {
                 "Enable Cylinder",
                 &enableCylinder_
             );
+
+            ImGui::SeparatorText("Hit Effect Type");
+
+            if (ImGui::RadioButton(
+                "Fire",
+                hitEffectType_ == HitEffectType::Fire
+            )) {
+                hitEffectType_ =
+                    HitEffectType::Fire;
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::RadioButton(
+                "Sakura",
+                hitEffectType_ == HitEffectType::Sakura
+            )) {
+                hitEffectType_ =
+                    HitEffectType::Sakura;
+            }
+
+            ImGui::SliderFloat(
+                "Hit Effect Size",
+                &hitEffectSize_,
+                0.1f,
+                5.0f,
+                "%.2f"
+            );
+
+            if (
+                hitEffectType_ ==
+                HitEffectType::Sakura
+                ) {
+                ParticleManager::SakuraSettings& settings =
+                    context_
+                    ->GetParticleManager()
+                    ->GetSakuraSettings();
+
+                ImGui::SeparatorText("Sakura Settings");
+
+                ImGui::ColorEdit4(
+                    "Sakura Main Color",
+                    &settings.color.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::ColorEdit4(
+                    "Sakura Sub Color",
+                    &settings.subColor.x,
+                    ImGuiColorEditFlags_Float |
+                    ImGuiColorEditFlags_HDR
+                );
+
+                ImGui::DragInt(
+                    "Petal Count",
+                    &settings.petalCount,
+                    1.0f,
+                    1,
+                    256
+                );
+
+                ImGui::DragFloatRange2(
+                    "Petal Size",
+                    &settings.minSize,
+                    &settings.maxSize,
+                    0.005f,
+                    0.01f,
+                    2.0f
+                );
+
+                ImGui::DragFloat(
+                    "Spawn Radius",
+                    &settings.spawnRadius,
+                    0.01f,
+                    0.0f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Spread Speed",
+                    &settings.spreadSpeed,
+                    0.001f,
+                    0.0f,
+                    1.0f
+                );
+
+                ImGui::DragFloat(
+                    "Upward Speed",
+                    &settings.upwardSpeed,
+                    0.001f,
+                    -1.0f,
+                    1.0f
+                );
+
+                ImGui::DragFloatRange2(
+                    "Petal Life Time",
+                    &settings.minLifeTime,
+                    &settings.maxLifeTime,
+                    0.01f,
+                    0.05f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Petal Gravity",
+                    &settings.gravity,
+                    0.0001f,
+                    -0.1f,
+                    0.1f,
+                    "%.4f"
+                );
+
+                ImGui::DragFloat(
+                    "Petal Rotation",
+                    &settings.rotationSpeed,
+                    0.005f,
+                    0.0f,
+                    1.0f
+                );
+
+                ImGui::DragFloat(
+                    "Flash Size",
+                    &settings.flashSize,
+                    0.01f,
+                    0.01f,
+                    10.0f
+                );
+
+                ImGui::DragFloat(
+                    "Flash Life Time",
+                    &settings.flashLifeTime,
+                    0.01f,
+                    0.05f,
+                    5.0f
+                );
+
+                if (ImGui::Button(
+                    "Reset Sakura Settings"
+                )) {
+                    settings =
+                        ParticleManager::SakuraSettings{};
+                }
+            }
+
 
             ImGui::SeparatorText("Emit");
 
