@@ -1,15 +1,28 @@
 #include "GameScene.h"
+
 #include "ModelManager.h"
+#include "AnimationLoader.h"
+
+#include "Input.h"
+#include "DirectXCommon.h"
+#include "SrvManager.h"
+#include "TextureManager.h"
+#include "SpriteCommon.h"
+#include "Object3dCommon.h"
+#include "ParticleManager.h"
+#include "ImGuiManager.h"
+#include "camera.h"
+
+
 #include <cmath>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #endif
+void GameScene::Initialize(EngineContext* context) {
+    context_ = context;
 
-void GameScene::Initialize(GameSystem* system) {
-    system_ = system;
-
-    ModelManager::Initialize(system_->GetObject3dCommon());
+    ModelManager::Initialize(context_->GetObject3dCommon());
 
     InitializeModels();
     InitializeSprite();
@@ -29,7 +42,7 @@ void GameScene::Finalize() {
     sound_.Finalize();
     ModelManager::Finalize();
 
-    system_ = nullptr;
+    context_ = nullptr;
 }
 
 void GameScene::InitializeModels() {
@@ -40,7 +53,7 @@ void GameScene::InitializeModels() {
 }
 
 void GameScene::InitializeObjects() {
-    Object3dCommon* object3dCommon = system_->GetObject3dCommon();
+    Object3dCommon* object3dCommon = context_->GetObject3dCommon();
 
     Model* modelPlane = ModelManager::Load("Resources/terrain", "terrain.obj");
     Model* modelAxis = ModelManager::Load("axis.obj");
@@ -90,7 +103,7 @@ void GameScene::InitializeObjects() {
             ModelManager::Load("Resources/human", "walk.gltf");
 
         animatedCubeAnimation_ =
-            LoadAnimationFile("Resources/human", "walk.gltf");
+            AnimationLoader::Load("Resources/human", "walk.gltf");
 
         animatedSkeleton_ =
             CreateSkeleton(modelAnimated->GetRootNode());
@@ -114,25 +127,25 @@ void GameScene::InitializeObjects() {
 
 void GameScene::InitializeSprite() {
     uint32_t texHandle =
-        system_->GetTextureManager()->LoadTexture("Resources/uvChecker.png");
+        context_->GetTextureManager()->LoadTexture("Resources/uvChecker.png");
 
     sprite_ = std::make_unique<Sprite>();
-    sprite_->Initialize(system_->GetSpriteCommon(), texHandle);
+    sprite_->Initialize(context_->GetSpriteCommon(), texHandle);
 }
 
 void GameScene::InitializeSkybox() {
     skybox_ = std::make_unique<Skybox>();
 
     skybox_->Initialize(
-        system_->GetDxCommon(),
-        system_->GetTextureManager(),
+        context_->GetDxCommon(),
+        context_->GetTextureManager(),
         "Resources/skybox/rostock_laage_airport_4k.dds"
     );
 
     skybox_->SetScale({ 100.0f, 100.0f, 100.0f });
 
     environmentTexturehandle_ =
-        system_->GetTextureManager()->LoadTexture(
+        context_->GetTextureManager()->LoadTexture(
             "Resources/skybox/rostock_laage_airport_4k.dds"
         );
 }
@@ -147,7 +160,7 @@ void GameScene::InitializeSound() {
 
 void GameScene::InitializeRing() {
     ring_ = std::make_unique<Ring>();
-    ring_->Initialize(system_->GetDxCommon(), system_->GetTextureManager());
+    ring_->Initialize(context_->GetDxCommon(), context_->GetTextureManager());
     ring_->SetIsActive(enableRing_);
 }
 
@@ -155,8 +168,8 @@ void GameScene::InitializeCylinder()
 {
     cylinder_ = std::make_unique<Cylinder>();
     cylinder_->Initialize(
-        system_->GetDxCommon(),
-        system_->GetTextureManager()
+        context_->GetDxCommon(),
+        context_->GetTextureManager()
     );
     cylinder_->SetIsActive(enableCylinder_);
 
@@ -166,7 +179,7 @@ void GameScene::InitializeSkeletonDebug() {
     skeletonDebugObjects_.clear();
     skeletonBoneObjects_.clear();
 
-    Object3dCommon* object3dCommon = system_->GetObject3dCommon();
+    Object3dCommon* object3dCommon = context_->GetObject3dCommon();
     Model* jointModel = ModelManager::Load("axis.obj");
 
     for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
@@ -200,31 +213,32 @@ void GameScene::InitializeSkeletonDebug() {
     }
 }
 
+void GameScene::EmitEffect(const Vector3& position) {
+    context_->GetParticleManager()->Emit(position, 8);
+
+    if (enableRing_ && ring_) {
+        ring_->Emit(position);
+    }
+
+    if (enableCylinder_ && cylinder_) {
+        cylinder_->Emit(position);
+    }
+}
+
 void GameScene::Update() {
-    Input* input = system_->GetInput();
-    input->Update();
+    Input* input = context_->GetInput();
 
     if (input->TriggerKey(DIK_SPACE)) {
-        Vector3 effectPos = { 0.0f, 1.0f, 0.0f };
-
-        system_->GetParticleManager()->Emit(effectPos, 8);
-
-        if (enableRing_ && ring_) {
-            ring_->Emit(effectPos);
-        }
-
-        if (enableCylinder_ && cylinder_) {
-            cylinder_->Emit(effectPos);
-        }
+        EmitEffect({ 0.0f, 1.0f, 0.0f });
     }
 
     UpdateSound();
     UpdateObjects();
 
-    system_->GetCamera()->Update();
+    context_->GetCamera()->Update();
 
-    const Matrix4x4& view = system_->GetCamera()->GetViewMatrix();
-    const Matrix4x4& projection = system_->GetCamera()->GetProjectionMatrix();
+    const Matrix4x4& view = context_->GetCamera()->GetViewMatrix();
+    const Matrix4x4& projection = context_->GetCamera()->GetProjectionMatrix();
 
     if (skybox_) {
         skybox_->SetCamera(view, projection);
@@ -245,7 +259,7 @@ void GameScene::Update() {
         cylinder_->Update(view, projection);
     }
 
-    system_->GetParticleManager()->Update(view, projection);
+    context_->GetParticleManager()->Update(view, projection);
 
     UpdateImGui();
 }
@@ -307,7 +321,7 @@ void GameScene::SyncAnimatedSkeletonToObject() {
 }
 
 void GameScene::UpdateSound() {
-    Input* input = system_->GetInput();
+    Input* input = context_->GetInput();
 
     if (input->TriggerKey(DIK_M)) {
         sound_.SoundPlay(mp4SoundData_, mp4Volume_);
@@ -502,7 +516,7 @@ void GameScene::DrawAnimationDebugImGui() {
 
 void GameScene::UpdateImGui() {
 #ifdef USE_IMGUI
-    system_->GetImGuiManager()->Begin();
+    context_->GetImGuiManager()->Begin();
 
     ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(420.0f, 520.0f), ImGuiCond_FirstUseEver);
@@ -513,17 +527,7 @@ void GameScene::UpdateImGui() {
     ImGui::Separator();
 
     if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
-        Vector3 effectPos = { 0.0f, 1.0f, 0.0f };
-
-        system_->GetParticleManager()->Emit(effectPos, 8);
-
-        if (enableRing_ && ring_) {
-            ring_->Emit(effectPos);
-        }
-
-        if (enableCylinder_ && cylinder_) {
-            cylinder_->Emit(effectPos);
-        }
+        EmitEffect({ 0.0f, 1.0f, 0.0f });
     }
 
     ImGui::SameLine();
@@ -604,10 +608,10 @@ void GameScene::UpdateImGui() {
             ImGui::Text("Post Effect Settings");
             ImGui::Separator();
 
-            bool enableGrayScale = system_->GetDxCommon()->GetGrayScale();
+            bool enableGrayScale = context_->GetDxCommon()->GetGrayScale();
 
             if (ImGui::Checkbox("GrayScale", &enableGrayScale)) {
-                system_->GetDxCommon()->SetGrayScale(enableGrayScale);
+                context_->GetDxCommon()->SetGrayScale(enableGrayScale);
             }
 
             ImGui::EndTabItem();
@@ -662,7 +666,7 @@ void GameScene::UpdateImGui() {
 // Camera Debug Window
 //==============================
     {
-        Camera* camera = system_->GetCamera();
+        Camera* camera = context_->GetCamera();
 
         Vector3 rotate = camera->GetRotate();
         Vector3 translate = camera->GetTranslate();
@@ -745,7 +749,7 @@ void GameScene::UpdateImGui() {
 
     ImGui::End();
 
-    system_->GetImGuiManager()->End();
+    context_->GetImGuiManager()->End();
 #endif
 }
 
@@ -810,13 +814,13 @@ void GameScene::Draw() {
 }
 
 void GameScene::Draw3D() {
-    DirectXCommon* dxCommon = system_->GetDxCommon();
+    DirectXCommon* dxCommon = context_->GetDxCommon();
 
     dxCommon->PreDrawForRenderTexture();
 
-    system_->GetSrvManager()->PreDraw();
+    context_->GetSrvManager()->PreDraw();
 
-    system_->GetObject3dCommon()->PreDraw();
+    context_->GetObject3dCommon()->PreDraw();
 
     if (drawMode_ == DrawMode::NormalObj) {
         for (auto& object : objects_) {
@@ -852,25 +856,25 @@ void GameScene::Draw3D() {
         cylinder_->Draw();
     }
 
-    system_->GetParticleManager()->Draw();
+    context_->GetParticleManager()->Draw();
 }
 
 void GameScene::Draw2D() {
-    DirectXCommon* dxCommon = system_->GetDxCommon();
+    DirectXCommon* dxCommon = context_->GetDxCommon();
 
     dxCommon->PreDraw();
 
     dxCommon->DrawRenderTextureToSwapChain();
 
-    system_->GetSrvManager()->PreDraw();
+    context_->GetSrvManager()->PreDraw();
 
-    system_->GetSpriteCommon()->PreDraw();
+    context_->GetSpriteCommon()->PreDraw();
 
     if (sprite_) {
         sprite_->Draw();
     }
 
-    system_->GetImGuiManager()->Draw();
+    context_->GetImGuiManager()->Draw();
 
     dxCommon->PostDraw();
 }

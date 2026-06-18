@@ -12,19 +12,20 @@ void DirectXCommon::Initialize(WinApp* winApp) {
     assert(winApp);
     winApp_ = winApp;
 
-    InitializeFixFPS();
+    fpsLimiter_.Initialize();
+
     InitializeDevice();
     InitializeCommand();
     InitializeSwapChain();
     InitializeRenderTargetView();
     InitializeDepthStencilView();
     InitializeFence();
-    InitializeDXC();
+
+    shaderCompiler_.Initialize();
 
     InitializeRenderTexture();
     InitializeCopyImagePipeline();
 }
-
 void DirectXCommon::PreDrawForRenderTexture()
 {
 
@@ -220,89 +221,12 @@ void DirectXCommon::InitializeFence() {
     assert(fenceEvent_ != nullptr);
 }
 
-void DirectXCommon::InitializeDXC() {
-    HRESULT hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&dxcUtils_));
-    assert(SUCCEEDED(hr));
-    hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&dxcCompiler_));
-    assert(SUCCEEDED(hr));
-    hr = dxcUtils_->CreateDefaultIncludeHandler(&includeHandler_);
-    assert(SUCCEEDED(hr));
-}
 
-ComPtr<IDxcBlob> DirectXCommon::CompileShader(const std::wstring& filePath, const wchar_t* profile) {
-    // --- デバッグログ：何を読み込もうとしているか出力 ---
-    OutputDebugStringW(L"----------------------------------------\n");
-    OutputDebugStringW(L"Begin CompileShader: ");
-    OutputDebugStringW(filePath.c_str());
-    OutputDebugStringW(L"\n");
-
-    // 1. hlslファイルを読む
-    ComPtr<IDxcBlobEncoding> shaderSource = nullptr;
-    HRESULT hr = dxcUtils_->LoadFile(filePath.c_str(), nullptr, &shaderSource);
-
-    // ★ここが最重要：ファイルが見つからなかったらエラーを出して止める
-    if (FAILED(hr)) {
-        OutputDebugStringA("ERROR: Failed to load shader file.\n");
-        OutputDebugStringA("Please check if the file path is correct and the file exists.\n");
-        OutputDebugStringW(filePath.c_str()); // 失敗したパスを表示
-        OutputDebugStringA("\n----------------------------------------\n");
-        assert(false && "Shader File Not Found!"); // ここで止まるはず
-        return nullptr;
-    }
-
-    // 2. コンパイル引数準備
-    DxcBuffer shaderSourceBuffer;
-    shaderSourceBuffer.Ptr = shaderSource->GetBufferPointer();
-    shaderSourceBuffer.Size = shaderSource->GetBufferSize();
-    shaderSourceBuffer.Encoding = DXC_CP_UTF8;
-
-    LPCWSTR arguments[] = {
-        filePath.c_str(),
-        L"-E", L"main",
-        L"-T", profile,
-        L"-Zi", L"-Qembed_debug",
-        L"-Od",
-        L"-Zpr",
-    };
-
-    // 3. コンパイル実行
-    ComPtr<IDxcResult> shaderResult = nullptr;
-    hr = dxcCompiler_->Compile(
-        &shaderSourceBuffer,
-        arguments,
-        _countof(arguments),
-        includeHandler_.Get(),
-        IID_PPV_ARGS(&shaderResult));
-
-    // コンパイル自体の失敗チェック
-    if (FAILED(hr)) {
-        OutputDebugStringA("ERROR: DxcCompiler::Compile failed completely.\n");
-        assert(false);
-        return nullptr;
-    }
-
-    // 4. エラーメッセージ取得
-    ComPtr<IDxcBlobUtf8> shaderError = nullptr;
-    shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
-
-    if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
-        std::string errorMsg = shaderError->GetStringPointer();
-        OutputDebugStringA("----------------------------------------\n");
-        OutputDebugStringA("HLSL Compile Error:\n");
-        OutputDebugStringA(errorMsg.c_str());
-        OutputDebugStringA("----------------------------------------\n");
-        assert(false && "Shader Compile Error"); // 文法ミスならここで止まる
-    }
-
-    // 5. 結果の取得
-    ComPtr<IDxcBlob> shaderBlob = nullptr;
-    hr = shaderResult->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-    assert(SUCCEEDED(hr));
-
-    OutputDebugStringA("CompileShader Success!\n");
-    OutputDebugStringA("----------------------------------------\n");
-
-    return shaderBlob;
+DirectXCommon::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
+    const std::wstring& filePath,
+    const wchar_t* profile
+) {
+    return shaderCompiler_.Compile(filePath, profile);
 }
 
 void DirectXCommon::PreDraw() {
@@ -382,28 +306,9 @@ void DirectXCommon::PostDraw() {
     hr = commandList_->Reset(commandAllocator_.Get(), nullptr);
     assert(SUCCEEDED(hr));
 
-    UpdateFixFPS();
+    fpsLimiter_.Update();
 }
 
-void DirectXCommon::InitializeFixFPS() {
-    reference_ = std::chrono::steady_clock::now();
-}
-
-void DirectXCommon::UpdateFixFPS() {
-    using namespace std::chrono;
-    const microseconds kMinTime(static_cast<int64_t>(1000000.0f / 60.0f));
-    const microseconds kMinCheckTime(static_cast<int64_t>(1000000.0f / 65.0f));
-
-    steady_clock::time_point now = steady_clock::now();
-    microseconds elapsed = duration_cast<microseconds>(now - reference_);
-
-    if (elapsed < kMinCheckTime) {
-        while (steady_clock::now() - reference_ < kMinTime) {
-            std::this_thread::sleep_for(microseconds(1));
-        }
-    }
-    reference_ = steady_clock::now();
-}
 
 void DirectXCommon::InitializeRenderTexture()
 {

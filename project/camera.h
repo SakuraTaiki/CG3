@@ -1,15 +1,21 @@
 #pragma once
+
 #include "MyMath.h"
 
-class Camera
-{
+// 3D 描画で使うカメラ。
+// Transform から ViewMatrix を作り、
+// Fov / AspectRatio / Near / Far から ProjectionMatrix を作る。
+class Camera {
 public:
     Camera();
 
+    // Transform や Projection 設定から各種 Matrix を更新する。
+    // カメラ値を変更した後は Update を呼ぶ。
     void Update();
 
     void SetRotate(const Vector3& rotate) { transform_.rotate = rotate; }
     void SetTranslate(const Vector3& translate) { transform_.translate = translate; }
+
     void SetFovY(float fovY) { fovY_ = fovY; }
     void SetAspectRatio(float aspectRatio) { aspectRatio_ = aspectRatio; }
     void SetNearClip(float nearClip) { nearClip_ = nearClip; }
@@ -24,20 +30,24 @@ public:
     const Vector3& GetTranslate() const { return transform_.translate; }
 
     float GetFovY() const { return fovY_; }
+    float GetAspectRatio() const { return aspectRatio_; }
     float GetNearClip() const { return nearClip_; }
     float GetFarClip() const { return farClip_; }
 
 private:
+    // カメラの Transform。
+    // scale は基本 1 のままで使う。
     Transform transform_;
 
+    // GPU や描画処理から参照する行列。
     Matrix4x4 worldMatrix_;
     Matrix4x4 viewMatrix_;
     Matrix4x4 projectionMatrix_;
     Matrix4x4 viewProjectionMatrix_;
 
+    // Projection 設定。
     float fovY_;
     float aspectRatio_;
     float nearClip_;
     float farClip_;
 };
-
