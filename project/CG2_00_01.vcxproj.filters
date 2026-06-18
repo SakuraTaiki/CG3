@@ -122,9 +122,9 @@
     <None Include="Resources\shaders\hlsl\Object3d.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\Object3d.VS.hlsl" />
     <None Include="Resources\shaders\hlsl\CopyImage.PS.hlsl" />
-    <None Include="HitParticle.hlsli" />
-    <None Include="HitParticle.VS.hlsl" />
-    <None Include="HitParticle.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\HitParticle.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\HitParticle.hlsli" />
+    <None Include="Resources\shaders\hlsl\HitParticle.VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

@@ -11,32 +11,60 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 
 #pragma comment(lib, "winmm.lib")
 
-void WinApp::Initialize() {
-    HRESULT hr = CoInitializeEx(0, COINIT_MULTITHREADED);
+void WinApp::Initialize()
+{
+    // ウィンドウを作る前にDPI対応を有効化
+    ImGui_ImplWin32_EnableDpiAwareness();
 
-    // --- メンバ変数名 wc_ に統一 ---
+    HRESULT hr =
+        CoInitializeEx(
+            nullptr,
+            COINIT_MULTITHREADED
+        );
+
     wc_.lpfnWndProc = WindowProc;
     wc_.lpszClassName = L"CG2WindowClass";
     wc_.hInstance = GetModuleHandle(nullptr);
-    wc_.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wc_.hCursor =
+        LoadCursor(nullptr, IDC_ARROW);
+
     RegisterClass(&wc_);
 
-    RECT wrc = { 0, 0, kClientWidth, kClientHeight };
-    AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, false);
+    // サイズ変更と最大化を禁止する
+    constexpr DWORD windowStyle =
+        WS_OVERLAPPED |
+        WS_CAPTION |
+        WS_SYSMENU |
+        WS_MINIMIZEBOX;
 
-    // --- メンバ変数名 hwnd_ に統一 ---
+    RECT windowRectangle = {
+        0,
+        0,
+        kClientWidth,
+        kClientHeight
+    };
+
+    AdjustWindowRect(
+        &windowRectangle,
+        windowStyle,
+        FALSE
+    );
+
     hwnd_ = CreateWindow(
         wc_.lpszClassName,
         L"CG2",
-        WS_OVERLAPPEDWINDOW,
+        windowStyle,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
-        wrc.right - wrc.left,
-        wrc.bottom - wrc.top,
+        windowRectangle.right -
+        windowRectangle.left,
+        windowRectangle.bottom -
+        windowRectangle.top,
         nullptr,
         nullptr,
         wc_.hInstance,
-        nullptr);
+        nullptr
+    );
 
     ShowWindow(hwnd_, SW_SHOW);
     timeBeginPeriod(1);
@@ -47,15 +75,26 @@ void WinApp::Finalize() {
     CoUninitialize();
 }
 
-bool WinApp::ProcessMessage() {
+bool WinApp::ProcessMessage()
+{
     MSG msg{};
-    if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+
+    // 溜まっているメッセージをすべて処理する
+    while (PeekMessage(
+        &msg,
+        nullptr,
+        0,
+        0,
+        PM_REMOVE
+    )) {
+        if (msg.message == WM_QUIT) {
+            return true;
+        }
+
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    if (msg.message == WM_QUIT) {
-        return true;
-    }
+
     return false;
 }
 

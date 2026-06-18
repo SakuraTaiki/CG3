@@ -41,7 +41,7 @@ void DirectXCommon::PreDrawForRenderTexture()
 
     commandList_->OMSetRenderTargets(1, &renderTextureRtvHandle_, false, &dsvHandle);
 
-    float clearColor[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+    float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f };
     commandList_->ClearRenderTargetView(renderTextureRtvHandle_, clearColor, 0, nullptr);
     commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
@@ -313,7 +313,7 @@ void DirectXCommon::PostDraw() {
 void DirectXCommon::InitializeRenderTexture()
 {
 
-    const Vector4 clearColor{ 1.0f, 0.0f, 0.0f, 1.0f };
+    const Vector4 clearColor{ 0.1f, 0.25f, 0.5f, 1.0f };
 
     D3D12_RESOURCE_DESC resourceDesc{};
     resourceDesc.Width = WinApp::kClientWidth;
