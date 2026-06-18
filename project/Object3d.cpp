@@ -5,6 +5,11 @@
 
 #include <cassert>
 
+
+// Object3dSkinningの完全な定義が見える場所でデストラクタを生成する
+Object3d::Object3d() = default;
+Object3d::~Object3d() = default;
+
 void Object3d::Initialize(Object3dCommon* object3dCommon) {
     assert(object3dCommon);
     object3dCommon_ = object3dCommon;

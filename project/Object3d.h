@@ -41,6 +41,12 @@ struct Material {
 // Skinning / Animation は Object3dSkinning に任せる。
 class Object3d {
 public:
+
+    // Object3dSkinningの完全な定義が見える.cpp側で生成・破棄する
+    Object3d();
+    // Object3dSkinningの完全な型が見える.cpp側で破棄する
+    ~Object3d();
+
     void Initialize(Object3dCommon* object3dCommon);
     void Update();
     void Draw();

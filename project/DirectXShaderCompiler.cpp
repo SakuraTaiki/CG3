@@ -1,6 +1,5 @@
 #include "DirectXShaderCompiler.h"
 
-#include <Windows.h>
 #include <cassert>
 
 void DirectXShaderCompiler::Initialize() {
