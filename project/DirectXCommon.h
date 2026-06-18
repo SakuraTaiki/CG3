@@ -5,7 +5,9 @@
 #include <dxcapi.h>
 #include <cstdint>
 #include <string>
-#include <chrono>
+
+#include "DirectXShaderCompiler.h"
+#include "FpsLimiter.h"
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -66,9 +68,7 @@ private: // メンバ関数(内部処理)
     void InitializeRenderTargetView();
     void InitializeDepthStencilView();
     void InitializeFence();
-    void InitializeDXC();
-    void InitializeFixFPS();
-    void UpdateFixFPS();
+  
 
     void InitializeRenderTexture();
     void InitializeCopyImagePipeline();
@@ -98,13 +98,11 @@ private: // メンバ変数
     uint64_t fenceValue_ = 0;
     HANDLE fenceEvent_ = nullptr;
 
-    // DXC (シェーダーコンパイラ)
-    ComPtr<IDxcUtils> dxcUtils_;
-    ComPtr<IDxcCompiler3> dxcCompiler_;
-    ComPtr<IDxcIncludeHandler> includeHandler_;
+    // HLSL コンパイル担当。
+    DirectXShaderCompiler shaderCompiler_;
 
-    // FPS制御
-    std::chrono::steady_clock::time_point reference_;
+    // 60FPS 固定担当。
+    FpsLimiter fpsLimiter_;
 
     ComPtr<ID3D12Resource> renderTextureResource_;
 

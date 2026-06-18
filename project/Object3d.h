@@ -1,23 +1,31 @@
 #pragma once
+
+#include <memory>
+
 #include "Object3dCommon.h"
 #include "Model.h"
 #include "MyMath.h"
-#include"Camera.h"
-#include "Animation.h"
-#include "Skelton.h"
-#include"SkinCluster.h"
+#include "camera.h"
 
+class Object3dSkinning;
+
+struct Animation;
+struct Skeleton;
+
+// GPU に送る Transform 情報。
 struct TransformationMatrix {
     Matrix4x4 WVP;
     Matrix4x4 World;
     Matrix4x4 WorldInverseTranspose;
 };
 
+// GPU に送る Camera 情報。
 struct CameraForGPU {
     Vector3 worldPosition;
     float padding;
 };
 
+// GPU に送る Material 情報。
 struct Material {
     Vector4 color;
     int32_t enableLighting;
@@ -28,8 +36,9 @@ struct Material {
     Matrix4x4 uvTransform;
 };
 
-
-
+// 3D Object 本体。
+// Transform / Material / Model / Draw を担当する。
+// Skinning / Animation は Object3dSkinning に任せる。
 class Object3d {
 public:
     void Initialize(Object3dCommon* object3dCommon);
@@ -38,20 +47,28 @@ public:
 
     void SetModel(Model* model);
 
-    void SetSkeleton(const Skeleton& skeleton) {
-        skeleton_ = skeleton;
-    }
+    // Skinning 用。Object3dSkinning がある場合だけ反映する。
+    void SetSkeleton(const Skeleton& skeleton);
+    void SetAnimation(const Animation& animation);
 
     void SetPosition(const Vector3& position) { transform_.translate = position; }
     void SetRotation(const Vector3& rotation) { transform_.rotate = rotation; }
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
 
-    // カメラ設定
     void SetCamera(Camera* camera) { camera_ = camera; }
 
-    // マテリアル制御
-    void SetColor(const Vector4& color) { if (materialData_) materialData_->color = color; }
-    void SetEnableLighting(bool enable) { if (materialData_) materialData_->enableLighting = (enable ? 1 : 0); }
+    void SetColor(const Vector4& color) {
+        if (materialData_) {
+            materialData_->color = color;
+        }
+    }
+
+    void SetEnableLighting(bool enable) {
+        if (materialData_) {
+            materialData_->enableLighting = enable ? 1 : 0;
+        }
+    }
+
     void SetUVTransform(const Transform& uvTransform);
 
     void SetEnvironmentCoefficient(float value) {
@@ -72,42 +89,32 @@ public:
         return materialData_->environmentCoefficient;
     }
 
-    //アニメーションセット
-    void SetAnimation(const Animation& animation) {
-        animation_ = animation;
-        useAnimation_ = true;
-        animationTime_ = 0.0f;
-    }
-
-
-    void UpdateSkeleton();
-
 private:
+    // 非所有。Object3dCommon は GraphicsSystem 側が持つ。
     Object3dCommon* object3dCommon_ = nullptr;
+
+    // 非所有。ModelManager などが持つ Model を参照する。
     Model* model_ = nullptr;
 
-    Transform transform_ = { {1,1,1}, {0,0,0}, {0,0,0} };
-    
+    Transform transform_ = { {1, 1, 1}, {0, 0, 0}, {0, 0, 0} };
+
+    // Transform 用 GPU Buffer。
     Microsoft::WRL::ComPtr<ID3D12Resource> transformationResource_;
     TransformationMatrix* transformationData_ = nullptr;
 
+    // Material 用 GPU Buffer。
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     Material* materialData_ = nullptr;
 
-    //カメラ
+    // 非所有。基本は Object3dCommon の defaultCamera を使う。
     Camera* camera_ = nullptr;
 
+    // Camera 用 GPU Buffer。
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
     CameraForGPU* cameraData_ = nullptr;
 
     uint32_t environmentTextureHandle_ = 0;
 
-    //アニメーションメンバ
-    Animation animation_;
-    bool useAnimation_ = false;
-    float animationTime_ = 0.0f;
-
-    Skeleton skeleton_{};
-    SkinCluster skinCluster_{};
-    bool hasSkinCluster_ = false;
+    // スキニングとアニメーション処理。
+    std::unique_ptr<Object3dSkinning> skinning_;
 };

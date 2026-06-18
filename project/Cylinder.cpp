@@ -63,54 +63,19 @@ void Cylinder::Initialize(DirectXCommon* dxCommon, TextureManager* textureManage
 }
 
 void Cylinder::Emit(const Vector3& position) {
-    if (cylinders_.size() >= kMaxCylinders) {
-        return;
-    }
-
-    CylinderParticle cylinder;
-
-    cylinder.transform.translate = position;
-    cylinder.transform.scale = { 0.8f, 0.1f, 0.8f };
-    cylinder.transform.rotate = { 0.0f, 0.0f, 0.0f };
-
-    cylinder.color = { 0.4f, 0.7f, 1.0f, 0.6f };
-
-    cylinder.lifeTime = 0.0f;
-    cylinder.maxTime = 0.7f;
-
-    cylinders_.push_back(cylinder);
+    particleSystem_.Emit(position);
 }
 
 void Cylinder::Update(
     const Matrix4x4& viewMatrix,
     const Matrix4x4& projectionMatrix
 ) {
-    for (auto it = cylinders_.begin(); it != cylinders_.end();) {
-        it->lifeTime += 1.0f / 60.0f;
-
-        if (it->lifeTime >= it->maxTime) {
-            it = cylinders_.erase(it);
-            continue;
-        }
-
-        float t = it->lifeTime / it->maxTime;
-
-        float height = 0.1f + t * maxHeight_;
-
-        it->transform.scale = {
-            0.8f,
-            height,
-            0.8f
-        };
-
-        it->color.w = 0.6f * (1.0f - t);
-
-        ++it;
-    }
+    // 粒子の寿命、拡大、フェードアウトを更新する。
+    particleSystem_.Update();
 
     uint32_t index = 0;
 
-    for (const auto& cylinder : cylinders_) {
+    for (const auto& cylinder : particleSystem_.GetParticles()) {
         if (index >= kMaxCylinders) {
             break;
         }
@@ -142,7 +107,7 @@ void Cylinder::Draw() {
         return;
     }
 
-    if (cylinders_.empty()) {
+    if (particleSystem_.IsEmpty()) {
         return;
     }
 
@@ -161,7 +126,8 @@ void Cylinder::Draw() {
     auto srvHandle = textureManager_->GetSrvHandleGPU(textureHandle_);
     commandList->SetGraphicsRootDescriptorTable(0, srvHandle);
 
-    uint32_t count = static_cast<uint32_t>(cylinders_.size());
+    uint32_t count =
+        static_cast<uint32_t>(particleSystem_.GetParticles().size());
 
     commandList->DrawInstanced(vertexCount_, count, 0, 0);
 }

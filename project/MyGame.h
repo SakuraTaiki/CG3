@@ -1,8 +1,10 @@
 #pragma once
 
-#include "GameSystem.h"
-#include "GameScene.h"
+#include "Engine.h"
+#include "SceneManager.h"
 
+// MyGame はゲーム全体の進行役。
+// Engine の初期化と SceneManager の更新・描画をつなぐ。
 class MyGame {
 public:
     void Initialize();
@@ -13,6 +15,6 @@ public:
     bool IsRunning();
 
 private:
-    GameSystem gameSystem_;
-    GameScene gameScene_;
+    Engine engine_;
+    SceneManager sceneManager_;
 };

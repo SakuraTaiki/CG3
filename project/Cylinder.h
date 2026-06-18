@@ -8,6 +8,7 @@
 #include "MyMath.h"
 #include "DirectXCommon.h"
 #include "TextureManager.h"
+#include "CylinderParticleSystem.h"
 
 class Cylinder
 {
@@ -24,13 +25,7 @@ public:
         Vector4 color;
     };
 
-    struct CylinderParticle {
-        Transform transform;
-        Vector4 color;
-        float lifeTime;
-        float maxTime;
-    };
-
+    
     void Initialize(DirectXCommon* dxCommon, TextureManager* textureManager);
     void Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix);
     void Draw();
@@ -66,9 +61,9 @@ private:
 
     bool isActive_ = true;
 
-    std::list<CylinderParticle> cylinders_;
-
-    float maxHeight_ = 2.5f;
+    // Cylinder エフェクトの粒子管理。
+    // Cylinder 本体は描画、ParticleSystem は動きを担当する。
+    CylinderParticleSystem particleSystem_;
 
 };
 

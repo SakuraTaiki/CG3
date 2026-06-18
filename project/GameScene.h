@@ -1,8 +1,11 @@
 #pragma once
+
 #include <memory>
 #include <vector>
 
-#include "GameSystem.h"
+#include "IScene.h"
+#include "EngineContext.h"
+
 #include "Object3d.h"
 #include "Sprite.h"
 #include "Skybox.h"
@@ -11,15 +14,18 @@
 #include "Cylinder.h"
 #include "Skelton.h"
 
-class GameScene {
+// 実際のゲーム・デモ内容を持つ Scene。
+// EngineContext 経由で Input / Graphics / Camera などを使う。
+class GameScene : public IScene {
 public:
-    void Initialize(GameSystem* system);
-    void Finalize();
+    void Initialize(EngineContext* context) override;
+    void Finalize() override;
 
-    void Update();
-    void Draw();
+    void Update() override;
+    void Draw() override;
 
 private:
+    // 初期化処理を役割ごとに分ける。
     void InitializeModels();
     void InitializeSprite();
     void InitializeSkybox();
@@ -29,20 +35,25 @@ private:
     void InitializeCylinder();
     void InitializeSkeletonDebug();
 
+    // 更新処理。
     void UpdateObjects();
     void UpdateSound();
     void UpdateImGui();
     void UpdateSkeletonDebug();
 
+    // アニメーション確認用処理。
     void UpdateAnimationDebug();
     void DrawAnimationDebugImGui();
     void SyncAnimatedSkeletonToObject();
 
+    // SPACE キーや ImGui ボタンから呼ばれるエフェクト発生処理。
+    void EmitEffect(const Vector3& position);
+
+    // 描画処理。
     void Draw3D();
     void Draw2D();
 
 private:
-
     enum class DrawMode {
         NormalObj,
         Animation
@@ -50,18 +61,22 @@ private:
 
     DrawMode drawMode_ = DrawMode::NormalObj;
 
-    GameSystem* system_ = nullptr;
+    // 非所有。実体は Engine が持つ。
+    EngineContext* context_ = nullptr;
 
     std::vector<std::unique_ptr<Object3d>> objects_;
 
     std::unique_ptr<Sprite> sprite_;
     std::unique_ptr<Skybox> skybox_;
-    std::unique_ptr<Ring>   ring_;
+    std::unique_ptr<Ring> ring_;
     std::unique_ptr<Cylinder> cylinder_;
+
+    // アニメーション表示用の Object。
     std::unique_ptr<Object3d> animatedObject_;
+
+    // Skeleton 確認用の表示 Object。
     std::vector<std::unique_ptr<Object3d>> skeletonDebugObjects_;
     std::vector<std::unique_ptr<Object3d>> skeletonBoneObjects_;
-    
 
     Sound sound_;
     Sound::SoundData wavSoundData_{};
@@ -75,7 +90,6 @@ private:
     uint32_t environmentTexturehandle_ = 0;
     float environmentCoefficient_ = 0.05f;
 
-   
     Vector3 ringPosition_ = { 0.0f, 2.0f, 0.0f };
     Vector3 ringScale_ = { 2.0f, 2.0f, 1.0f };
     Vector4 ringColor_ = { 1.0f, 1.0f, 1.0f, 0.7f };
