@@ -125,6 +125,10 @@
     <None Include="Resources\shaders\hlsl\HitParticle.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\HitParticle.hlsli" />
     <None Include="Resources\shaders\hlsl\HitParticle.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Ring.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Ring.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\CylinderEffect.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\CylinderEffect.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

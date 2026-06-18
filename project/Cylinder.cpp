@@ -66,39 +66,79 @@ void Cylinder::Emit(const Vector3& position) {
     particleSystem_.Emit(position);
 }
 
+
 void Cylinder::Update(
     const Matrix4x4& viewMatrix,
     const Matrix4x4& projectionMatrix
 ) {
-    // 粒子の寿命、拡大、フェードアウトを更新する。
     particleSystem_.Update();
+
+    const Matrix4x4 viewProjectionMatrix =
+        Math::Multiply(
+            viewMatrix,
+            projectionMatrix
+        );
 
     uint32_t index = 0;
 
-    for (const auto& cylinder : particleSystem_.GetParticles()) {
+    for (
+        const auto& cylinder :
+        particleSystem_.GetParticles()
+        ) {
         if (index >= kMaxCylinders) {
             break;
         }
 
-        Matrix4x4 scaleMat =
-            Math::Matrix4x4MakeScaleMatrix(cylinder.transform.scale);
-
-        Matrix4x4 transMat =
-            Math::MakeTranslateMatrix(cylinder.transform.translate);
-
-        Matrix4x4 worldMat =
-            Math::Multiply(scaleMat, transMat);
-
-        Matrix4x4 wvp =
-            Math::Multiply(
-                worldMat,
-                Math::Multiply(viewMatrix, projectionMatrix)
+        const Matrix4x4 scaleMatrix =
+            Math::Matrix4x4MakeScaleMatrix(
+                cylinder.transform.scale
             );
 
-        instancingDataMapped_[index].WVP = wvp;
-        instancingDataMapped_[index].color = cylinder.color;
+        const Matrix4x4 translateMatrix =
+            Math::MakeTranslateMatrix(
+                cylinder.transform.translate
+            );
 
-        index++;
+        const Matrix4x4 worldMatrix =
+            Math::Multiply(
+                scaleMatrix,
+                translateMatrix
+            );
+
+        instancingDataMapped_[index].WVP =
+            Math::Multiply(
+                worldMatrix,
+                viewProjectionMatrix
+            );
+
+        instancingDataMapped_[index].color =
+            cylinder.color;
+
+        instancingDataMapped_[index]
+            .shapeParameters = {
+                cylinder.settings.bottomRadiusScale,
+                cylinder.settings.topRadiusScale,
+                cylinder.settings.twistAmount,
+                cylinder.twistPhase
+        };
+
+        instancingDataMapped_[index]
+            .effectParameters = {
+                cylinder.progress,
+                cylinder.settings.topFade,
+                cylinder.settings.bottomFade,
+                0.0f
+        };
+
+        instancingDataMapped_[index]
+            .noiseParameters = {
+                cylinder.settings.noiseStrength,
+                cylinder.settings.noiseFrequency,
+                cylinder.noisePhase,
+                0.0f
+        };
+
+        ++index;
     }
 }
 
@@ -209,15 +249,24 @@ void Cylinder::CreatePipelineState() {
 
         { "INSTANCE_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 64,
         D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1 },
+
+        {"INSTANCE_SHAPE",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,80,
+        D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,1},
+
+        {"INSTANCE_EFFECT",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,96,
+        D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,1},
+
+        {"INSTANCE_NOISE",0,DXGI_FORMAT_R32G32B32A32_FLOAT,1,112,
+        D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA,1}
     };
 
     auto vsBlob = dxCommon_->CompileShader(
-        L"Resources/shaders/hlsl/Particle.VS.hlsl",
+        L"Resources/shaders/hlsl/CylinderEffect.VS.hlsl",
         L"vs_6_0"
     );
 
     auto psBlob = dxCommon_->CompileShader(
-        L"Resources/shaders/hlsl/Particle.PS.hlsl",
+        L"Resources/shaders/hlsl/CylinderEffect.PS.hlsl",
         L"ps_6_0"
     );
 

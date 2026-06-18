@@ -116,89 +116,175 @@ void Primitive::Initialize(
         sizeof(InstanceData);
 }
 
+
 void Primitive::Update(
     const Matrix4x4& viewMatrix,
     const Matrix4x4& projectionMatrix
 ) {
-    const float deltaTime = 1.0f / 60.0f;
+    constexpr float deltaTime =
+        1.0f / 60.0f;
 
     for (
         auto iterator = particles_.begin();
         iterator != particles_.end();
         ) {
-        iterator->lifeTime += deltaTime;
+        Particle& particle =
+            *iterator;
 
-        if (iterator->lifeTime >=
-            iterator->maxTime) {
+        particle.lifeTime +=
+            deltaTime;
 
+        if (
+            particle.lifeTime >=
+            particle.maxTime
+            ) {
             iterator =
                 particles_.erase(iterator);
 
             continue;
         }
 
-        iterator->transform.translate.x +=
-            iterator->velocity.x * deltaTime;
+        const Settings& settings =
+            particle.settings;
 
-        iterator->transform.translate.y +=
-            iterator->velocity.y * deltaTime;
+        // 加速度
+        particle.velocity.x +=
+            settings.acceleration.x *
+            deltaTime;
 
-        iterator->transform.translate.z +=
-            iterator->velocity.z * deltaTime;
+        particle.velocity.y +=
+            settings.acceleration.y *
+            deltaTime;
 
-        iterator->transform.rotate.z +=
-            iterator->angularVelocity *
+        particle.velocity.z +=
+            settings.acceleration.z *
+            deltaTime;
+
+        // 移動
+        particle.transform.translate.x +=
+            particle.velocity.x *
+            deltaTime;
+
+        particle.transform.translate.y +=
+            particle.velocity.y *
+            deltaTime;
+
+        particle.transform.translate.z +=
+            particle.velocity.z *
+            deltaTime;
+
+        particle.transform.rotate.z +=
+            particle.angularVelocity *
             deltaTime;
 
         const float time =
-            iterator->lifeTime /
-            iterator->maxTime;
+            std::clamp(
+                particle.lifeTime /
+                particle.maxTime,
+                0.0f,
+                1.0f
+            );
 
-        iterator->transform.scale.x =
-            iterator->initialScale.x *
-            (
-                1.0f +
-                (
-                    settings_.endWidthScale -
-                    1.0f
-                    ) * time
-                );
-
-        iterator->transform.scale.y =
-            iterator->initialScale.y *
-            (
-                1.0f +
-                (
-                    settings_.endLengthScale -
-                    1.0f
-                    ) * time
-                );
-
-        iterator->color.x =
-            settings_.color.x *
-            settings_.intensity;
-
-        iterator->color.y =
-            settings_.color.y *
-            settings_.intensity;
-
-        iterator->color.z =
-            settings_.color.z *
-            settings_.intensity;
-
-        iterator->color.w =
-            settings_.color.w *
+        // EaseOut
+        const float scaleTime =
+            1.0f -
             std::pow(
                 1.0f - time,
-                settings_.fadePower
+                (std::max)(
+                    settings.scaleEasePower,
+                    0.01f
+                )
             );
+
+        particle.transform.scale.x =
+            particle.initialScale.x *
+            (
+                1.0f +
+                (
+                    settings.endWidthScale -
+                    1.0f
+                    ) *
+                scaleTime
+                );
+
+        particle.transform.scale.y =
+            particle.initialScale.y *
+            (
+                1.0f +
+                (
+                    settings.endLengthScale -
+                    1.0f
+                    ) *
+                scaleTime
+                );
+
+        // 開始色から終了色へ補間
+        const float red =
+            settings.color.x +
+            (
+                settings.endColor.x -
+                settings.color.x
+                ) *
+            time;
+
+        const float green =
+            settings.color.y +
+            (
+                settings.endColor.y -
+                settings.color.y
+                ) *
+            time;
+
+        const float blue =
+            settings.color.z +
+            (
+                settings.endColor.z -
+                settings.color.z
+                ) *
+            time;
+
+        const float baseAlpha =
+            settings.color.w +
+            (
+                settings.endColor.w -
+                settings.color.w
+                ) *
+            time;
+
+        float fadeIn = 1.0f;
+
+        if (settings.fadeInRatio > 0.0f) {
+            fadeIn =
+                std::clamp(
+                    time /
+                    settings.fadeInRatio,
+                    0.0f,
+                    1.0f
+                );
+        }
+
+        const float fadeOut =
+            std::pow(
+                1.0f - time,
+                (std::max)(
+                    settings.fadePower,
+                    0.01f
+                )
+            );
+
+        particle.color = {
+            red * settings.intensity,
+            green * settings.intensity,
+            blue * settings.intensity,
+            baseAlpha * fadeIn * fadeOut
+        };
 
         ++iterator;
     }
 
     uint32_t index = 0;
 
-    Matrix4x4 cameraMatrix =
+    const Matrix4x4 cameraMatrix =
         Math::Inverse(viewMatrix);
 
     Matrix4x4 billboardMatrix =
@@ -231,27 +317,33 @@ void Primitive::Update(
     billboardMatrix.m[2][2] =
         cameraMatrix.m[2][2];
 
-    for (const auto& particle : particles_) {
+    const Matrix4x4 viewProjectionMatrix =
+        Math::Multiply(
+            viewMatrix,
+            projectionMatrix
+        );
+
+    for (const Particle& particle : particles_) {
         if (index >= kMaxParticles) {
             break;
         }
 
-        Matrix4x4 scaleMatrix =
+        const Matrix4x4 scaleMatrix =
             Math::Matrix4x4MakeScaleMatrix(
                 particle.transform.scale
             );
 
-        Matrix4x4 rotateMatrix =
+        const Matrix4x4 rotateMatrix =
             Math::MakeRotateZMatrix(
                 particle.transform.rotate.z
             );
 
-        Matrix4x4 translateMatrix =
+        const Matrix4x4 translateMatrix =
             Math::MakeTranslateMatrix(
                 particle.transform.translate
             );
 
-        Matrix4x4 worldMatrix =
+        const Matrix4x4 worldMatrix =
             Math::Multiply(
                 Math::Multiply(
                     scaleMatrix,
@@ -263,20 +355,11 @@ void Primitive::Update(
                 )
             );
 
-        Matrix4x4 viewProjectionMatrix =
-            Math::Multiply(
-                viewMatrix,
-                projectionMatrix
-            );
-
-        Matrix4x4 wvp =
+        instancingDataMapped_[index].WVP =
             Math::Multiply(
                 worldMatrix,
                 viewProjectionMatrix
             );
-
-        instancingDataMapped_[index].WVP =
-            wvp;
 
         instancingDataMapped_[index].color =
             particle.color;
@@ -284,6 +367,7 @@ void Primitive::Update(
         ++index;
     }
 }
+
 
 void Primitive::Draw()
 {
@@ -364,33 +448,52 @@ void Primitive::Emit(
     }
 
     const float minimumLength =
-        (std::min)(
-            settings_.minLength,
-            settings_.maxLength
+        (std::max)(
+            0.001f,
+            (std::min)(
+                settings_.minLength,
+                settings_.maxLength
+                )
             );
 
     const float maximumLength =
         (std::max)(
-            settings_.minLength,
-            settings_.maxLength
+            minimumLength,
+            (std::max)(
+                settings_.minLength,
+                settings_.maxLength
+                )
             );
 
     const float minimumLifeTime =
-        (std::min)(
-            settings_.minLifeTime,
-            settings_.maxLifeTime
+        (std::max)(
+            0.001f,
+            (std::min)(
+                settings_.minLifeTime,
+                settings_.maxLifeTime
+                )
             );
 
     const float maximumLifeTime =
         (std::max)(
-            settings_.minLifeTime,
-            settings_.maxLifeTime
+            minimumLifeTime,
+            (std::max)(
+                settings_.minLifeTime,
+                settings_.maxLifeTime
+                )
             );
 
-    std::uniform_real_distribution<float>
-        rotationDistribution(
-            -std::numbers::pi_v<float>,
+    const float spread =
+        std::clamp(
+            settings_.directionSpread,
+            0.0f,
             std::numbers::pi_v<float>
+        );
+
+    std::uniform_real_distribution<float>
+        angleDistribution(
+            settings_.directionAngle - spread,
+            settings_.directionAngle + spread
         );
 
     std::uniform_real_distribution<float>
@@ -405,25 +508,53 @@ void Primitive::Emit(
             maximumLifeTime
         );
 
+    std::uniform_real_distribution<float>
+        unitDistribution(
+            0.0f,
+            1.0f
+        );
+
+    std::uniform_real_distribution<float>
+        signedDistribution(
+            -1.0f,
+            1.0f
+        );
+
     for (
         uint32_t index = 0;
         index < count;
         ++index
         ) {
-        if (particles_.size() >=
-            kMaxParticles) {
+        if (
+            particles_.size() >=
+            kMaxParticles
+            ) {
             return;
         }
 
         Particle particle{};
 
+        // 発生時の設定をコピー
+        particle.settings =
+            settings_;
+
         const float angle =
-            rotationDistribution(
+            angleDistribution(
                 primitiveRandomEngine
             );
 
+        const float widthScale =
+            (std::max)(
+                0.01f,
+                1.0f +
+                signedDistribution(
+                    primitiveRandomEngine
+                ) *
+                settings_.widthRandomness
+            );
+
         particle.transform.scale = {
-            settings_.width,
+            settings_.width * widthScale,
             lengthDistribution(
                 primitiveRandomEngine
             ),
@@ -439,22 +570,62 @@ void Primitive::Emit(
             angle
         };
 
-        particle.transform.translate =
-            position;
+        const float spawnAngle =
+            unitDistribution(
+                primitiveRandomEngine
+            ) *
+            std::numbers::pi_v<float> *
+            2.0f;
 
-        // Primitiveが向いている方向へ移動
+        const float spawnDistance =
+            std::sqrt(
+                unitDistribution(
+                    primitiveRandomEngine
+                )
+            ) *
+            (std::max)(
+                settings_.spawnRadius,
+                0.0f
+            );
+
+        particle.transform.translate = {
+            position.x +
+                std::cos(spawnAngle) *
+                spawnDistance,
+
+            position.y +
+                std::sin(spawnAngle) *
+                spawnDistance,
+
+            position.z
+        };
+
+        const float speedScale =
+            (std::max)(
+                0.0f,
+                1.0f +
+                signedDistribution(
+                    primitiveRandomEngine
+                ) *
+                settings_.moveSpeedRandomness
+            );
+
+        const float speed =
+            settings_.moveSpeed *
+            speedScale;
+
         particle.velocity = {
-            -std::sin(angle) *
-                settings_.moveSpeed,
-
-            std::cos(angle) *
-                settings_.moveSpeed,
-
+            -std::sin(angle) * speed,
+            std::cos(angle) * speed,
             0.0f
         };
 
         particle.angularVelocity =
-            settings_.rotationSpeed;
+            settings_.rotationSpeed +
+            signedDistribution(
+                primitiveRandomEngine
+            ) *
+            settings_.rotationSpeedRandomness;
 
         particle.color =
             settings_.color;
@@ -469,6 +640,7 @@ void Primitive::Emit(
         particles_.push_back(particle);
     }
 }
+
 
 void Primitive::CreateRootSignature()
 {
