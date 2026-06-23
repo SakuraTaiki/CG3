@@ -55,6 +55,7 @@
     <ClCompile Include="FpsLimiter.cpp" />
     <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="HitEffectController.cpp" />
+    <ClCompile Include="AnimationDebugController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -108,6 +109,7 @@
     <ClInclude Include="FpsLimiter.h" />
     <ClInclude Include="Primitive.h" />
     <ClInclude Include="HitEffectController.h" />
+    <ClInclude Include="AnimationDebugController.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

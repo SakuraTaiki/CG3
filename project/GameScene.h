@@ -13,8 +13,8 @@
 #include "Ring.h"
 #include "Cylinder.h"
 #include "Primitive.h"
-#include "Skelton.h"
 #include "HitEffectController.h"
+#include "AnimationDebugController.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -38,18 +38,12 @@ private:
     void InitializeRing();
     void InitializeCylinder();
     void InitializePrimitive();
-    void InitializeSkeletonDebug();
+   
 
     // 更新処理。
     void UpdateObjects();
     void UpdateSound();
     void UpdateImGui();
-    void UpdateSkeletonDebug();
-
-    // アニメーション確認用処理。
-    void UpdateAnimationDebug();
-    void DrawAnimationDebugImGui();
-    void SyncAnimatedSkeletonToObject();
 
     // 描画処理。
     void Draw3D();
@@ -73,13 +67,6 @@ private:
     std::unique_ptr<Ring> ring_;
     std::unique_ptr<Cylinder> cylinder_;
 
-    // アニメーション表示用の Object。
-    std::unique_ptr<Object3d> animatedObject_;
-
-    // Skeleton 確認用の表示 Object。
-    std::vector<std::unique_ptr<Object3d>> skeletonDebugObjects_;
-    std::vector<std::unique_ptr<Object3d>> skeletonBoneObjects_;
-
     Sound sound_;
     Sound::SoundData wavSoundData_{};
     Sound::SoundData mp4SoundData_{};
@@ -98,23 +85,11 @@ private:
 
     std::unique_ptr<Primitive> primitive_;
 
-    Animation animatedCubeAnimation_;
-
-    Skeleton animatedSkeleton_;
-    float skeletonAnimationTime_ = 0.0f;
-
-    bool showSkeletonDebug_ = true;
-
-    bool animationPlaying_ = true;
-    bool animationLoop_ = true;
-    float animationSpeed_ = 1.0f;
-
-    int selectedJointIndex_ = 0;
-    bool autoPauseOnJointEdit_ = true;
-    bool showJointDetail_ = true;
+   
     bool showDebugSprite_ = false;
     bool enableSkybox_ = true;
 
     HitEffectController hitEffect_;
+    AnimationDebugController animationDebug_;
     
 };

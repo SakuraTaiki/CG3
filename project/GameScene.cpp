@@ -1,7 +1,6 @@
 #include "GameScene.h"
 
 #include "ModelManager.h"
-#include "AnimationLoader.h"
 
 #include "Input.h"
 #include "DirectXCommon.h"
@@ -14,10 +13,7 @@
 #include "camera.h"
 #include "WinApp.h"
 
-#include <cmath>
 #include <algorithm>
-#include <string>
-
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -49,8 +45,8 @@ void GameScene::Initialize(EngineContext* context) {
 
 void GameScene::Finalize() {
     objects_.clear();
-    skeletonDebugObjects_.clear();
-    skeletonBoneObjects_.clear();
+    
+    animationDebug_.Finalize();
 
     skybox_.reset();
     sprite_.reset();
@@ -114,32 +110,13 @@ void GameScene::InitializeObjects() {
         objects_.push_back(std::move(object));
     }
 
-    {
-        Model* modelAnimated =
-            ModelManager::Load("Resources/human", "walk.gltf");
-
-        animatedCubeAnimation_ =
-            AnimationLoader::Load("Resources/human", "walk.gltf");
-
-        animatedSkeleton_ =
-            CreateSkeleton(modelAnimated->GetRootNode());
-
-        InitializeSkeletonDebug();
-
-        animatedObject_ = std::make_unique<Object3d>();
-        animatedObject_->Initialize(object3dCommon);
-        animatedObject_->SetModel(modelAnimated);
-        //animatedObject_->SetAnimation(animatedCubeAnimation_);
-        animatedObject_->SetSkeleton(animatedSkeleton_);
-
-        animatedObject_->SetPosition({ 0.0f, 0.0f, 0.0f });
-        animatedObject_->SetRotation({ 0.0f, 0.0f, 0.0f });
-        animatedObject_->SetScale({ 1.0f, 1.0f, 1.0f });
-
-        animatedObject_->SetEnvironmentTexture(environmentTexturehandle_);
-        animatedObject_->SetEnvironmentCoefficient(environmentCoefficient_);
-    }
+    animationDebug_.Initialize(
+        object3dCommon,
+        environmentTexturehandle_,
+        environmentCoefficient_
+    );
 }
+
 
 void GameScene::InitializeSprite() {
     uint32_t texHandle =
@@ -199,44 +176,6 @@ void GameScene::InitializePrimitive()
 
 }
 
-void GameScene::InitializeSkeletonDebug() {
-    skeletonDebugObjects_.clear();
-    skeletonBoneObjects_.clear();
-
-    Object3dCommon* object3dCommon = context_->GetObject3dCommon();
-    Model* jointModel = ModelManager::Load("axis.obj");
-
-    for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
-        auto jointObj = std::make_unique<Object3d>();
-        jointObj->Initialize(object3dCommon);
-        jointObj->SetModel(jointModel);
-        jointObj->SetScale({ 0.3f, 0.3f, 0.3f });
-        jointObj->SetRotation({ 0.0f, 0.0f, 0.0f });
-        jointObj->SetPosition({ 0.0f, 0.0f, 0.0f });
-        jointObj->SetEnvironmentTexture(environmentTexturehandle_);
-        jointObj->SetEnvironmentCoefficient(environmentCoefficient_);
-
-        skeletonDebugObjects_.push_back(std::move(jointObj));
-    }
-
-    for (const Joint& joint : animatedSkeleton_.joints) {
-        if (!joint.parent) {
-            continue;
-        }
-
-        auto boneObj = std::make_unique<Object3d>();
-        boneObj->Initialize(object3dCommon);
-        boneObj->SetModel(jointModel);
-        boneObj->SetScale({ 0.1f, 0.1f, 0.1f });
-        boneObj->SetRotation({ 0.0f, 0.0f, 0.0f });
-        boneObj->SetPosition({ 0.0f, 0.0f, 0.0f });
-        boneObj->SetEnvironmentTexture(environmentTexturehandle_);
-        boneObj->SetEnvironmentCoefficient(environmentCoefficient_);
-
-        skeletonBoneObjects_.push_back(std::move(boneObj));
-    }
-}
-
 
 void GameScene::Update() {
     Input* input = context_->GetInput();
@@ -285,6 +224,7 @@ void GameScene::Update() {
     }
 
     if (ring_) {
+        ring_->SetIsActive(hitEffect_.EnableRing());
         ring_->Update(view, projection);
     }
 
@@ -310,7 +250,6 @@ void GameScene::Update() {
 }
 
 void GameScene::UpdateObjects() {
-
     if (drawMode_ == DrawMode::NormalObj) {
         for (auto& object : objects_) {
             object->Update();
@@ -318,52 +257,10 @@ void GameScene::UpdateObjects() {
     }
 
     if (drawMode_ == DrawMode::Animation) {
-        UpdateAnimationDebug();
-
-        if (showSkeletonDebug_) {
-            UpdateSkeletonDebug();
-        }
-
-        SyncAnimatedSkeletonToObject();
-
-        if (animatedObject_) {
-            animatedObject_->Update();
-        }
+        animationDebug_.Update();
     }
 }
 
-
-void GameScene::UpdateAnimationDebug() {
-    if (animationPlaying_) {
-        skeletonAnimationTime_ += (1.0f / 60.0f) * animationSpeed_;
-
-        if (animatedCubeAnimation_.duration > 0.0f) {
-            if (animationLoop_) {
-                skeletonAnimationTime_ =
-                    std::fmod(skeletonAnimationTime_, animatedCubeAnimation_.duration);
-            } else if (skeletonAnimationTime_ > animatedCubeAnimation_.duration) {
-                skeletonAnimationTime_ = animatedCubeAnimation_.duration;
-                animationPlaying_ = false;
-            }
-        }
-
-        ApplyAnimation(
-            animatedSkeleton_,
-            animatedCubeAnimation_,
-            skeletonAnimationTime_
-        );
-    }
-
-    UpdateSkelton(animatedSkeleton_);
-}
-
-void GameScene::SyncAnimatedSkeletonToObject() {
-    if (!animatedObject_) {
-        return;
-    }
-
-    animatedObject_->SetSkeleton(animatedSkeleton_);
-}
 
 void GameScene::UpdateSound() {
     Input* input = context_->GetInput();
@@ -391,173 +288,7 @@ void GameScene::UpdateSound() {
     }
 }
 
-void GameScene::DrawAnimationDebugImGui() {
-#ifdef USE_IMGUI
-    ImGui::Text("Animation Control");
-    ImGui::Separator();
 
-    if (ImGui::Button(animationPlaying_ ? "Pause" : "Play", ImVec2(100.0f, 28.0f))) {
-        animationPlaying_ = !animationPlaying_;
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Reset", ImVec2(100.0f, 28.0f))) {
-        skeletonAnimationTime_ = 0.0f;
-        ApplyAnimation(animatedSkeleton_, animatedCubeAnimation_, skeletonAnimationTime_);
-        UpdateSkelton(animatedSkeleton_);
-    }
-
-    ImGui::Checkbox("Loop", &animationLoop_);
-    ImGui::Checkbox("Auto Pause On Joint Edit", &autoPauseOnJointEdit_);
-    ImGui::Checkbox("Show Skeleton Debug", &showSkeletonDebug_);
-
-    ImGui::DragFloat("Speed", &animationSpeed_, 0.01f, 0.0f, 5.0f);
-
-    if (animatedCubeAnimation_.duration > 0.0f) {
-        ImGui::SliderFloat(
-            "Time",
-            &skeletonAnimationTime_,
-            0.0f,
-            animatedCubeAnimation_.duration
-        );
-
-        if (!animationPlaying_) {
-            ApplyAnimation(animatedSkeleton_, animatedCubeAnimation_, skeletonAnimationTime_);
-            UpdateSkelton(animatedSkeleton_);
-        }
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Text("Skeleton");
-
-    const int jointCount = static_cast<int>(animatedSkeleton_.joints.size());
-    ImGui::Text("Joint Count : %d", jointCount);
-
-    if (jointCount == 0) {
-        return;
-    }
-
-    if (selectedJointIndex_ < 0) {
-        selectedJointIndex_ = 0;
-    }
-
-    if (selectedJointIndex_ >= jointCount) {
-        selectedJointIndex_ = jointCount - 1;
-    }
-
-    const char* previewName =
-        animatedSkeleton_.joints[selectedJointIndex_].name.c_str();
-
-    if (ImGui::BeginCombo("Selected Joint", previewName)) {
-        for (int i = 0; i < jointCount; ++i) {
-            const bool isSelected = selectedJointIndex_ == i;
-
-            std::string label =
-                std::to_string(i) + " : " + animatedSkeleton_.joints[i].name;
-
-            if (ImGui::Selectable(label.c_str(), isSelected)) {
-                selectedJointIndex_ = i;
-            }
-
-            if (isSelected) {
-                ImGui::SetItemDefaultFocus();
-            }
-        }
-
-        ImGui::EndCombo();
-    }
-
-    Joint& joint = animatedSkeleton_.joints[selectedJointIndex_];
-
-    ImGui::Spacing();
-    ImGui::Text("Joint Detail");
-    ImGui::Separator();
-
-    ImGui::Text("Name   : %s", joint.name.c_str());
-    ImGui::Text("Index  : %d", joint.index);
-
-    if (joint.parent) {
-        ImGui::Text("Parent : %d", *joint.parent);
-    } else {
-        ImGui::Text("Parent : none");
-    }
-
-    Vector3 translate = joint.transform.translate;
-    Vector3 scale = joint.transform.scale;
-    Quaternion rotate = joint.transform.rotate;
-
-    bool edited = false;
-
-    edited |= ImGui::DragFloat3(
-        "Local Translate",
-        &translate.x,
-        0.01f,
-        -100.0f,
-        100.0f
-    );
-
-    edited |= ImGui::DragFloat3(
-        "Local Scale",
-        &scale.x,
-        0.01f,
-        0.001f,
-        100.0f
-    );
-
-    edited |= ImGui::DragFloat4(
-        "Local Rotate Quaternion",
-        &rotate.x,
-        0.01f,
-        -1.0f,
-        1.0f
-    );
-
-    if (ImGui::Button("Normalize Quaternion", ImVec2(180.0f, 28.0f))) {
-        rotate = Math::Normalize(rotate);
-        edited = true;
-    }
-
-    if (edited) {
-        if (autoPauseOnJointEdit_) {
-            animationPlaying_ = false;
-        }
-
-        joint.transform.translate = translate;
-        joint.transform.scale = scale;
-        joint.transform.rotate = Math::Normalize(rotate);
-
-        UpdateSkelton(animatedSkeleton_);
-    }
-
-    const Matrix4x4& skeletonMatrix = joint.skeletonSpaceMatrix;
-
-    Vector3 skeletonPosition = {
-        skeletonMatrix.m[3][0],
-        skeletonMatrix.m[3][1],
-        skeletonMatrix.m[3][2]
-    };
-
-    ImGui::Spacing();
-    ImGui::Text("Skeleton Space");
-    ImGui::BulletText(
-        "Position : %.3f, %.3f, %.3f",
-        skeletonPosition.x,
-        skeletonPosition.y,
-        skeletonPosition.z
-    );
-
-    if (ImGui::TreeNode("Children")) {
-        for (int32_t childIndex : joint.children) {
-            const Joint& child = animatedSkeleton_.joints[childIndex];
-            ImGui::BulletText("%d : %s", childIndex, child.name.c_str());
-        }
-
-        ImGui::TreePop();
-    }
-#endif
-}
 
 void GameScene::UpdateImGui() {
 #ifdef USE_IMGUI
@@ -601,21 +332,21 @@ void GameScene::UpdateImGui() {
     ImGui::Spacing();
 
     ImGui::Text("Skeleton");
-    ImGui::BulletText("Joint Count : %d", static_cast<int>(animatedSkeleton_.joints.size()));
-    ImGui::BulletText("Animation Time : %.2f", skeletonAnimationTime_);
+    ImGui::BulletText("Joint Count : %d", animationDebug_.GetJointCount());
+    ImGui::BulletText("Animation Time : %.2f", animationDebug_.GetAnimationTime());
     ImGui::Spacing();
 
-    ImGui::Checkbox("Show Skeleton Debug", &showSkeletonDebug_);
-
-    ImGui::BulletText(
-        "Joint Count : %d",
-        static_cast<int>(animatedSkeleton_.joints.size())
+    ImGui::Checkbox(
+        "Show Skeleton Debug",
+        &animationDebug_.ShowSkeletonDebug()
     );
+
+    
 
     if (ImGui::BeginTabBar("MainTabs")) {
 
         if (ImGui::BeginTabItem("Animation")) {
-            DrawAnimationDebugImGui();
+            animationDebug_.DrawImGui();
             ImGui::EndTabItem();
         }
 
@@ -1511,6 +1242,8 @@ void GameScene::UpdateImGui() {
                 for (auto& object : objects_) {
                     object->SetEnvironmentCoefficient(environmentCoefficient_);
                 }
+
+                animationDebug_.SetEnvironmentCoefficient(environmentCoefficient_);
             }
 
             ImGui::EndTabItem();
@@ -1630,60 +1363,6 @@ void GameScene::UpdateImGui() {
 #endif
 }
 
-void GameScene::UpdateSkeletonDebug() {
-    if (skeletonDebugObjects_.size() != animatedSkeleton_.joints.size()) {
-        return;
-    }
-
-    for (size_t i = 0; i < animatedSkeleton_.joints.size(); ++i) {
-        const Matrix4x4& mat = animatedSkeleton_.joints[i].skeletonSpaceMatrix;
-
-        Vector3 jointPosition = {
-            mat.m[3][0],
-            mat.m[3][1],
-            mat.m[3][2]
-        };
-
-        skeletonDebugObjects_[i]->SetPosition(jointPosition);
-        skeletonDebugObjects_[i]->Update();
-    }
-
-    size_t boneIndex = 0;
-
-    for (const Joint& joint : animatedSkeleton_.joints) {
-        if (!joint.parent) {
-            continue;
-        }
-
-        const Matrix4x4& childMat = joint.skeletonSpaceMatrix;
-        const Matrix4x4& parentMat =
-            animatedSkeleton_.joints[*joint.parent].skeletonSpaceMatrix;
-
-        Vector3 childPos = {
-            childMat.m[3][0],
-            childMat.m[3][1],
-            childMat.m[3][2]
-        };
-
-        Vector3 parentPos = {
-            parentMat.m[3][0],
-            parentMat.m[3][1],
-            parentMat.m[3][2]
-        };
-
-        Vector3 center = {
-            (childPos.x + parentPos.x) * 0.5f,
-            (childPos.y + parentPos.y) * 0.5f,
-            (childPos.z + parentPos.z) * 0.5f
-        };
-
-        skeletonBoneObjects_[boneIndex]->SetPosition(center);
-        skeletonBoneObjects_[boneIndex]->SetScale({ 0.15f, 0.15f, 0.15f });
-        skeletonBoneObjects_[boneIndex]->Update();
-
-        ++boneIndex;
-    }
-}
 
 void GameScene::Draw() {
     Draw3D();
@@ -1706,19 +1385,7 @@ void GameScene::Draw3D() {
     }
 
     if (drawMode_ == DrawMode::Animation) {
-        if (animatedObject_) {
-            animatedObject_->Draw();
-        }
-
-        if (showSkeletonDebug_) {
-            for (auto& debugObject : skeletonDebugObjects_) {
-                debugObject->Draw();
-            }
-
-            for (auto& boneObject : skeletonBoneObjects_) {
-                boneObject->Draw();
-            }
-        }
+        animationDebug_.Draw();
     }
 
     if (enableSkybox_ && skybox_) {
