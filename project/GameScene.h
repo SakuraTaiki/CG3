@@ -16,6 +16,7 @@
 #include "SoundController.h"
 #include "CameraDebugController.h"
 #include "EnvironmentController.h"
+#include "SceneObjectController.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -33,7 +34,6 @@ private:
     // 初期化処理を役割ごとに分ける。
     void InitializeModels();
     void InitializeSprite();
-    void InitializeObjects();
     void InitializeRing();
     void InitializeCylinder();
     void InitializePrimitive();
@@ -58,8 +58,6 @@ private:
     // 非所有。実体は Engine が持つ。
     EngineContext* context_ = nullptr;
 
-    std::vector<std::unique_ptr<Object3d>> objects_;
-
     std::unique_ptr<Sprite> sprite_;
     std::unique_ptr<Ring> ring_;
     std::unique_ptr<Cylinder> cylinder_;
@@ -78,4 +76,5 @@ private:
     SoundController soundController_;
     CameraDebugController cameraDebug_;
     EnvironmentController environment_;
+    SceneObjectController sceneObjects_;
 };
