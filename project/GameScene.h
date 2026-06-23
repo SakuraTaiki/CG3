@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <array>
 #include <vector>
 
 #include "IScene.h"
@@ -15,6 +14,7 @@
 #include "Cylinder.h"
 #include "Primitive.h"
 #include "Skelton.h"
+#include "HitEffectController.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -27,15 +27,6 @@ public:
     void Update() override;
     void Draw() override;
 
-
-    enum class HitEffectType
-    {
-        Fire,
-        Sakura
-    };
-
-    HitEffectType hitEffectType_ =
-        HitEffectType::Fire;
 
 private:
     // 初期化処理を役割ごとに分ける。
@@ -60,28 +51,9 @@ private:
     void DrawAnimationDebugImGui();
     void SyncAnimatedSkeletonToObject();
 
-    void ApplyFireHitEffectPreset();
-
-    // SPACE キーや ImGui ボタンから呼ばれるエフェクト発生処理。
-    void EmitEffect(const Vector3& position);
-
-    bool SaveEffectPreset(
-        const std::string& presetName
-    );
-
-    bool LoadEffectPreset(
-        const std::string& presetName
-    );
-
-    void RefreshEffectPresetList();
-
     // 描画処理。
     void Draw3D();
     void Draw2D();
-
-    void DrawHitEffectSizeImGui();
-
-    float hitEffectSize_ = 1.0f;
 
 private:
     enum class DrawMode {
@@ -108,18 +80,6 @@ private:
     std::vector<std::unique_ptr<Object3d>> skeletonDebugObjects_;
     std::vector<std::unique_ptr<Object3d>> skeletonBoneObjects_;
 
-    std::vector<std::string>
-        effectPresetNames_;
-
-    int selectedEffectPreset_ = 0;
-
-    std::array<char, 64>
-        effectPresetNameBuffer_ = {
-            'F', 'i', 'r', 'e', '\0'
-    };
-
-    std::string effectSettingsMessage_;
-
     Sound sound_;
     Sound::SoundData wavSoundData_{};
     Sound::SoundData mp4SoundData_{};
@@ -136,17 +96,7 @@ private:
     Vector3 ringScale_ = { 2.0f, 2.0f, 1.0f };
     Vector4 ringColor_ = { 1.0f, 1.0f, 1.0f, 0.7f };
 
-    Vector3 hitEffectPosition_ = {
-    0.0f,
-    3.0f,
-    0.0f
-    };
-
-    bool enableRing_ = true;
-    bool enableCylinder_ = true;
-
     std::unique_ptr<Primitive> primitive_;
-    bool enablePrimitive_ = true;
 
     Animation animatedCubeAnimation_;
 
@@ -165,6 +115,6 @@ private:
     bool showDebugSprite_ = false;
     bool enableSkybox_ = true;
 
-
+    HitEffectController hitEffect_;
     
 };

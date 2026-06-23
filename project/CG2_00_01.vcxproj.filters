@@ -54,6 +54,7 @@
     <ClCompile Include="DirectXShaderCompiler.cpp" />
     <ClCompile Include="FpsLimiter.cpp" />
     <ClCompile Include="Primitive.cpp" />
+    <ClCompile Include="HitEffectController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -106,6 +107,7 @@
     <ClInclude Include="DirectXShaderCompiler.h" />
     <ClInclude Include="FpsLimiter.h" />
     <ClInclude Include="Primitive.h" />
+    <ClInclude Include="HitEffectController.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
