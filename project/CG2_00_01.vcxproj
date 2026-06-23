@@ -158,6 +158,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="AnimationDebugController.cpp" />
     <ClCompile Include="AnimationLoader.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CameraDebugController.cpp" />
     <ClCompile Include="Cylinder.cpp" />
     <ClCompile Include="CylinderParticleSystem.cpp" />
     <ClCompile Include="D3DResourceLeakChecker.cpp" />
@@ -227,6 +228,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="AnimationDebugController.h" />
     <ClInclude Include="AnimationLoader.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="CameraDebugController.h" />
     <ClInclude Include="Cylinder.h" />
     <ClInclude Include="CylinderParticleSystem.h" />
     <ClInclude Include="D3DResourceLeakChecker.h" />
