@@ -8,7 +8,6 @@
 
 #include "Object3d.h"
 #include "Sprite.h"
-#include "Skybox.h"
 #include "Ring.h"
 #include "Cylinder.h"
 #include "Primitive.h"
@@ -16,6 +15,7 @@
 #include "AnimationDebugController.h"
 #include "SoundController.h"
 #include "CameraDebugController.h"
+#include "EnvironmentController.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -33,7 +33,6 @@ private:
     // 初期化処理を役割ごとに分ける。
     void InitializeModels();
     void InitializeSprite();
-    void InitializeSkybox();
     void InitializeObjects();
     void InitializeRing();
     void InitializeCylinder();
@@ -62,12 +61,8 @@ private:
     std::vector<std::unique_ptr<Object3d>> objects_;
 
     std::unique_ptr<Sprite> sprite_;
-    std::unique_ptr<Skybox> skybox_;
     std::unique_ptr<Ring> ring_;
     std::unique_ptr<Cylinder> cylinder_;
-
-    uint32_t environmentTexturehandle_ = 0;
-    float environmentCoefficient_ = 0.05f;
 
     Vector3 ringPosition_ = { 0.0f, 2.0f, 0.0f };
     Vector3 ringScale_ = { 2.0f, 2.0f, 1.0f };
@@ -77,10 +72,10 @@ private:
 
    
     bool showDebugSprite_ = false;
-    bool enableSkybox_ = true;
 
     HitEffectController hitEffect_;
     AnimationDebugController animationDebug_;
     SoundController soundController_;
     CameraDebugController cameraDebug_;
+    EnvironmentController environment_;
 };
