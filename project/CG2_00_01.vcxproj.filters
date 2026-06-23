@@ -57,6 +57,7 @@
     <ClCompile Include="HitEffectController.cpp" />
     <ClCompile Include="AnimationDebugController.cpp" />
     <ClCompile Include="SoundController.cpp" />
+    <ClCompile Include="CameraDebugController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -112,6 +113,7 @@
     <ClInclude Include="HitEffectController.h" />
     <ClInclude Include="AnimationDebugController.h" />
     <ClInclude Include="SoundController.h" />
+    <ClInclude Include="CameraDebugController.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

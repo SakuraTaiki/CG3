@@ -15,6 +15,7 @@
 #include "HitEffectController.h"
 #include "AnimationDebugController.h"
 #include "SoundController.h"
+#include "CameraDebugController.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -81,4 +82,5 @@ private:
     HitEffectController hitEffect_;
     AnimationDebugController animationDebug_;
     SoundController soundController_;
+    CameraDebugController cameraDebug_;
 };
