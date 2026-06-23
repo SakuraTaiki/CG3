@@ -27,7 +27,6 @@ void GameScene::Initialize(EngineContext* context) {
     InitializeSprite();
     InitializeSkybox();
     InitializeObjects();
-    InitializeSound();
     InitializeRing();
     InitializeCylinder();
     InitializePrimitive();
@@ -41,6 +40,8 @@ void GameScene::Initialize(EngineContext* context) {
 
     hitEffect_.ApplyFirePreset();
     hitEffect_.RefreshPresetList();
+
+    soundController_.Initialize();
 }
 
 void GameScene::Finalize() {
@@ -51,7 +52,7 @@ void GameScene::Finalize() {
     skybox_.reset();
     sprite_.reset();
 
-    sound_.Finalize();
+    soundController_.Finalize();
     ModelManager::Finalize();
 
     context_ = nullptr;
@@ -143,14 +144,6 @@ void GameScene::InitializeSkybox() {
         );
 }
 
-void GameScene::InitializeSound() {
-    sound_.Initialize();
-
-    wavSoundData_ = sound_.SoundLoadFile("Resources/Sound/Alarm01.wav");
-    mp4SoundData_ = sound_.SoundLoadFile("Resources/Sound/AlarmMovie.mp4");
-    mp3SoundData_ = sound_.SoundLoadFile("Resources/Sound/maou_bgm_neorock83.mp3");
-}
-
 void GameScene::InitializeRing() {
     ring_ = std::make_unique<Ring>();
     ring_->Initialize(context_->GetDxCommon(), context_->GetTextureManager());
@@ -184,7 +177,7 @@ void GameScene::Update() {
         hitEffect_.Emit({ 0.0f, 3.0f, 0.0f });
     }
 
-    UpdateSound();
+    soundController_.Update(context_->GetInput());
     UpdateObjects();
 
 
@@ -260,34 +253,6 @@ void GameScene::UpdateObjects() {
         animationDebug_.Update();
     }
 }
-
-
-void GameScene::UpdateSound() {
-    Input* input = context_->GetInput();
-
-    if (input->TriggerKey(DIK_M)) {
-        sound_.SoundPlay(mp4SoundData_, mp4Volume_);
-    }
-
-    if (input->TriggerKey(DIK_N)) {
-        sound_.SoundPlay(mp3SoundData_, mp3Volume_);
-    }
-
-    if (input->TriggerKey(DIK_UP)) {
-        mp3Volume_ += 0.1f;
-        if (mp3Volume_ > 1.0f) {
-            mp3Volume_ = 1.0f;
-        }
-    }
-
-    if (input->TriggerKey(DIK_DOWN)) {
-        mp3Volume_ -= 0.1f;
-        if (mp3Volume_ < 0.0f) {
-            mp3Volume_ = 0.0f;
-        }
-    }
-}
-
 
 
 void GameScene::UpdateImGui() {
@@ -1254,17 +1219,7 @@ void GameScene::UpdateImGui() {
         // ==================================================
         if (ImGui::BeginTabItem("Sound")) {
 
-            ImGui::Text("Sound Volume");
-            ImGui::Separator();
-
-            ImGui::SliderFloat("Wav Volume", &wavVolume_, 0.0f, 1.0f);
-            ImGui::SliderFloat("Mp4 Volume", &mp4Volume_, 0.0f, 1.0f);
-            ImGui::SliderFloat("Mp3 Volume", &mp3Volume_, 0.0f, 1.0f);
-
-            ImGui::Spacing();
-            ImGui::TextDisabled("M key : Play mp4");
-            ImGui::TextDisabled("N key : Play mp3");
-            ImGui::TextDisabled("UP / DOWN : Change mp3 volume");
+            soundController_.DrawImGui();
 
             ImGui::EndTabItem();
         }

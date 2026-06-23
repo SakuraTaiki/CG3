@@ -9,12 +9,12 @@
 #include "Object3d.h"
 #include "Sprite.h"
 #include "Skybox.h"
-#include "Sound.h"
 #include "Ring.h"
 #include "Cylinder.h"
 #include "Primitive.h"
 #include "HitEffectController.h"
 #include "AnimationDebugController.h"
+#include "SoundController.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -34,7 +34,6 @@ private:
     void InitializeSprite();
     void InitializeSkybox();
     void InitializeObjects();
-    void InitializeSound();
     void InitializeRing();
     void InitializeCylinder();
     void InitializePrimitive();
@@ -42,7 +41,6 @@ private:
 
     // 更新処理。
     void UpdateObjects();
-    void UpdateSound();
     void UpdateImGui();
 
     // 描画処理。
@@ -67,15 +65,6 @@ private:
     std::unique_ptr<Ring> ring_;
     std::unique_ptr<Cylinder> cylinder_;
 
-    Sound sound_;
-    Sound::SoundData wavSoundData_{};
-    Sound::SoundData mp4SoundData_{};
-    Sound::SoundData mp3SoundData_{};
-
-    float wavVolume_ = 0.5f;
-    float mp4Volume_ = 0.5f;
-    float mp3Volume_ = 0.5f;
-
     uint32_t environmentTexturehandle_ = 0;
     float environmentCoefficient_ = 0.05f;
 
@@ -91,5 +80,5 @@ private:
 
     HitEffectController hitEffect_;
     AnimationDebugController animationDebug_;
-    
+    SoundController soundController_;
 };
