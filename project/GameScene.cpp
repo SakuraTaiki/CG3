@@ -14,40 +14,9 @@
 #include "camera.h"
 #include "WinApp.h"
 
-
 #include <cmath>
 #include <algorithm>
-#include <cctype>
-#include <filesystem>
-#include <fstream>
 #include <string>
-
-
-namespace
-{
-    std::string MakeSafePresetName(
-        const std::string& name
-    ) {
-        std::string result;
-
-        for (unsigned char character : name) {
-            if (
-                std::isalnum(character) ||
-                character == '_' ||
-                character == '-'
-                ) {
-                result +=
-                    static_cast<char>(character);
-            }
-        }
-
-        if (result.empty()) {
-            result = "NewPreset";
-        }
-
-        return result;
-    }
-}
 
 
 #ifdef USE_IMGUI
@@ -67,9 +36,15 @@ void GameScene::Initialize(EngineContext* context) {
     InitializeCylinder();
     InitializePrimitive();
 
-    ApplyFireHitEffectPreset();
+    hitEffect_.Initialize(
+        primitive_.get(),
+        ring_.get(),
+        cylinder_.get(),
+        context_->GetParticleManager()
+    );
 
-    RefreshEffectPresetList();
+    hitEffect_.ApplyFirePreset();
+    hitEffect_.RefreshPresetList();
 }
 
 void GameScene::Finalize() {
@@ -202,7 +177,6 @@ void GameScene::InitializeSound() {
 void GameScene::InitializeRing() {
     ring_ = std::make_unique<Ring>();
     ring_->Initialize(context_->GetDxCommon(), context_->GetTextureManager());
-    ring_->SetIsActive(enableRing_);
 }
 
 void GameScene::InitializeCylinder()
@@ -212,8 +186,6 @@ void GameScene::InitializeCylinder()
         context_->GetDxCommon(),
         context_->GetTextureManager()
     );
-    cylinder_->SetIsActive(enableCylinder_);
-
 }
 
 void GameScene::InitializePrimitive()
@@ -225,9 +197,6 @@ void GameScene::InitializePrimitive()
         context_->GetTextureManager()
     );
 
-    primitive_->SetIsActive(
-        enablePrimitive_
-    );
 }
 
 void GameScene::InitializeSkeletonDebug() {
@@ -269,1200 +238,11 @@ void GameScene::InitializeSkeletonDebug() {
 }
 
 
-void GameScene::EmitEffect(
-    const Vector3& position
-) {
-    const float size =
-        (std::max)(hitEffectSize_, 0.01f);
-
-    // Primitive／Ring／Cylinderを
-    // 現在のImGui設定で発生させる
-    const auto emitComponents = [&]() {
-
-        // =====================================
-        // Primitive
-        // =====================================
-        if (enablePrimitive_ && primitive_) {
-            Primitive::Settings& settings =
-                primitive_->GetSettings();
-
-            const float originalWidth =
-                settings.width;
-
-            const float originalMinLength =
-                settings.minLength;
-
-            const float originalMaxLength =
-                settings.maxLength;
-
-            const float originalMoveSpeed =
-                settings.moveSpeed;
-
-            settings.width =
-                originalWidth * size;
-
-            settings.minLength =
-                originalMinLength * size;
-
-            settings.maxLength =
-                originalMaxLength * size;
-
-            settings.moveSpeed =
-                originalMoveSpeed * size;
-
-            primitive_->Emit(position);
-
-            settings.width =
-                originalWidth;
-
-            settings.minLength =
-                originalMinLength;
-
-            settings.maxLength =
-                originalMaxLength;
-
-            settings.moveSpeed =
-                originalMoveSpeed;
-        }
-
-        // =====================================
-        // Ring
-        // =====================================
-        if (enableRing_ && ring_) {
-            Ring::Settings& settings =
-                ring_->GetSettings();
-
-            const float originalStartScale =
-                settings.startScale;
-
-            const float originalEndScale =
-                settings.endScale;
-
-            settings.startScale =
-                originalStartScale * size;
-
-            settings.endScale =
-                originalEndScale * size;
-
-            ring_->Emit(position);
-
-            settings.startScale =
-                originalStartScale;
-
-            settings.endScale =
-                originalEndScale;
-        }
-
-        // =====================================
-        // Cylinder
-        // =====================================
-        if (enableCylinder_ && cylinder_) {
-            Cylinder::Settings& settings =
-                cylinder_->GetSettings();
-
-            const float originalRadius =
-                settings.radius;
-
-            const float originalStartHeight =
-                settings.startHeight;
-
-            const float originalEndHeight =
-                settings.endHeight;
-
-            const float originalRiseDistance =
-                settings.riseDistance;
-
-            const Vector3 originalPositionOffset =
-                settings.positionOffset;
-
-            settings.radius =
-                originalRadius * size;
-
-            settings.startHeight =
-                originalStartHeight * size;
-
-            settings.endHeight =
-                originalEndHeight * size;
-
-            settings.riseDistance =
-                originalRiseDistance * size;
-
-            settings.positionOffset = {
-                originalPositionOffset.x * size,
-                originalPositionOffset.y * size,
-                originalPositionOffset.z * size
-            };
-
-            cylinder_->Emit(position);
-
-            settings.radius =
-                originalRadius;
-
-            settings.startHeight =
-                originalStartHeight;
-
-            settings.endHeight =
-                originalEndHeight;
-
-            settings.riseDistance =
-                originalRiseDistance;
-
-            settings.positionOffset =
-                originalPositionOffset;
-        }
-        };
-
-    // =====================================
-    // 桜のHitEffect
-    // =====================================
-    if (
-        hitEffectType_ ==
-        HitEffectType::Sakura
-        ) {
-        context_
-            ->GetParticleManager()
-            ->EmitSakura(
-                position,
-                size
-            );
-
-        emitComponents();
-
-        return;
-    }
-
-    // =====================================
-    // 炎のHitEffect
-    // =====================================
-    context_
-        ->GetParticleManager()
-        ->Emit(
-            position,
-            28
-        );
-
-    emitComponents();
-}
-
-
-bool GameScene::SaveEffectPreset(
-    const std::string& presetName
-) {
-    namespace fs = std::filesystem;
-
-    std::string safeName;
-
-    for (unsigned char character : presetName) {
-        if (
-            std::isalnum(character) ||
-            character == '_' ||
-            character == '-'
-            ) {
-            safeName +=
-                static_cast<char>(character);
-        }
-    }
-
-    if (safeName.empty()) {
-        safeName = "NewPreset";
-    }
-
-    const fs::path directory =
-        "Resources/Settings/HitEffects";
-
-    fs::create_directories(directory);
-
-    const fs::path filePath =
-        directory / (safeName + ".txt");
-
-    std::ofstream file(filePath);
-
-    if (!file.is_open()) {
-        effectSettingsMessage_ =
-            "Preset save failed";
-
-        return false;
-    }
-
-    const auto writeVector3 =
-        [&](const char* name, const Vector3& value) {
-        file << name << " "
-            << value.x << " "
-            << value.y << " "
-            << value.z << "\n";
-        };
-
-    const auto writeVector4 =
-        [&](const char* name, const Vector4& value) {
-        file << name << " "
-            << value.x << " "
-            << value.y << " "
-            << value.z << " "
-            << value.w << "\n";
-        };
-
-    file << "PresetVersion 2\n";
-
-    writeVector3(
-        "EffectPosition",
-        hitEffectPosition_
-    );
-
-    file << "EffectSize "
-        << hitEffectSize_ << "\n";
-
-    file << "HitEffectType "
-        << static_cast<int>(hitEffectType_)
-        << "\n";
-
-    file << "EnablePrimitive "
-        << enablePrimitive_ << "\n";
-
-    file << "EnableRing "
-        << enableRing_ << "\n";
-
-    file << "EnableCylinder "
-        << enableCylinder_ << "\n";
-
-    // =====================================
-    // Primitive
-    // =====================================
-    if (primitive_) {
-        const Primitive::Settings& settings =
-            primitive_->GetSettings();
-
-        writeVector4(
-            "PrimitiveColor",
-            settings.color
-        );
-
-        writeVector4(
-            "PrimitiveEndColor",
-            settings.endColor
-        );
-
-        file << "PrimitiveCount "
-            << settings.count << "\n";
-
-        file << "PrimitiveIntensity "
-            << settings.intensity << "\n";
-
-        file << "PrimitiveWidth "
-            << settings.width << "\n";
-
-        file << "PrimitiveWidthRandomness "
-            << settings.widthRandomness << "\n";
-
-        file << "PrimitiveLength "
-            << settings.minLength << " "
-            << settings.maxLength << "\n";
-
-        file << "PrimitiveLifeTime "
-            << settings.minLifeTime << " "
-            << settings.maxLifeTime << "\n";
-
-        file << "PrimitiveMoveSpeed "
-            << settings.moveSpeed << "\n";
-
-        file << "PrimitiveMoveSpeedRandomness "
-            << settings.moveSpeedRandomness << "\n";
-
-        file << "PrimitiveRotationSpeed "
-            << settings.rotationSpeed << "\n";
-
-        file << "PrimitiveRotationSpeedRandomness "
-            << settings.rotationSpeedRandomness << "\n";
-
-        file << "PrimitiveDirection "
-            << settings.directionAngle << " "
-            << settings.directionSpread << "\n";
-
-        file << "PrimitiveSpawnRadius "
-            << settings.spawnRadius << "\n";
-
-        writeVector3(
-            "PrimitiveAcceleration",
-            settings.acceleration
-        );
-
-        file << "PrimitiveEndScale "
-            << settings.endWidthScale << " "
-            << settings.endLengthScale << "\n";
-
-        file << "PrimitiveScaleEasePower "
-            << settings.scaleEasePower << "\n";
-
-        file << "PrimitiveFadeInRatio "
-            << settings.fadeInRatio << "\n";
-
-        file << "PrimitiveFadePower "
-            << settings.fadePower << "\n";
-    }
-
-    // =====================================
-    // Ring
-    // =====================================
-    if (ring_) {
-        const Ring::Settings& settings =
-            ring_->GetSettings();
-
-        writeVector4(
-            "RingColor",
-            settings.color
-        );
-
-        writeVector4(
-            "RingEndColor",
-            settings.endColor
-        );
-
-        file << "RingIntensity "
-            << settings.intensity << "\n";
-
-        file << "RingScale "
-            << settings.startScale << " "
-            << settings.endScale << "\n";
-
-        file << "RingThickness "
-            << settings.thickness << "\n";
-
-        file << "RingEndThickness "
-            << settings.endThickness << "\n";
-
-        file << "RingLifeTime "
-            << settings.lifeTime << "\n";
-
-        file << "RingFadeInRatio "
-            << settings.fadeInRatio << "\n";
-
-        file << "RingEasePower "
-            << settings.easePower << "\n";
-
-        file << "RingRotationSpeed "
-            << settings.rotationSpeed << "\n";
-
-        file << "RingEdgeSoftness "
-            << settings.edgeSoftness << "\n";
-
-        file << "RingGlowStrength "
-            << settings.glowStrength << "\n";
-
-        file << "RingDistortion "
-            << settings.distortionStrength << " "
-            << settings.distortionFrequency << " "
-            << settings.distortionSpeed << "\n";
-    }
-
-    // =====================================
-    // Cylinder
-    // =====================================
-    if (cylinder_) {
-        const Cylinder::Settings& settings =
-            cylinder_->GetSettings();
-
-        writeVector4(
-            "CylinderColor",
-            settings.color
-        );
-
-        writeVector4(
-            "CylinderEndColor",
-            settings.endColor
-        );
-
-        file << "CylinderIntensity "
-            << settings.intensity << "\n";
-
-        file << "CylinderRadius "
-            << settings.radius << "\n";
-
-        file << "CylinderEndRadius "
-            << settings.endRadius << "\n";
-
-        file << "CylinderHeight "
-            << settings.startHeight << " "
-            << settings.endHeight << "\n";
-
-        file << "CylinderRadiusScale "
-            << settings.bottomRadiusScale << " "
-            << settings.topRadiusScale << "\n";
-
-        file << "CylinderLifeTime "
-            << settings.lifeTime << "\n";
-
-        file << "CylinderRiseDistance "
-            << settings.riseDistance << "\n";
-
-        file << "CylinderEasePower "
-            << settings.easePower << "\n";
-
-        file << "CylinderFadeInRatio "
-            << settings.fadeInRatio << "\n";
-
-        file << "CylinderFadePower "
-            << settings.fadePower << "\n";
-
-        file << "CylinderTwist "
-            << settings.twistAmount << " "
-            << settings.twistSpeed << "\n";
-
-        file << "CylinderNoise "
-            << settings.noiseStrength << " "
-            << settings.noiseFrequency << " "
-            << settings.noiseSpeed << "\n";
-
-        file << "CylinderVerticalFade "
-            << settings.topFade << " "
-            << settings.bottomFade << "\n";
-
-        writeVector3(
-            "CylinderPositionOffset",
-            settings.positionOffset
-        );
-    }
-
-    // =====================================
-    // Sakura
-    // =====================================
-    ParticleManager* particleManager =
-        context_->GetParticleManager();
-
-    if (particleManager) {
-        const ParticleManager::SakuraSettings& settings =
-            particleManager->GetSakuraSettings();
-
-        writeVector4(
-            "SakuraColor",
-            settings.color
-        );
-
-        writeVector4(
-            "SakuraSubColor",
-            settings.subColor
-        );
-
-        file << "SakuraPetalCount "
-            << settings.petalCount << "\n";
-
-        file << "SakuraSize "
-            << settings.minSize << " "
-            << settings.maxSize << "\n";
-
-        file << "SakuraSpawnRadius "
-            << settings.spawnRadius << "\n";
-
-        file << "SakuraSpeed "
-            << settings.spreadSpeed << " "
-            << settings.upwardSpeed << "\n";
-
-        file << "SakuraLifeTime "
-            << settings.minLifeTime << " "
-            << settings.maxLifeTime << "\n";
-
-        file << "SakuraGravity "
-            << settings.gravity << "\n";
-
-        file << "SakuraRotationSpeed "
-            << settings.rotationSpeed << "\n";
-
-        file << "SakuraFlash "
-            << settings.flashSize << " "
-            << settings.flashLifeTime << "\n";
-    }
-
-    file.close();
-
-    effectSettingsMessage_ =
-        "Saved : " + safeName;
-
-    RefreshEffectPresetList();
-
-    return true;
-}
-
-
-
-bool GameScene::LoadEffectPreset(
-    const std::string& presetName
-) {
-    namespace fs = std::filesystem;
-
-    std::string safeName;
-
-    for (unsigned char character : presetName) {
-        if (
-            std::isalnum(character) ||
-            character == '_' ||
-            character == '-'
-            ) {
-            safeName +=
-                static_cast<char>(character);
-        }
-    }
-
-    if (safeName.empty()) {
-        safeName = "NewPreset";
-    }
-
-    const fs::path filePath =
-        fs::path(
-            "Resources/Settings/HitEffects"
-        ) /
-        (safeName + ".txt");
-
-    std::ifstream file(filePath);
-
-    if (!file.is_open()) {
-        effectSettingsMessage_ =
-            "Preset not found : " +
-            safeName;
-
-        return false;
-    }
-
-    // 旧プリセットで未保存の値が現在値と
-    // 混ざらないよう初期化する
-    hitEffectType_ =
-        HitEffectType::Fire;
-
-    if (primitive_) {
-        primitive_->GetSettings() =
-            Primitive::Settings{};
-    }
-
-    if (ring_) {
-        ring_->GetSettings() =
-            Ring::Settings{};
-    }
-
-    if (cylinder_) {
-        cylinder_->GetSettings() =
-            Cylinder::Settings{};
-    }
-
-    ParticleManager* particleManager =
-        context_->GetParticleManager();
-
-    if (particleManager) {
-        particleManager->GetSakuraSettings() =
-            ParticleManager::SakuraSettings{};
-    }
-
-    const auto readVector3 =
-        [&](Vector3& value) {
-        file
-            >> value.x
-            >> value.y
-            >> value.z;
-        };
-
-    const auto readVector4 =
-        [&](Vector4& value) {
-        file
-            >> value.x
-            >> value.y
-            >> value.z
-            >> value.w;
-        };
-
-    int presetVersion = 1;
-    std::string key;
-
-    while (file >> key) {
-        if (key == "PresetVersion") {
-            file >> presetVersion;
-        } else if (key == "EffectPosition") {
-            readVector3(hitEffectPosition_);
-        } else if (key == "EffectSize") {
-            file >> hitEffectSize_;
-        } else if (key == "HitEffectType") {
-            int effectType = 0;
-            file >> effectType;
-
-            hitEffectType_ =
-                effectType ==
-                static_cast<int>(
-                    HitEffectType::Sakura
-                    )
-                ? HitEffectType::Sakura
-                : HitEffectType::Fire;
-        } else if (key == "EnablePrimitive") {
-            file >> enablePrimitive_;
-        } else if (key == "EnableRing") {
-            file >> enableRing_;
-        } else if (key == "EnableCylinder") {
-            file >> enableCylinder_;
-        }
-
-        // Primitive
-        else if (
-            key == "PrimitiveColor" &&
-            primitive_
-            ) {
-            readVector4(
-                primitive_->GetSettings().color
-            );
-        } else if (
-            key == "PrimitiveEndColor" &&
-            primitive_
-            ) {
-            readVector4(
-                primitive_->GetSettings().endColor
-            );
-        } else if (
-            key == "PrimitiveCount" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings().count;
-        } else if (
-            key == "PrimitiveIntensity" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings().intensity;
-        } else if (
-            key == "PrimitiveWidth" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings().width;
-        } else if (
-            key == "PrimitiveWidthRandomness" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .widthRandomness;
-        } else if (
-            key == "PrimitiveLength" &&
-            primitive_
-            ) {
-            Primitive::Settings& settings =
-                primitive_->GetSettings();
-
-            file
-                >> settings.minLength
-                >> settings.maxLength;
-        } else if (
-            key == "PrimitiveLifeTime" &&
-            primitive_
-            ) {
-            Primitive::Settings& settings =
-                primitive_->GetSettings();
-
-            file
-                >> settings.minLifeTime
-                >> settings.maxLifeTime;
-        } else if (
-            key == "PrimitiveMoveSpeed" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings().moveSpeed;
-        } else if (
-            key == "PrimitiveMoveSpeedRandomness" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .moveSpeedRandomness;
-        } else if (
-            key == "PrimitiveRotationSpeed" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .rotationSpeed;
-        } else if (
-            key ==
-            "PrimitiveRotationSpeedRandomness" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .rotationSpeedRandomness;
-        } else if (
-            key == "PrimitiveDirection" &&
-            primitive_
-            ) {
-            Primitive::Settings& settings =
-                primitive_->GetSettings();
-
-            file
-                >> settings.directionAngle
-                >> settings.directionSpread;
-        } else if (
-            key == "PrimitiveSpawnRadius" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .spawnRadius;
-        } else if (
-            key == "PrimitiveAcceleration" &&
-            primitive_
-            ) {
-            readVector3(
-                primitive_->GetSettings()
-                .acceleration
-            );
-        } else if (
-            key == "PrimitiveEndScale" &&
-            primitive_
-            ) {
-            Primitive::Settings& settings =
-                primitive_->GetSettings();
-
-            file
-                >> settings.endWidthScale
-                >> settings.endLengthScale;
-        } else if (
-            key == "PrimitiveScaleEasePower" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .scaleEasePower;
-        } else if (
-            key == "PrimitiveFadeInRatio" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .fadeInRatio;
-        } else if (
-            key == "PrimitiveFadePower" &&
-            primitive_
-            ) {
-            file >>
-                primitive_->GetSettings()
-                .fadePower;
-        }
-
-        // Ring
-        else if (
-            key == "RingColor" &&
-            ring_
-            ) {
-            readVector4(
-                ring_->GetSettings().color
-            );
-        } else if (
-            key == "RingEndColor" &&
-            ring_
-            ) {
-            readVector4(
-                ring_->GetSettings().endColor
-            );
-        } else if (
-            key == "RingIntensity" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().intensity;
-        } else if (
-            key == "RingScale" &&
-            ring_
-            ) {
-            Ring::Settings& settings =
-                ring_->GetSettings();
-
-            file
-                >> settings.startScale
-                >> settings.endScale;
-        } else if (
-            key == "RingThickness" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().thickness;
-        } else if (
-            key == "RingEndThickness" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().endThickness;
-        } else if (
-            key == "RingLifeTime" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().lifeTime;
-        } else if (
-            key == "RingFadeInRatio" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().fadeInRatio;
-        } else if (
-            key == "RingEasePower" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().easePower;
-        } else if (
-            key == "RingRotationSpeed" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().rotationSpeed;
-        } else if (
-            key == "RingEdgeSoftness" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().edgeSoftness;
-        } else if (
-            key == "RingGlowStrength" &&
-            ring_
-            ) {
-            file >>
-                ring_->GetSettings().glowStrength;
-        } else if (
-            key == "RingDistortion" &&
-            ring_
-            ) {
-            Ring::Settings& settings =
-                ring_->GetSettings();
-
-            file
-                >> settings.distortionStrength
-                >> settings.distortionFrequency
-                >> settings.distortionSpeed;
-        }
-
-        // Cylinder
-        else if (
-            key == "CylinderColor" &&
-            cylinder_
-            ) {
-            readVector4(
-                cylinder_->GetSettings().color
-            );
-        } else if (
-            key == "CylinderEndColor" &&
-            cylinder_
-            ) {
-            readVector4(
-                cylinder_->GetSettings().endColor
-            );
-        } else if (
-            key == "CylinderIntensity" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings().intensity;
-        } else if (
-            key == "CylinderRadius" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings().radius;
-        } else if (
-            key == "CylinderEndRadius" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings().endRadius;
-        } else if (
-            key == "CylinderHeight" &&
-            cylinder_
-            ) {
-            Cylinder::Settings& settings =
-                cylinder_->GetSettings();
-
-            file
-                >> settings.startHeight
-                >> settings.endHeight;
-        } else if (
-            key == "CylinderRadiusScale" &&
-            cylinder_
-            ) {
-            Cylinder::Settings& settings =
-                cylinder_->GetSettings();
-
-            file
-                >> settings.bottomRadiusScale
-                >> settings.topRadiusScale;
-        } else if (
-            key == "CylinderLifeTime" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings().lifeTime;
-        } else if (
-            key == "CylinderRiseDistance" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings()
-                .riseDistance;
-        } else if (
-            key == "CylinderEasePower" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings().easePower;
-        } else if (
-            key == "CylinderFadeInRatio" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings()
-                .fadeInRatio;
-        } else if (
-            key == "CylinderFadePower" &&
-            cylinder_
-            ) {
-            file >>
-                cylinder_->GetSettings().fadePower;
-        } else if (
-            key == "CylinderTwist" &&
-            cylinder_
-            ) {
-            Cylinder::Settings& settings =
-                cylinder_->GetSettings();
-
-            file
-                >> settings.twistAmount
-                >> settings.twistSpeed;
-        } else if (
-            key == "CylinderNoise" &&
-            cylinder_
-            ) {
-            Cylinder::Settings& settings =
-                cylinder_->GetSettings();
-
-            file
-                >> settings.noiseStrength
-                >> settings.noiseFrequency
-                >> settings.noiseSpeed;
-        } else if (
-            key == "CylinderVerticalFade" &&
-            cylinder_
-            ) {
-            Cylinder::Settings& settings =
-                cylinder_->GetSettings();
-
-            file
-                >> settings.topFade
-                >> settings.bottomFade;
-        } else if (
-            key == "CylinderPositionOffset" &&
-            cylinder_
-            ) {
-            readVector3(
-                cylinder_->GetSettings()
-                .positionOffset
-            );
-        }
-
-        // Sakura
-        else if (
-            key == "SakuraColor" &&
-            particleManager
-            ) {
-            readVector4(
-                particleManager
-                ->GetSakuraSettings()
-                .color
-            );
-        } else if (
-            key == "SakuraSubColor" &&
-            particleManager
-            ) {
-            readVector4(
-                particleManager
-                ->GetSakuraSettings()
-                .subColor
-            );
-        } else if (
-            key == "SakuraPetalCount" &&
-            particleManager
-            ) {
-            file >>
-                particleManager
-                ->GetSakuraSettings()
-                .petalCount;
-        } else if (
-            key == "SakuraSize" &&
-            particleManager
-            ) {
-            auto& settings =
-                particleManager
-                ->GetSakuraSettings();
-
-            file
-                >> settings.minSize
-                >> settings.maxSize;
-        } else if (
-            key == "SakuraSpawnRadius" &&
-            particleManager
-            ) {
-            file >>
-                particleManager
-                ->GetSakuraSettings()
-                .spawnRadius;
-        } else if (
-            key == "SakuraSpeed" &&
-            particleManager
-            ) {
-            auto& settings =
-                particleManager
-                ->GetSakuraSettings();
-
-            file
-                >> settings.spreadSpeed
-                >> settings.upwardSpeed;
-        } else if (
-            key == "SakuraLifeTime" &&
-            particleManager
-            ) {
-            auto& settings =
-                particleManager
-                ->GetSakuraSettings();
-
-            file
-                >> settings.minLifeTime
-                >> settings.maxLifeTime;
-        } else if (
-            key == "SakuraGravity" &&
-            particleManager
-            ) {
-            file >>
-                particleManager
-                ->GetSakuraSettings()
-                .gravity;
-        } else if (
-            key == "SakuraRotationSpeed" &&
-            particleManager
-            ) {
-            file >>
-                particleManager
-                ->GetSakuraSettings()
-                .rotationSpeed;
-        } else if (
-            key == "SakuraFlash" &&
-            particleManager
-            ) {
-            auto& settings =
-                particleManager
-                ->GetSakuraSettings();
-
-            file
-                >> settings.flashSize
-                >> settings.flashLifeTime;
-        } else {
-            std::string unusedLine;
-            std::getline(file, unusedLine);
-        }
-    }
-
-    hitEffectSize_ =
-        std::clamp(
-            hitEffectSize_,
-            0.1f,
-            5.0f
-        );
-
-    if (primitive_) {
-        Primitive::Settings& settings =
-            primitive_->GetSettings();
-
-        settings.count =
-            std::clamp(
-                settings.count,
-                1,
-                128
-            );
-
-        primitive_->SetIsActive(
-            enablePrimitive_
-        );
-    }
-
-    if (ring_) {
-        ring_->SetThickness(
-            ring_->GetSettings().thickness
-        );
-
-        ring_->SetIsActive(
-            enableRing_
-        );
-    }
-
-    if (cylinder_) {
-        cylinder_->SetIsActive(
-            enableCylinder_
-        );
-    }
-
-    effectSettingsMessage_ =
-        "Loaded V" +
-        std::to_string(presetVersion) +
-        " : " +
-        safeName;
-
-    return true;
-}
-
-
-void GameScene::RefreshEffectPresetList()
-{
-
-    namespace fs = std::filesystem;
-
-    const fs::path directory =
-        "Resources/Settings/HitEffects";
-
-    fs::create_directories(directory);
-
-    effectPresetNames_.clear();
-
-    for (
-        const fs::directory_entry& entry :
-        fs::directory_iterator(directory)
-        ) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-
-        if (entry.path().extension() != ".txt") {
-            continue;
-        }
-
-        effectPresetNames_.push_back(
-            entry.path().stem().string()
-        );
-    }
-
-    std::sort(
-        effectPresetNames_.begin(),
-        effectPresetNames_.end()
-    );
-
-    if (effectPresetNames_.empty()) {
-        selectedEffectPreset_ = 0;
-    } else {
-        selectedEffectPreset_ =
-            std::clamp(
-                selectedEffectPreset_,
-                0,
-                static_cast<int>(
-                    effectPresetNames_.size()
-                    ) - 1
-            );
-    }
-
-}
-
-
 void GameScene::Update() {
     Input* input = context_->GetInput();
 
     if (input->TriggerKey(DIK_SPACE)) {
-        EmitEffect({ 0.0f, 3.0f, 0.0f });
+        hitEffect_.Emit({ 0.0f, 3.0f, 0.0f });
     }
 
     UpdateSound();
@@ -1505,18 +285,17 @@ void GameScene::Update() {
     }
 
     if (ring_) {
-        ring_->SetIsActive(enableRing_);
         ring_->Update(view, projection);
     }
 
     if (cylinder_) {
-        cylinder_->SetIsActive(enableCylinder_);
+        cylinder_->SetIsActive(hitEffect_.EnableCylinder());
         cylinder_->Update(view, projection);
     }
 
     if (primitive_) {
         primitive_->SetIsActive(
-            enablePrimitive_
+            hitEffect_.EnablePrimitive()
         );
 
         primitive_->Update(
@@ -1584,118 +363,6 @@ void GameScene::SyncAnimatedSkeletonToObject() {
     }
 
     animatedObject_->SetSkeleton(animatedSkeleton_);
-}
-
-void GameScene::ApplyFireHitEffectPreset()
-{
-
-    // =====================================
-    // Primitive：炎の筋
-    // =====================================
-    if (primitive_) {
-        Primitive::Settings& settings =
-            primitive_->GetSettings();
-
-        settings =
-            Primitive::Settings{};
-
-
-        settings.color = {
-            1.0f,
-            0.32f,
-            0.02f,
-            1.0f
-        };
-
-        settings.count = 18;
-        settings.intensity = 1.8f;
-
-        settings.width = 0.035f;
-
-        settings.minLength = 0.3f;
-        settings.maxLength = 1.15f;
-
-        settings.minLifeTime = 0.18f;
-        settings.maxLifeTime = 0.42f;
-
-        settings.moveSpeed = 1.2f;
-        settings.rotationSpeed = 0.0f;
-
-        settings.endWidthScale = 0.1f;
-        settings.endLengthScale = 0.45f;
-
-        settings.fadePower = 2.2f;
-    }
-
-    // =====================================
-    // Ring：炎の衝撃波
-    // =====================================
-    if (ring_) {
-        Ring::Settings& settings =
-            ring_->GetSettings();
-
-        settings =
-            Ring::Settings{};
-
-        settings.color = {
-            1.0f,
-            0.22f,
-            0.01f,
-            0.8f
-        };
-
-        settings.intensity = 1.8f;
-
-        settings.startScale = 0.25f;
-        settings.endScale = 1.35f;
-
-        settings.lifeTime = 0.32f;
-        settings.fadeInRatio = 0.05f;
-
-        settings.easePower = 4.0f;
-        settings.rotationSpeed = 0.0f;
-
-        ring_->SetThickness(0.12f);
-    }
-
-    // =====================================
-    // Cylinder：上へ伸びる炎柱
-    // =====================================
-    if (cylinder_) {
-        Cylinder::Settings& settings =
-            cylinder_->GetSettings();
-
-        settings =
-            Cylinder::Settings{};
-
-        settings.color = {
-            1.0f,
-            0.18f,
-            0.01f,
-            0.38f
-        };
-
-        settings.intensity = 1.5f;
-
-        settings.radius = 0.48f;
-
-        settings.startHeight = 0.05f;
-        settings.endHeight = 1.8f;
-
-        settings.lifeTime = 0.55f;
-
-        settings.riseDistance = 0.45f;
-
-        settings.easePower = 3.0f;
-        settings.fadePower = 2.0f;
-
-        settings.positionOffset = {
-            0.0f,
-            -0.15f,
-            0.0f
-        };
-    }
-
 }
 
 void GameScene::UpdateSound() {
@@ -1910,7 +577,7 @@ void GameScene::UpdateImGui() {
     ImGui::Separator();
 
     if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
-        EmitEffect({ 0.0f, 3.0f, 0.0f });
+        hitEffect_.Emit({ 0.0f, 3.0f, 0.0f });
     }
 
     ImGui::SameLine();
@@ -1958,50 +625,50 @@ void GameScene::UpdateImGui() {
         if (ImGui::BeginTabItem("Effect")) {
             ImGui::Checkbox(
                 "Enable Primitive",
-                &enablePrimitive_
+                &hitEffect_.EnablePrimitive()
             );
 
             ImGui::Checkbox(
                 "Enable Ring",
-                &enableRing_
+                &hitEffect_.EnableRing()
             );
 
             ImGui::Checkbox(
                 "Enable Cylinder",
-                &enableCylinder_
+                &hitEffect_.EnableCylinder()
             );
 
             ImGui::SeparatorText("Hit Effect Type");
 
             if (ImGui::RadioButton(
                 "Fire",
-                hitEffectType_ == HitEffectType::Fire
+                hitEffect_.GetType() == HitEffectController::Type::Fire
             )) {
-                hitEffectType_ =
-                    HitEffectType::Fire;
+                hitEffect_.GetType() =
+                    HitEffectController::Type::Fire;
             }
 
             ImGui::SameLine();
 
             if (ImGui::RadioButton(
                 "Sakura",
-                hitEffectType_ == HitEffectType::Sakura
+                hitEffect_.GetType() == HitEffectController::Type::Sakura
             )) {
-                hitEffectType_ =
-                    HitEffectType::Sakura;
+                hitEffect_.GetType() =
+                    HitEffectController::Type::Sakura;
             }
 
             ImGui::SliderFloat(
                 "Hit Effect Size",
-                &hitEffectSize_,
+                &hitEffect_.GetSize(),
                 0.1f,
                 5.0f,
                 "%.2f"
             );
 
             if (
-                hitEffectType_ ==
-                HitEffectType::Sakura
+                hitEffect_.GetType() ==
+                HitEffectController::Type::Sakura
                 ) {
                 ParticleManager::SakuraSettings& settings =
                     context_
@@ -2120,29 +787,48 @@ void GameScene::UpdateImGui() {
 
             ImGui::DragFloat3(
                 "Effect Position",
-                &hitEffectPosition_.x,
+                &hitEffect_.GetPosition().x,
                 0.05f,
                 -20.0f,
                 20.0f
             );
 
-            DrawHitEffectSizeImGui();
+            ImGui::SeparatorText("Hit Effect Size");
+
+            ImGui::SliderFloat(
+                "Effect Size",
+                &hitEffect_.GetSize(),
+                0.1f,
+                5.0f,
+                "%.2f"
+            );
+
+            if (ImGui::Button("Reset Effect Size")) {
+                hitEffect_.GetSize() = 1.0f;
+            }
+
+            ImGui::SameLine();
+
+            ImGui::TextDisabled(
+                "Current : %.2f x",
+                hitEffect_.GetSize()
+            );
 
 
             ImGui::SeparatorText("Effect Presets");
 
             ImGui::InputText(
                 "Preset Name",
-                effectPresetNameBuffer_.data(),
-                effectPresetNameBuffer_.size()
+                hitEffect_.GetPresetNameBuffer().data(),
+                hitEffect_.GetPresetNameBuffer().size()
             );
 
             if (ImGui::Button(
                 "Save Current Preset",
                 ImVec2(180.0f, 30.0f)
             )) {
-                SaveEffectPreset(
-                    effectPresetNameBuffer_.data()
+                hitEffect_.SavePreset(
+                    hitEffect_.GetPresetNameBuffer().data()
                 );
             }
 
@@ -2152,22 +838,22 @@ void GameScene::UpdateImGui() {
                 "Refresh Presets",
                 ImVec2(160.0f, 30.0f)
             )) {
-                RefreshEffectPresetList();
+                hitEffect_.RefreshPresetList();
             }
 
-            if (!effectPresetNames_.empty()) {
-                selectedEffectPreset_ =
+            if (!hitEffect_.GetPresetNames().empty()) {
+                hitEffect_.GetSelectedPreset() =
                     std::clamp(
-                        selectedEffectPreset_,
+                        hitEffect_.GetSelectedPreset(),
                         0,
                         static_cast<int>(
-                            effectPresetNames_.size()
+                            hitEffect_.GetPresetNames().size()
                             ) - 1
                     );
 
                 const char* previewName =
-                    effectPresetNames_[
-                        selectedEffectPreset_
+                    hitEffect_.GetPresetNames()[
+                        hitEffect_.GetSelectedPreset()
                     ].c_str();
 
                 if (ImGui::BeginCombo(
@@ -2178,20 +864,20 @@ void GameScene::UpdateImGui() {
                         int index = 0;
                         index <
                         static_cast<int>(
-                            effectPresetNames_.size()
+                            hitEffect_.GetPresetNames().size()
                             );
                             ++index
                         ) {
                         const bool selected =
-                            selectedEffectPreset_ ==
+                            hitEffect_.GetSelectedPreset() ==
                             index;
 
                         if (ImGui::Selectable(
-                            effectPresetNames_[index]
+                            hitEffect_.GetPresetNames()[index]
                             .c_str(),
                             selected
                         )) {
-                            selectedEffectPreset_ =
+                            hitEffect_.GetSelectedPreset() =
                                 index;
                         }
 
@@ -2207,9 +893,9 @@ void GameScene::UpdateImGui() {
                     "Load Selected",
                     ImVec2(180.0f, 30.0f)
                 )) {
-                    LoadEffectPreset(
-                        effectPresetNames_[
-                            selectedEffectPreset_
+                    hitEffect_.LoadPreset(
+                        hitEffect_.GetPresetNames()[
+                            hitEffect_.GetSelectedPreset()
                         ]
                     );
                 }
@@ -2220,13 +906,13 @@ void GameScene::UpdateImGui() {
                     "Load And Preview",
                     ImVec2(180.0f, 30.0f)
                 )) {
-                    if (LoadEffectPreset(
-                        effectPresetNames_[
-                            selectedEffectPreset_
+                    if (hitEffect_.LoadPreset(
+                        hitEffect_.GetPresetNames()[
+                            hitEffect_.GetSelectedPreset()
                         ]
                     )) {
-                        EmitEffect(
-                            hitEffectPosition_
+                        hitEffect_.Emit(
+                            hitEffect_.GetPosition()
                         );
                     }
                 }
@@ -2236,10 +922,10 @@ void GameScene::UpdateImGui() {
                 );
             }
 
-            if (!effectSettingsMessage_.empty()) {
+            if (!hitEffect_.GetMessage().empty()) {
                 ImGui::TextDisabled(
                     "%s",
-                    effectSettingsMessage_.c_str()
+                    hitEffect_.GetMessage().c_str()
                 );
             }
 
@@ -2249,8 +935,8 @@ void GameScene::UpdateImGui() {
                 "Preview Current",
                 ImVec2(180.0f, 32.0f)
             )) {
-                EmitEffect(
-                    hitEffectPosition_
+                hitEffect_.Emit(
+                    hitEffect_.GetPosition()
                 );
             }
 
@@ -2258,10 +944,10 @@ void GameScene::UpdateImGui() {
                 "Apply Fire Preset",
                 ImVec2(180.0f, 30.0f)
             )) {
-                hitEffectType_ =
-                    HitEffectType::Fire;
+                hitEffect_.GetType() =
+                    HitEffectController::Type::Fire;
 
-                ApplyFireHitEffectPreset();
+                hitEffect_.ApplyFirePreset();
             }
 
             ImGui::SameLine();
@@ -2270,13 +956,13 @@ void GameScene::UpdateImGui() {
                 "Apply Fire And Preview",
                 ImVec2(180.0f, 30.0f)
             )) {
-                hitEffectType_ =
-                    HitEffectType::Fire;
+                hitEffect_.GetType() =
+                    HitEffectController::Type::Fire;
 
-                ApplyFireHitEffectPreset();
+                hitEffect_.ApplyFirePreset();
 
-                EmitEffect(
-                    hitEffectPosition_
+                hitEffect_.Emit(
+                    hitEffect_.GetPosition()
                 );
             }
 
@@ -2286,7 +972,7 @@ void GameScene::UpdateImGui() {
                 "Preview Fire",
                 ImVec2(180.0f, 30.0f)
             )) {
-                EmitEffect(hitEffectPosition_);
+                hitEffect_.Emit(hitEffect_.GetPosition());
             }
 
             if (ring_) {
@@ -3065,40 +1751,11 @@ void GameScene::Draw2D() {
 
     context_->GetSpriteCommon()->PreDraw();
 
-    if (sprite_&&showDebugSprite_) {
+    if (sprite_ && showDebugSprite_) {
         sprite_->Draw();
     }
 
     context_->GetImGuiManager()->Draw();
 
     dxCommon->PostDraw();
-}
-
-void GameScene::DrawHitEffectSizeImGui()
-{
-
-#ifdef USE_IMGUI
-    ImGui::SeparatorText("Hit Effect Size");
-
-    ImGui::SliderFloat(
-        "Effect Size",
-        &hitEffectSize_,
-        0.1f,
-        5.0f,
-        "%.2f"
-    );
-
-    if (ImGui::Button("Reset Effect Size")) {
-        hitEffectSize_ = 1.0f;
-    }
-
-    ImGui::SameLine();
-
-    ImGui::TextDisabled(
-        "Current : %.2f x",
-        hitEffectSize_
-    );
-#endif
-
-
 }
