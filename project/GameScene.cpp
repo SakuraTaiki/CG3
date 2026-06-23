@@ -25,11 +25,18 @@ void GameScene::Initialize(EngineContext* context) {
 
     InitializeModels();
     InitializeSprite();
-    InitializeSkybox();
+
+    environment_.Initialize(
+        context_->GetDxCommon(),
+        context_->GetTextureManager()
+    );
+
     InitializeObjects();
     InitializeRing();
     InitializeCylinder();
     InitializePrimitive();
+
+
 
     hitEffect_.Initialize(
         primitive_.get(),
@@ -48,8 +55,7 @@ void GameScene::Finalize() {
     objects_.clear();
     
     animationDebug_.Finalize();
-
-    skybox_.reset();
+    environment_.Finalize();
     sprite_.reset();
 
     soundController_.Finalize();
@@ -79,8 +85,13 @@ void GameScene::InitializeObjects() {
         object->SetRotation({ 0.0f, 0.0f, 0.0f });
         object->SetScale({ 0.5f, 0.5f, 0.5f });
 
-        object->SetEnvironmentTexture(environmentTexturehandle_);
-        object->SetEnvironmentCoefficient(environmentCoefficient_);
+        object->SetEnvironmentTexture(
+            environment_.GetEnvironmentTextureHandle()
+        );
+
+        object->SetEnvironmentCoefficient(
+            environment_.GetEnvironmentCoefficient()
+        );
 
         objects_.push_back(std::move(object));
     }
@@ -92,8 +103,13 @@ void GameScene::InitializeObjects() {
         object->SetPosition({ 2.0f, 0.0f, 0.0f });
         object->SetRotation({ 1.57f, 0.0f, 0.0f });
 
-        object->SetEnvironmentTexture(environmentTexturehandle_);
-        object->SetEnvironmentCoefficient(environmentCoefficient_);
+        object->SetEnvironmentTexture(
+            environment_.GetEnvironmentTextureHandle()
+        );
+
+        object->SetEnvironmentCoefficient(
+            environment_.GetEnvironmentCoefficient()
+        );
 
         objects_.push_back(std::move(object));
     }
@@ -105,16 +121,21 @@ void GameScene::InitializeObjects() {
         object->SetPosition({ -2.0f, 0.0f, 0.0f });
         object->SetRotation({ 1.57f, 0.0f, 0.0f });
 
-        object->SetEnvironmentTexture(environmentTexturehandle_);
-        object->SetEnvironmentCoefficient(environmentCoefficient_);
+        object->SetEnvironmentTexture(
+            environment_.GetEnvironmentTextureHandle()
+        );
+
+        object->SetEnvironmentCoefficient(
+            environment_.GetEnvironmentCoefficient()
+        );
 
         objects_.push_back(std::move(object));
     }
 
     animationDebug_.Initialize(
         object3dCommon,
-        environmentTexturehandle_,
-        environmentCoefficient_
+        environment_.GetEnvironmentTextureHandle(),
+        environment_.GetEnvironmentCoefficient()
     );
 }
 
@@ -127,22 +148,6 @@ void GameScene::InitializeSprite() {
     sprite_->Initialize(context_->GetSpriteCommon(), texHandle);
 }
 
-void GameScene::InitializeSkybox() {
-    skybox_ = std::make_unique<Skybox>();
-
-    skybox_->Initialize(
-        context_->GetDxCommon(),
-        context_->GetTextureManager(),
-        "Resources/skybox/rostock_laage_airport_4k.dds"
-    );
-
-    skybox_->SetScale({ 100.0f, 100.0f, 100.0f });
-
-    environmentTexturehandle_ =
-        context_->GetTextureManager()->LoadTexture(
-            "Resources/skybox/rostock_laage_airport_4k.dds"
-        );
-}
 
 void GameScene::InitializeRing() {
     ring_ = std::make_unique<Ring>();
@@ -203,14 +208,10 @@ void GameScene::Update() {
     const Matrix4x4& view = context_->GetCamera()->GetViewMatrix();
     const Matrix4x4& projection = context_->GetCamera()->GetProjectionMatrix();
 
-    if (enableSkybox_ && skybox_) {
-        skybox_->SetCamera(
-            view,
-            projection
-        );
-
-        skybox_->Update();
-    }
+    environment_.Update(
+        view,
+        projection
+    );
 
     if (sprite_) {
         sprite_->Update();
@@ -1190,25 +1191,16 @@ void GameScene::UpdateImGui() {
         // ==================================================
         if (ImGui::BeginTabItem("Environment")) {
 
-            ImGui::Checkbox(
-                "Enable Skybox",
-                &enableSkybox_
-            );
-
-            ImGui::Text("Environment Lighting");
-            ImGui::Separator();
-
-            if (ImGui::SliderFloat(
-                "Environment Coefficient",
-                &environmentCoefficient_,
-                0.0f,
-                1.0f
-            )) {
+            if (environment_.DrawImGui()) {
                 for (auto& object : objects_) {
-                    object->SetEnvironmentCoefficient(environmentCoefficient_);
+                    object->SetEnvironmentCoefficient(
+                        environment_.GetEnvironmentCoefficient()
+                    );
                 }
 
-                animationDebug_.SetEnvironmentCoefficient(environmentCoefficient_);
+                animationDebug_.SetEnvironmentCoefficient(
+                    environment_.GetEnvironmentCoefficient()
+                );
             }
 
             ImGui::EndTabItem();
@@ -1260,9 +1252,7 @@ void GameScene::Draw3D() {
         animationDebug_.Draw();
     }
 
-    if (enableSkybox_ && skybox_) {
-        skybox_->Draw();
-    }
+    environment_.Draw();
 
     if (ring_) {
         ring_->Draw();

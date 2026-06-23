@@ -58,6 +58,7 @@
     <ClCompile Include="AnimationDebugController.cpp" />
     <ClCompile Include="SoundController.cpp" />
     <ClCompile Include="CameraDebugController.cpp" />
+    <ClCompile Include="EnvironmentController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -114,6 +115,7 @@
     <ClInclude Include="AnimationDebugController.h" />
     <ClInclude Include="SoundController.h" />
     <ClInclude Include="CameraDebugController.h" />
+    <ClInclude Include="EnvironmentController.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
