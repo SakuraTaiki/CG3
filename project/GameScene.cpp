@@ -31,7 +31,21 @@ void GameScene::Initialize(EngineContext* context) {
         context_->GetTextureManager()
     );
 
-    InitializeObjects();
+    Object3dCommon* object3dCommon =
+        context_->GetObject3dCommon();
+
+    sceneObjects_.Initialize(
+        object3dCommon,
+        environment_.GetEnvironmentTextureHandle(),
+        environment_.GetEnvironmentCoefficient()
+    );
+
+    animationDebug_.Initialize(
+        object3dCommon,
+        environment_.GetEnvironmentTextureHandle(),
+        environment_.GetEnvironmentCoefficient()
+    );
+
     InitializeRing();
     InitializeCylinder();
     InitializePrimitive();
@@ -52,7 +66,7 @@ void GameScene::Initialize(EngineContext* context) {
 }
 
 void GameScene::Finalize() {
-    objects_.clear();
+    sceneObjects_.Finalize();
     
     animationDebug_.Finalize();
     environment_.Finalize();
@@ -71,73 +85,7 @@ void GameScene::InitializeModels() {
     ModelManager::Load("Resources/human", "walk.gltf");
 }
 
-void GameScene::InitializeObjects() {
-    Object3dCommon* object3dCommon = context_->GetObject3dCommon();
 
-    Model* modelPlane = ModelManager::Load("Resources/terrain", "terrain.obj");
-    Model* modelAxis = ModelManager::Load("axis.obj");
-
-    {
-        std::unique_ptr<Object3d> object = std::make_unique<Object3d>();
-        object->Initialize(object3dCommon);
-        object->SetModel(modelPlane);
-        object->SetPosition({ 0.0f, 1.0f, 0.0f });
-        object->SetRotation({ 0.0f, 0.0f, 0.0f });
-        object->SetScale({ 0.5f, 0.5f, 0.5f });
-
-        object->SetEnvironmentTexture(
-            environment_.GetEnvironmentTextureHandle()
-        );
-
-        object->SetEnvironmentCoefficient(
-            environment_.GetEnvironmentCoefficient()
-        );
-
-        objects_.push_back(std::move(object));
-    }
-
-    {
-        std::unique_ptr<Object3d> object = std::make_unique<Object3d>();
-        object->Initialize(object3dCommon);
-        object->SetModel(modelAxis);
-        object->SetPosition({ 2.0f, 0.0f, 0.0f });
-        object->SetRotation({ 1.57f, 0.0f, 0.0f });
-
-        object->SetEnvironmentTexture(
-            environment_.GetEnvironmentTextureHandle()
-        );
-
-        object->SetEnvironmentCoefficient(
-            environment_.GetEnvironmentCoefficient()
-        );
-
-        objects_.push_back(std::move(object));
-    }
-
-    {
-        std::unique_ptr<Object3d> object = std::make_unique<Object3d>();
-        object->Initialize(object3dCommon);
-        object->SetModel(modelAxis);
-        object->SetPosition({ -2.0f, 0.0f, 0.0f });
-        object->SetRotation({ 1.57f, 0.0f, 0.0f });
-
-        object->SetEnvironmentTexture(
-            environment_.GetEnvironmentTextureHandle()
-        );
-
-        object->SetEnvironmentCoefficient(
-            environment_.GetEnvironmentCoefficient()
-        );
-
-        objects_.push_back(std::move(object));
-    }
-
-    animationDebug_.Initialize(
-        object3dCommon,
-        environment_.GetEnvironmentTextureHandle(),
-        environment_.GetEnvironmentCoefficient()
-    );
-}
 
 
 void GameScene::InitializeSprite() {
@@ -245,9 +193,7 @@ void GameScene::Update() {
 
 void GameScene::UpdateObjects() {
     if (drawMode_ == DrawMode::NormalObj) {
-        for (auto& object : objects_) {
-            object->Update();
-        }
+        sceneObjects_.Update();
     }
 
     if (drawMode_ == DrawMode::Animation) {
@@ -1192,11 +1138,9 @@ void GameScene::UpdateImGui() {
         if (ImGui::BeginTabItem("Environment")) {
 
             if (environment_.DrawImGui()) {
-                for (auto& object : objects_) {
-                    object->SetEnvironmentCoefficient(
-                        environment_.GetEnvironmentCoefficient()
-                    );
-                }
+                sceneObjects_.SetEnvironmentCoefficient(
+                    environment_.GetEnvironmentCoefficient()
+                );
 
                 animationDebug_.SetEnvironmentCoefficient(
                     environment_.GetEnvironmentCoefficient()
@@ -1243,9 +1187,7 @@ void GameScene::Draw3D() {
     context_->GetObject3dCommon()->PreDraw();
 
     if (drawMode_ == DrawMode::NormalObj) {
-        for (auto& object : objects_) {
-            object->Draw();
-        }
+        sceneObjects_.Draw();
     }
 
     if (drawMode_ == DrawMode::Animation) {
