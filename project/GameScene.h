@@ -17,6 +17,8 @@
 #include "CameraDebugController.h"
 #include "EnvironmentController.h"
 #include "SceneObjectController.h"
+#include "GameSceneDrawMode.h"
+#include "SceneDebugPanel.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -41,20 +43,14 @@ private:
 
     // 更新処理。
     void UpdateObjects();
-    void UpdateImGui();
 
     // 描画処理。
     void Draw3D();
     void Draw2D();
 
 private:
-    enum class DrawMode {
-        NormalObj,
-        Animation
-    };
-
-    DrawMode drawMode_ = DrawMode::NormalObj;
-
+    
+    GameSceneDrawMode drawMode_ = GameSceneDrawMode::NormalObj;
     // 非所有。実体は Engine が持つ。
     EngineContext* context_ = nullptr;
 
@@ -77,4 +73,5 @@ private:
     CameraDebugController cameraDebug_;
     EnvironmentController environment_;
     SceneObjectController sceneObjects_;
+    SceneDebugPanel sceneDebugPanel_;
 };

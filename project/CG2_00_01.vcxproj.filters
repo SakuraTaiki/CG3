@@ -60,6 +60,7 @@
     <ClCompile Include="CameraDebugController.cpp" />
     <ClCompile Include="EnvironmentController.cpp" />
     <ClCompile Include="SceneObjectController.cpp" />
+    <ClCompile Include="SceneDebugPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="D3DResourceLeakChecker.h" />
@@ -118,6 +119,8 @@
     <ClInclude Include="CameraDebugController.h" />
     <ClInclude Include="EnvironmentController.h" />
     <ClInclude Include="SceneObjectController.h" />
+    <ClInclude Include="GameSceneDrawMode.h" />
+    <ClInclude Include="SceneDebugPanel.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
