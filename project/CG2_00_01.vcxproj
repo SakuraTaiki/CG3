@@ -209,6 +209,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="ParticleManager.cpp" />
     <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="Ring.cpp" />
+    <ClCompile Include="SceneDebugPanel.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="SceneObjectController.cpp" />
     <ClCompile Include="Skelton.cpp" />
@@ -249,6 +250,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="FpsLimiter.h" />
     <ClInclude Include="GameScene.h" />
+    <ClInclude Include="GameSceneDrawMode.h" />
     <ClInclude Include="GameSystem.h" />
     <ClInclude Include="GraphicsSystem.h" />
     <ClInclude Include="HitEffectController.h" />
@@ -267,6 +269,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Primitive.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Ring.h" />
+    <ClInclude Include="SceneDebugPanel.h" />
     <ClInclude Include="SceneManager.h" />
     <ClInclude Include="SceneObjectController.h" />
     <ClInclude Include="Skelton.h" />
