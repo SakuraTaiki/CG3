@@ -2,6 +2,7 @@
 
 #include "Object3dSkinning.h"
 #include "TextureManager.h"
+#include "D3DResourceHelper.h"
 
 #include <cassert>
 
@@ -18,80 +19,53 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
 
     camera_ = object3dCommon_->GetDefaultCamera();
 
-    D3D12_HEAP_PROPERTIES heapProps = {
-        D3D12_HEAP_TYPE_UPLOAD,
-        D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-        D3D12_MEMORY_POOL_UNKNOWN,
-        1,
-        1
-    };
+    transformationResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            device,
+            D3DResourceHelper::AlignConstantBufferSize(
+                sizeof(TransformationMatrix)
+            )
+        );
 
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = (sizeof(TransformationMatrix) + 0xff) & ~0xff;
-    resDesc.Height = 1;
-    resDesc.DepthOrArraySize = 1;
-    resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    resDesc.SampleDesc.Count = 1;
-
-    device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&transformationResource_)
-    );
-
-    transformationResource_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(&transformationData_)
-    );
+    transformationData_ =
+        D3DResourceHelper::Map<TransformationMatrix>(
+            transformationResource_.Get()
+        );
 
     transformationData_->WVP = Math::MakeIdentity4x4();
     transformationData_->World = Math::MakeIdentity4x4();
     transformationData_->WorldInverseTranspose = Math::MakeIdentity4x4();
 
-    resDesc.Width = (sizeof(Material) + 0xff) & ~0xff;
+    materialResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            device,
+            D3DResourceHelper::AlignConstantBufferSize(
+                sizeof(Material)
+            )
+        );
 
-    device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&materialResource_)
-    );
-
-    materialResource_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(&materialData_)
-    );
+    materialData_ =
+        D3DResourceHelper::Map<Material>(
+            materialResource_.Get()
+        );
 
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
     materialData_->enableLighting = 1;
     materialData_->environmentCoefficient = 0.05f;
     materialData_->uvTransform = Math::MakeIdentity4x4();
 
-    resDesc.Width = (sizeof(CameraForGPU) + 0xff) & ~0xff;
+    cameraResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            device,
+            D3DResourceHelper::AlignConstantBufferSize(
+                sizeof(CameraForGPU)
+            )
+        );
 
-    device->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&cameraResource_)
-    );
-
-    cameraResource_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(&cameraData_)
-    );
+    cameraData_ =
+        D3DResourceHelper::Map<CameraForGPU>(
+            cameraResource_.Get()
+        );
 
     cameraData_->worldPosition = { 0.0f, 0.0f, 0.0f };
     cameraData_->padding = 0.0f;

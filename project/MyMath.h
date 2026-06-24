@@ -56,6 +56,7 @@ namespace Math {
 
     // 逆行列 (引数を const Matrix4x4& に統一)
     Matrix4x4 Inverse(const Matrix4x4& m);
+    Matrix4x4 MakeBillboardMatrix(const Matrix4x4& viewMatrix);
 
     // 透視投影行列
     Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip);

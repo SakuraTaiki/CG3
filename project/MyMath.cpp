@@ -143,6 +143,23 @@ namespace Math {
         return result;
     }
 
+    Matrix4x4 MakeBillboardMatrix(const Matrix4x4& viewMatrix) {
+        const Matrix4x4 cameraMatrix =
+            Inverse(viewMatrix);
+
+        Matrix4x4 billboardMatrix =
+            MakeIdentity4x4();
+
+        for (int y = 0; y < 3; ++y) {
+            for (int x = 0; x < 3; ++x) {
+                billboardMatrix.m[y][x] =
+                    cameraMatrix.m[y][x];
+            }
+        }
+
+        return billboardMatrix;
+    }
+
     // 透視投影行列
     Matrix4x4 MakePerspectiveFovMatrix(float fovY, float aspectRatio, float nearClip, float farClip) {
         Matrix4x4 result{};

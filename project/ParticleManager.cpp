@@ -6,6 +6,8 @@
 #include<numbers>
 #include <algorithm>
 
+#include "D3DResourceHelper.h"
+
 using namespace Microsoft::WRL;
 
 // 乱数生成器
@@ -32,17 +34,16 @@ void ParticleManager::Initialize(DirectXCommon* dxCommon, TextureManager* textur
         auto device = dxCommon_->GetDevice();
         UINT size = sizeof(InstanceData) * kMaxParticles;
 
-        D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
-        D3D12_RESOURCE_DESC resDesc = {};
-        resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resDesc.Width = size;
-        resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
-        resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+        instancingBuffer_ =
+            D3DResourceHelper::CreateUploadBuffer(
+                device,
+                size
+            );
 
-        HRESULT hr = device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&instancingBuffer_));
-        assert(SUCCEEDED(hr));
-
-        instancingBuffer_->Map(0, nullptr, (void**)&instancingDataMapped_);
+        instancingDataMapped_ =
+            D3DResourceHelper::Map<InstanceData>(
+                instancingBuffer_.Get()
+            );
 
         instancingBufferView_.BufferLocation = instancingBuffer_->GetGPUVirtualAddress();
         instancingBufferView_.SizeInBytes = size;
@@ -223,23 +224,8 @@ void ParticleManager::Update(
 
     uint32_t index = 0;
 
-    const Matrix4x4 cameraMatrix =
-        Math::Inverse(viewMatrix);
-
     Matrix4x4 billboardMatrix =
-        Math::MakeIdentity4x4();
-
-    billboardMatrix.m[0][0] = cameraMatrix.m[0][0];
-    billboardMatrix.m[0][1] = cameraMatrix.m[0][1];
-    billboardMatrix.m[0][2] = cameraMatrix.m[0][2];
-
-    billboardMatrix.m[1][0] = cameraMatrix.m[1][0];
-    billboardMatrix.m[1][1] = cameraMatrix.m[1][1];
-    billboardMatrix.m[1][2] = cameraMatrix.m[1][2];
-
-    billboardMatrix.m[2][0] = cameraMatrix.m[2][0];
-    billboardMatrix.m[2][1] = cameraMatrix.m[2][1];
-    billboardMatrix.m[2][2] = cameraMatrix.m[2][2];
+        Math::MakeBillboardMatrix(viewMatrix);
 
     for (const Particle& particle : particles_) {
         if (index >= kMaxParticles) {
@@ -377,27 +363,27 @@ void ParticleManager::Emit(
         const float speed = distSpeed(engine);
         const float rotateZ = particle.transform.rotate.z;
 
-            particle.velocity = {
-        -std::sin(rotateZ) *
-            speed * 0.55f,
+        particle.velocity = {
+    -std::sin(rotateZ) *
+        speed * 0.55f,
 
-        std::abs(
-            std::cos(rotateZ)
-        ) * speed + 0.015f,
+    std::abs(
+        std::cos(rotateZ)
+    ) * speed + 0.015f,
 
-        0.0f
+    0.0f
         };
 
-       
-            const float randomColor =
-                distColor(engine);
 
-            particle.color = {
-                1.0f,
-                0.18f + randomColor * 0.45f,
-                0.02f,
-                1.0f
-            };
+        const float randomColor =
+            distColor(engine);
+
+        particle.color = {
+            1.0f,
+            0.18f + randomColor * 0.45f,
+            0.02f,
+            1.0f
+        };
 
         particle.lifeTime = 0.0f;
         particle.maxTime = distTime(engine);
@@ -885,28 +871,7 @@ void ParticleManager::CreatePipelineState() {
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
 
     // ブレンド設定 (加算合成)
-    auto& blend = psoDesc.BlendState.RenderTarget[0];
-    blend.BlendEnable = TRUE;
-    blend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    blend.DestBlend = D3D12_BLEND_ONE;
-    blend.BlendOp = D3D12_BLEND_OP_ADD;
-    blend.SrcBlendAlpha = D3D12_BLEND_ONE;
-    blend.DestBlendAlpha = D3D12_BLEND_ZERO;
-    blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-    blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-    psoDesc.DepthStencilState.DepthEnable = TRUE;
-    psoDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
-    psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
-
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-    psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.SampleDesc.Count = 1;
+    D3DResourceHelper::SetParticlePipelineDefaults(psoDesc);
 
     // ★重要: ここで失敗すると pipelineState_ がNULLになり、描画時に落ちる
     HRESULT hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&pipelineState_));
@@ -928,18 +893,16 @@ void ParticleManager::CreateMesh() {
 
     UINT size = sizeof(vertices);
 
-    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = size;
-    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+    vertexBuffer_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            size
+        );
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer_));
-    assert(SUCCEEDED(hr));
-
-    VertexData* data = nullptr;
-    vertexBuffer_->Map(0, nullptr, (void**)&data);
+    VertexData* data =
+        D3DResourceHelper::Map<VertexData>(
+            vertexBuffer_.Get()
+        );
     memcpy(data, vertices, size);
     vertexBuffer_->Unmap(0, nullptr);
 

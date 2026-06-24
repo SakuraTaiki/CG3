@@ -1,6 +1,7 @@
 #include "Skybox.h"
 #include <cassert>
 #include "DirectXCommon.h"
+#include "D3DResourceHelper.h"
 #include "MyMath.h"
 #include "TextureManager.h"
 #include <string>
@@ -155,30 +156,16 @@ void Skybox::CreateVertexBuffer() {
         {{-1.0f, -1.0f, -1.0f, 1.0f}}, {{ 1.0f, -1.0f,  1.0f, 1.0f}}, {{ 1.0f, -1.0f, -1.0f, 1.0f}},
     };
 
-    D3D12_HEAP_PROPERTIES heapProps{};
-    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    vertexResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            sizeof(vertices)
+        );
 
-    D3D12_RESOURCE_DESC resourceDesc{};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resourceDesc.Width = sizeof(vertices);
-    resourceDesc.Height = 1;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.MipLevels = 1;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resourceDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&vertexResource_));
-
-    assert(SUCCEEDED(hr));
-
-    VertexData* vertexData = nullptr;
-    vertexResource_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
+    VertexData* vertexData =
+        D3DResourceHelper::Map<VertexData>(
+            vertexResource_.Get()
+        );
     memcpy(vertexData, vertices, sizeof(vertices));
     vertexResource_->Unmap(0, nullptr);
 
@@ -188,43 +175,31 @@ void Skybox::CreateVertexBuffer() {
 }
 
 void Skybox::CreateConstantBuffers() {
-    D3D12_HEAP_PROPERTIES heapProps{};
-    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    transformationResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            D3DResourceHelper::AlignConstantBufferSize(
+                sizeof(TransformationMatrix)
+            )
+        );
 
-    D3D12_RESOURCE_DESC resourceDesc{};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resourceDesc.Width = (sizeof(TransformationMatrix) + 0xff) & ~0xff;
-    resourceDesc.Height = 1;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.MipLevels = 1;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    transformationData_ =
+        D3DResourceHelper::Map<TransformationMatrix>(
+            transformationResource_.Get()
+        );
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resourceDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&transformationResource_));
+    materialResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            D3DResourceHelper::AlignConstantBufferSize(
+                sizeof(Material)
+            )
+        );
 
-    assert(SUCCEEDED(hr));
-
-    transformationResource_->Map(0, nullptr, reinterpret_cast<void**>(&transformationData_));
-
-    resourceDesc.Width = (sizeof(Material) + 0xff) & ~0xff;
-
-    hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resourceDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&materialResource_));
-
-    assert(SUCCEEDED(hr));
-
-    materialResource_->Map(0, nullptr, reinterpret_cast<void**>(&materialData_));
+    materialData_ =
+        D3DResourceHelper::Map<Material>(
+            materialResource_.Get()
+        );
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 }
 

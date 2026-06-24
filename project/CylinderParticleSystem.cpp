@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "EffectMath.h"
+
 void CylinderParticleSystem::Emit(
     const Vector3& position
 ) {
@@ -98,13 +100,9 @@ void CylinderParticleSystem::Update()
             time;
 
         const float easedTime =
-            1.0f -
-            std::pow(
-                1.0f - time,
-                std::max(
-                    settings.easePower,
-                    0.01f
-                )
+            EffectMath::EaseOut(
+                time,
+                settings.easePower
             );
 
         const float radius =
@@ -144,65 +142,27 @@ void CylinderParticleSystem::Update()
             settings.noiseSpeed *
             deltaTime;
 
-        float fadeIn = 1.0f;
-
-        if (settings.fadeInRatio > 0.0f) {
-            fadeIn =
-                std::clamp(
-                    time /
-                    settings.fadeInRatio,
-                    0.0f,
-                    1.0f
-                );
-        }
-
-        const float fadeOut =
-            std::pow(
-                1.0f - time,
-                std::max(
-                    settings.fadePower,
-                    0.01f
-                )
+        const float fadeIn =
+            EffectMath::FadeIn(
+                time,
+                settings.fadeInRatio
             );
 
-        const float red =
-            settings.color.x +
-            (
-                settings.endColor.x -
-                settings.color.x
-                ) *
-            time;
+        const float fadeOut =
+            EffectMath::FadeOut(
+                time,
+                settings.fadePower
+            );
 
-        const float green =
-            settings.color.y +
-            (
-                settings.endColor.y -
-                settings.color.y
-                ) *
-            time;
-
-        const float blue =
-            settings.color.z +
-            (
-                settings.endColor.z -
-                settings.color.z
-                ) *
-            time;
-
-        const float alpha =
-            settings.color.w +
-            (
-                settings.endColor.w -
-                settings.color.w
-                ) *
-            time;
-
-        particle.color = {
-            red * settings.intensity,
-            green * settings.intensity,
-            blue * settings.intensity,
-            alpha * fadeIn * fadeOut
-        };
+        particle.color =
+            EffectMath::MakeFadedColor(
+                settings.color,
+                settings.endColor,
+                time,
+                settings.intensity,
+                fadeIn,
+                fadeOut
+            );
 
         ++iterator;
     }

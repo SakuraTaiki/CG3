@@ -121,6 +121,8 @@
     <ClInclude Include="SceneObjectController.h" />
     <ClInclude Include="GameSceneDrawMode.h" />
     <ClInclude Include="SceneDebugPanel.h" />
+    <ClInclude Include="D3DResourceHelper.h" />
+    <ClInclude Include="EffectMath.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
