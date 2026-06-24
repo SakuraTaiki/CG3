@@ -14,13 +14,6 @@
     <ClCompile Include="externals\imgui\imgui_impl_win32.cpp" />
     <ClCompile Include="externals\imgui\imgui_tables.cpp" />
     <ClCompile Include="externals\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="HitEffectController.cpp" />
-    <ClCompile Include="AnimationDebugController.cpp" />
-    <ClCompile Include="SoundController.cpp" />
-    <ClCompile Include="CameraDebugController.cpp" />
-    <ClCompile Include="EnvironmentController.cpp" />
-    <ClCompile Include="SceneObjectController.cpp" />
-    <ClCompile Include="SceneDebugPanel.cpp" />
     <ClCompile Include="project\main.cpp" />
     <ClCompile Include="Engine\Core\Engine.cpp" />
     <ClCompile Include="Engine\Core\GameSystem.cpp" />
@@ -60,6 +53,14 @@
     <ClCompile Include="Engine\Utility\StringUtility.cpp" />
     <ClCompile Include="Game\MyGame.cpp" />
     <ClCompile Include="Game\GameScene\GameScene.cpp" />
+    <ClCompile Include="Game\Controller\AnimationDebugController.cpp" />
+    <ClCompile Include="Game\Controller\CameraDebugController.cpp" />
+    <ClCompile Include="Game\Controller\EnvironmentController.cpp" />
+    <ClCompile Include="Game\Controller\HitEffectController.cpp" />
+    <ClCompile Include="Game\Controller\SceneDebugPanel.cpp" />
+    <ClCompile Include="Game\Controller\SceneObjectController.cpp" />
+    <ClCompile Include="Game\Controller\SoundController.cpp" />
+    <ClCompile Include="Engine\SceneSystem\SceneManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h" />
@@ -71,15 +72,6 @@
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="HitEffectController.h" />
-    <ClInclude Include="AnimationDebugController.h" />
-    <ClInclude Include="SoundController.h" />
-    <ClInclude Include="CameraDebugController.h" />
-    <ClInclude Include="EnvironmentController.h" />
-    <ClInclude Include="SceneObjectController.h" />
-    <ClInclude Include="SceneDebugPanel.h" />
-    <ClInclude Include="D3DResourceHelper.h" />
-    <ClInclude Include="EffectMath.h" />
     <ClInclude Include="Engine\Core\Engine.h" />
     <ClInclude Include="Engine\Core\EngineContext.h" />
     <ClInclude Include="Engine\Core\GameSystem.h" />
@@ -120,6 +112,15 @@
     <ClInclude Include="Game\MyGame.h" />
     <ClInclude Include="Game\GameScene\GameScene.h" />
     <ClInclude Include="Game\GameScene\GameSceneDrawMode.h" />
+    <ClInclude Include="Engine\Graphics\Effects\EffectMath.h" />
+    <ClInclude Include="Engine\Core\D3DResourceHelper.h" />
+    <ClInclude Include="Game\Controller\AnimationDebugController.h" />
+    <ClInclude Include="Game\Controller\CameraDebugController.h" />
+    <ClInclude Include="Game\Controller\EnvironmentController.h" />
+    <ClInclude Include="Game\Controller\HitEffectController.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanel.h" />
+    <ClInclude Include="Game\Controller\SceneObjectController.h" />
+    <ClInclude Include="Game\Controller\SoundController.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
