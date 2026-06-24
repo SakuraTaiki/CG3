@@ -1,0 +1,45 @@
+#pragma once
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "MyMath.h"
+
+// 1つのキー情報。
+// Vector3 と Quaternion の両方で使うため template にしている。
+template <typename TValue>
+struct Keyframe {
+    float time;
+    TValue value;
+};
+
+using KeyframeVector3 = Keyframe<Vector3>;
+using KeyframeQuaternion = Keyframe<Quaternion>;
+
+// 1 Node 分の Animation。
+// translate / rotate / scale を別々の keyframe として持つ。
+struct NodeAnimation {
+    std::vector<KeyframeVector3> translate;
+    std::vector<KeyframeQuaternion> rotate;
+    std::vector<KeyframeVector3> scale;
+};
+
+// Animation 全体のデータ。
+// nodeAnimations は Node 名をキーにしている。
+struct Animation {
+    float duration = 0.0f;
+    std::map<std::string, NodeAnimation> nodeAnimations;
+};
+
+// 指定時刻の Vector3 を補間して返す。
+Vector3 CalculateValue(
+    const std::vector<KeyframeVector3>& keyframes,
+    float time
+);
+
+// 指定時刻の Quaternion を補間して返す。
+Quaternion CalculateValue(
+    const std::vector<KeyframeQuaternion>& keyframes,
+    float time
+);

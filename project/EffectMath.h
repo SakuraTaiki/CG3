@@ -11,7 +11,7 @@ namespace EffectMath {
     {
         return 1.0f - std::pow(
             1.0f - time,
-            std::max(power, 0.01f)
+            (std::max)(power, 0.01f)
         );
     }
 
@@ -32,7 +32,7 @@ namespace EffectMath {
     {
         return std::pow(
             1.0f - time,
-            std::max(power, 0.01f)
+            (std::max)(power, 0.01f)
         );
     }
 
