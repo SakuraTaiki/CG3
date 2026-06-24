@@ -5,6 +5,8 @@
 #include <vector>
 #include <cstring>
 
+#include "D3DResourceHelper.h"
+
 using namespace Microsoft::WRL;
 
 void Cylinder::Initialize(DirectXCommon* dxCommon, TextureManager* textureManager) {
@@ -22,38 +24,16 @@ void Cylinder::Initialize(DirectXCommon* dxCommon, TextureManager* textureManage
 
     UINT size = sizeof(InstanceData) * kMaxCylinders;
 
-    D3D12_HEAP_PROPERTIES heapProps = {
-        D3D12_HEAP_TYPE_UPLOAD,
-        D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-        D3D12_MEMORY_POOL_UNKNOWN,
-        1,
-        1
-    };
+    instancingBuffer_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            size
+        );
 
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = size;
-    resDesc.Height = 1;
-    resDesc.DepthOrArraySize = 1;
-    resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    resDesc.SampleDesc.Count = 1;
-
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&instancingBuffer_)
-    );
-    assert(SUCCEEDED(hr));
-
-    instancingBuffer_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(&instancingDataMapped_)
-    );
+    instancingDataMapped_ =
+        D3DResourceHelper::Map<InstanceData>(
+            instancingBuffer_.Get()
+        );
 
     instancingBufferView_.BufferLocation =
         instancingBuffer_->GetGPUVirtualAddress();
@@ -285,32 +265,7 @@ void Cylinder::CreatePipelineState() {
         psBlob->GetBufferSize()
     };
 
-    auto& blend = psoDesc.BlendState.RenderTarget[0];
-    blend.BlendEnable = TRUE;
-    blend.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-    blend.DestBlend = D3D12_BLEND_ONE;
-    blend.BlendOp = D3D12_BLEND_OP_ADD;
-    blend.SrcBlendAlpha = D3D12_BLEND_ONE;
-    blend.DestBlendAlpha = D3D12_BLEND_ZERO;
-    blend.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-    blend.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-
-    psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-    psoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-
-    psoDesc.DepthStencilState.DepthEnable = TRUE;
-    psoDesc.DepthStencilState.DepthWriteMask =
-        D3D12_DEPTH_WRITE_MASK_ZERO;
-    psoDesc.DepthStencilState.DepthFunc =
-        D3D12_COMPARISON_FUNC_LESS_EQUAL;
-
-    psoDesc.NumRenderTargets = 1;
-    psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
-    psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    psoDesc.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-    psoDesc.PrimitiveTopologyType =
-        D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-    psoDesc.SampleDesc.Count = 1;
+    D3DResourceHelper::SetParticlePipelineDefaults(psoDesc);
 
     HRESULT hr = dxCommon_->GetDevice()->CreateGraphicsPipelineState(
         &psoDesc,
@@ -382,39 +337,17 @@ void Cylinder::CreateMesh() {
 
     UINT size = UINT(sizeof(VertexData) * vertices.size());
 
-    D3D12_HEAP_PROPERTIES heapProps = {
-        D3D12_HEAP_TYPE_UPLOAD,
-        D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-        D3D12_MEMORY_POOL_UNKNOWN,
-        1,
-        1
-    };
+    vertexBuffer_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            size
+        );
 
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = size;
-    resDesc.Height = 1;
-    resDesc.DepthOrArraySize = 1;
-    resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    resDesc.SampleDesc.Count = 1;
+    VertexData* data =
+        D3DResourceHelper::Map<VertexData>(
+            vertexBuffer_.Get()
+        );
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &resDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&vertexBuffer_)
-    );
-    assert(SUCCEEDED(hr));
-
-    VertexData* data = nullptr;
-    vertexBuffer_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(&data)
-    );
     memcpy(data, vertices.data(), size);
     vertexBuffer_->Unmap(0, nullptr);
 

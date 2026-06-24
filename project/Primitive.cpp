@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <cmath>
 
+#include "D3DResourceHelper.h"
+#include "EffectMath.h"
+
 using namespace Microsoft::WRL;
 
 namespace
@@ -62,48 +65,16 @@ void Primitive::Initialize(
     const UINT bufferSize =
         sizeof(InstanceData) * kMaxParticles;
 
-    D3D12_HEAP_PROPERTIES heapProperties = {
-        D3D12_HEAP_TYPE_UPLOAD,
-        D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-        D3D12_MEMORY_POOL_UNKNOWN,
-        1,
-        1
-    };
-
-    D3D12_RESOURCE_DESC resourceDescription{};
-    resourceDescription.Dimension =
-        D3D12_RESOURCE_DIMENSION_BUFFER;
-
-    resourceDescription.Width = bufferSize;
-    resourceDescription.Height = 1;
-    resourceDescription.DepthOrArraySize = 1;
-    resourceDescription.MipLevels = 1;
-
-    resourceDescription.Layout =
-        D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-    resourceDescription.SampleDesc.Count = 1;
-
-    HRESULT result =
-        dxCommon_->GetDevice()
-        ->CreateCommittedResource(
-            &heapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDescription,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&instancingBuffer_)
+    instancingBuffer_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            bufferSize
         );
 
-    assert(SUCCEEDED(result));
-
-    instancingBuffer_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(
-            &instancingDataMapped_
-            )
-    );
+    instancingDataMapped_ =
+        D3DResourceHelper::Map<InstanceData>(
+            instancingBuffer_.Get()
+        );
 
     instancingBufferView_.BufferLocation =
         instancingBuffer_
@@ -185,15 +156,10 @@ void Primitive::Update(
                 1.0f
             );
 
-        // EaseOut
         const float scaleTime =
-            1.0f -
-            std::pow(
-                1.0f - time,
-                (std::max)(
-                    settings.scaleEasePower,
-                    0.01f
-                )
+            EffectMath::EaseOut(
+                time,
+                settings.scaleEasePower
             );
 
         particle.transform.scale.x =
@@ -219,103 +185,35 @@ void Primitive::Update(
                 );
 
         // 開始色から終了色へ補間
-        const float red =
-            settings.color.x +
-            (
-                settings.endColor.x -
-                settings.color.x
-                ) *
-            time;
-
-        const float green =
-            settings.color.y +
-            (
-                settings.endColor.y -
-                settings.color.y
-                ) *
-            time;
-
-        const float blue =
-            settings.color.z +
-            (
-                settings.endColor.z -
-                settings.color.z
-                ) *
-            time;
-
-        const float baseAlpha =
-            settings.color.w +
-            (
-                settings.endColor.w -
-                settings.color.w
-                ) *
-            time;
-
-        float fadeIn = 1.0f;
-
-        if (settings.fadeInRatio > 0.0f) {
-            fadeIn =
-                std::clamp(
-                    time /
-                    settings.fadeInRatio,
-                    0.0f,
-                    1.0f
-                );
-        }
-
-        const float fadeOut =
-            std::pow(
-                1.0f - time,
-                (std::max)(
-                    settings.fadePower,
-                    0.01f
-                )
+        const float fadeIn =
+            EffectMath::FadeIn(
+                time,
+                settings.fadeInRatio
             );
 
-        particle.color = {
-            red * settings.intensity,
-            green * settings.intensity,
-            blue * settings.intensity,
-            baseAlpha * fadeIn * fadeOut
-        };
+        const float fadeOut =
+            EffectMath::FadeOut(
+                time,
+                settings.fadePower
+            );
+
+        particle.color =
+            EffectMath::MakeFadedColor(
+                settings.color,
+                settings.endColor,
+                time,
+                settings.intensity,
+                fadeIn,
+                fadeOut
+            );
 
         ++iterator;
     }
 
     uint32_t index = 0;
 
-    const Matrix4x4 cameraMatrix =
-        Math::Inverse(viewMatrix);
-
     Matrix4x4 billboardMatrix =
-        Math::MakeIdentity4x4();
-
-    billboardMatrix.m[0][0] =
-        cameraMatrix.m[0][0];
-
-    billboardMatrix.m[0][1] =
-        cameraMatrix.m[0][1];
-
-    billboardMatrix.m[0][2] =
-        cameraMatrix.m[0][2];
-
-    billboardMatrix.m[1][0] =
-        cameraMatrix.m[1][0];
-
-    billboardMatrix.m[1][1] =
-        cameraMatrix.m[1][1];
-
-    billboardMatrix.m[1][2] =
-        cameraMatrix.m[1][2];
-
-    billboardMatrix.m[2][0] =
-        cameraMatrix.m[2][0];
-
-    billboardMatrix.m[2][1] =
-        cameraMatrix.m[2][1];
-
-    billboardMatrix.m[2][2] =
-        cameraMatrix.m[2][2];
+        Math::MakeBillboardMatrix(viewMatrix);
 
     const Matrix4x4 viewProjectionMatrix =
         Math::Multiply(
@@ -551,7 +449,7 @@ void Primitive::Emit(
                     primitiveRandomEngine
                 ) *
                 settings_.widthRandomness
-            );
+                );
 
         particle.transform.scale = {
             settings_.width * widthScale,
@@ -586,7 +484,7 @@ void Primitive::Emit(
             (std::max)(
                 settings_.spawnRadius,
                 0.0f
-            );
+                );
 
         particle.transform.translate = {
             position.x +
@@ -608,7 +506,7 @@ void Primitive::Emit(
                     primitiveRandomEngine
                 ) *
                 settings_.moveSpeedRandomness
-            );
+                );
 
         const float speed =
             settings_.moveSpeed *
@@ -853,64 +751,7 @@ void Primitive::CreatePipelineState()
         pixelShader->GetBufferSize()
     };
 
-    auto& blendState =
-        description
-        .BlendState
-        .RenderTarget[0];
-
-    blendState.BlendEnable = TRUE;
-
-    blendState.SrcBlend =
-        D3D12_BLEND_SRC_ALPHA;
-
-    blendState.DestBlend =
-        D3D12_BLEND_ONE;
-
-    blendState.BlendOp =
-        D3D12_BLEND_OP_ADD;
-
-    blendState.SrcBlendAlpha =
-        D3D12_BLEND_ONE;
-
-    blendState.DestBlendAlpha =
-        D3D12_BLEND_ZERO;
-
-    blendState.BlendOpAlpha =
-        D3D12_BLEND_OP_ADD;
-
-    blendState.RenderTargetWriteMask =
-        D3D12_COLOR_WRITE_ENABLE_ALL;
-
-    description.RasterizerState.CullMode =
-        D3D12_CULL_MODE_NONE;
-
-    description.RasterizerState.FillMode =
-        D3D12_FILL_MODE_SOLID;
-
-    description.DepthStencilState.DepthEnable =
-        TRUE;
-
-    description.DepthStencilState.DepthWriteMask =
-        D3D12_DEPTH_WRITE_MASK_ZERO;
-
-    description.DepthStencilState.DepthFunc =
-        D3D12_COMPARISON_FUNC_LESS_EQUAL;
-
-    description.NumRenderTargets = 1;
-
-    description.RTVFormats[0] =
-        DXGI_FORMAT_R8G8B8A8_UNORM;
-
-    description.DSVFormat =
-        DXGI_FORMAT_D24_UNORM_S8_UINT;
-
-    description.SampleMask =
-        D3D12_DEFAULT_SAMPLE_MASK;
-
-    description.PrimitiveTopologyType =
-        D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
-    description.SampleDesc.Count = 1;
+    D3DResourceHelper::SetParticlePipelineDefaults(description);
 
     HRESULT result =
         dxCommon_->GetDevice()
@@ -966,48 +807,16 @@ void Primitive::CreateMesh()
     const UINT bufferSize =
         sizeof(vertices);
 
-    D3D12_HEAP_PROPERTIES heapProperties = {
-        D3D12_HEAP_TYPE_UPLOAD,
-        D3D12_CPU_PAGE_PROPERTY_UNKNOWN,
-        D3D12_MEMORY_POOL_UNKNOWN,
-        1,
-        1
-    };
-
-    D3D12_RESOURCE_DESC resourceDescription{};
-    resourceDescription.Dimension =
-        D3D12_RESOURCE_DIMENSION_BUFFER;
-
-    resourceDescription.Width = bufferSize;
-    resourceDescription.Height = 1;
-    resourceDescription.DepthOrArraySize = 1;
-    resourceDescription.MipLevels = 1;
-
-    resourceDescription.Layout =
-        D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-    resourceDescription.SampleDesc.Count = 1;
-
-    HRESULT result =
-        dxCommon_->GetDevice()
-        ->CreateCommittedResource(
-            &heapProperties,
-            D3D12_HEAP_FLAG_NONE,
-            &resourceDescription,
-            D3D12_RESOURCE_STATE_GENERIC_READ,
-            nullptr,
-            IID_PPV_ARGS(&vertexBuffer_)
+    vertexBuffer_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            dxCommon_->GetDevice(),
+            bufferSize
         );
 
-    assert(SUCCEEDED(result));
-
-    VertexData* mappedData = nullptr;
-
-    vertexBuffer_->Map(
-        0,
-        nullptr,
-        reinterpret_cast<void**>(&mappedData)
-    );
+    VertexData* mappedData =
+        D3DResourceHelper::Map<VertexData>(
+            vertexBuffer_.Get()
+        );
 
     std::memcpy(
         mappedData,

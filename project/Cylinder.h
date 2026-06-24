@@ -54,7 +54,7 @@ public:
     {
         return particleSystem_.GetSettings();
     }
-    
+
     void Initialize(DirectXCommon* dxCommon, TextureManager* textureManager);
     void Update(const Matrix4x4& viewMatrix, const Matrix4x4& projectionMatrix);
     void Draw();

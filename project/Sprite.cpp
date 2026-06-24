@@ -1,5 +1,6 @@
 #include "Sprite.h"
 #include "MyMath.h" // 必ずインクルード
+#include "D3DResourceHelper.h"
 #include <cassert>
 
 void Sprite::Initialize(SpriteCommon* spriteCommon, uint32_t textureHandle) {
@@ -87,47 +88,59 @@ void Sprite::CreateVertexBuffer() {
     auto device = spriteCommon_->GetDxCommon()->GetDevice();
 
     // 頂点リソース作成
-    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = sizeof(VertexData) * 6;
-    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+    const size_t bufferSize =
+        sizeof(VertexData) * 6;
 
-    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&vertexBuffer_));
+    vertexBuffer_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            device,
+            bufferSize
+        );
 
     vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-    vertexBufferView_.SizeInBytes = sizeof(VertexData) * 6;
+    vertexBufferView_.SizeInBytes = static_cast<UINT>(bufferSize);
     vertexBufferView_.StrideInBytes = sizeof(VertexData);
 }
 
 void Sprite::CreateMaterialBuffer() {
     auto device = spriteCommon_->GetDxCommon()->GetDevice();
-    size_t sizeIB = (sizeof(Material) + 0xff) & ~0xff;
-    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = sizeIB;
-    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+    size_t sizeIB =
+        D3DResourceHelper::AlignConstantBufferSize(
+            sizeof(Material)
+        );
 
-    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&materialResource_));
-    materialResource_->Map(0, nullptr, (void**)&materialData_);
+    materialResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            device,
+            sizeIB
+        );
+
+    materialData_ =
+        D3DResourceHelper::Map<Material>(
+            materialResource_.Get()
+        );
+
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
 }
 
 void Sprite::CreateTransformationMatrixBuffer() {
     auto device = spriteCommon_->GetDxCommon()->GetDevice();
-    size_t sizeIB = (sizeof(TransformationMatrix) + 0xff) & ~0xff;
-    D3D12_HEAP_PROPERTIES heapProps = { D3D12_HEAP_TYPE_UPLOAD, D3D12_CPU_PAGE_PROPERTY_UNKNOWN, D3D12_MEMORY_POOL_UNKNOWN, 1, 1 };
-    D3D12_RESOURCE_DESC resDesc = {};
-    resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resDesc.Width = sizeIB;
-    resDesc.Height = 1; resDesc.DepthOrArraySize = 1; resDesc.MipLevels = 1;
-    resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR; resDesc.SampleDesc.Count = 1;
+    size_t sizeIB =
+        D3DResourceHelper::AlignConstantBufferSize(
+            sizeof(TransformationMatrix)
+        );
 
-    device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&transformationMatrixResource_));
-    transformationMatrixResource_->Map(0, nullptr, (void**)&transformationMatrixData_);
+    transformationMatrixResource_ =
+        D3DResourceHelper::CreateUploadBuffer(
+            device,
+            sizeIB
+        );
+
+    transformationMatrixData_ =
+        D3DResourceHelper::Map<TransformationMatrix>(
+            transformationMatrixResource_.Get()
+        );
+
     transformationMatrixData_->WVP = Math::MakeIdentity4x4();
 }
 
