@@ -1,4 +1,5 @@
 #include "HitEffectController.h"
+#include "GPUParticleManager.h"
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -8,12 +9,14 @@ void HitEffectController::Initialize(
     Primitive* primitive,
     Ring* ring,
     Cylinder* cylinder,
-    ParticleManager* particleManager
+    ParticleManager* particleManager,
+    GPUParticleManager* gpuParticleManager
 ) {
     primitive_ = primitive;
     ring_ = ring;
     cylinder_ = cylinder;
     particleManager_ = particleManager;
+    gpuParticleManager_ = gpuParticleManager;
 }
 
 std::string HitEffectController::MakeSafePresetName(
@@ -126,7 +129,15 @@ void HitEffectController::Emit(const Vector3& position) {
         };
 
     if (type_ == Type::Sakura) {
-        if (particleManager_) {
+        if (gpuParticleManager_) {
+            gpuParticleManager_->EmitSakura(
+                position,
+                80,
+                effectSize
+            );
+        }
+
+        if (!gpuParticleManager_ && particleManager_) {
             particleManager_->EmitSakura(position, effectSize);
         }
 
@@ -134,7 +145,9 @@ void HitEffectController::Emit(const Vector3& position) {
         return;
     }
 
-    if (particleManager_) {
+    if (gpuParticleManager_) {
+        gpuParticleManager_->Emit(position, 128, effectSize);
+    } else if (particleManager_) {
         particleManager_->Emit(position, 28);
     }
 

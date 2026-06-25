@@ -72,8 +72,16 @@ void SceneObjectController::Update() {
 }
 
 void SceneObjectController::Draw() {
-    for (auto& object : objects_) {
-        object->Draw();
+    for (size_t index = 0; index < objects_.size(); ++index) {
+        if (index == 0 && !showTerrain_) {
+            continue;
+        }
+
+        if (index != 0 && !showAxis_) {
+            continue;
+        }
+
+        objects_[index]->Draw();
     }
 }
 

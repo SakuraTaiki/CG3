@@ -33,7 +33,7 @@ void Model::Initialize(DirectXCommon* dxCommon, const std::string& directoryPath
         if (!textureFilePath_.empty()) {
             textureHandle_ = textureManager->LoadTexture(textureFilePath_);
         } else {
-            textureHandle_ = textureManager->LoadTexture("Resources/uvChecker.png");
+            textureHandle_ = textureManager->LoadTexture("Resources/white.png");
         }
     }
 }

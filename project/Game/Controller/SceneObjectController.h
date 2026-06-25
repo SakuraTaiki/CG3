@@ -23,6 +23,11 @@ public:
 
     void SetEnvironmentCoefficient(float environmentCoefficient);
 
+    bool& ShowTerrain() { return showTerrain_; }
+    bool& ShowAxis() { return showAxis_; }
+
 private:
     std::vector<std::unique_ptr<Object3d>> objects_;
+    bool showTerrain_ = true;
+    bool showAxis_ = true;
 };

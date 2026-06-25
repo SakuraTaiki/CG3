@@ -50,6 +50,14 @@ void GraphicsSystem::Initialize(WinApp* winApp, EngineContext* context) {
     particleManager_->Initialize(dxCommon_.get(), textureManager_.get());
     context->SetParticleManager(particleManager_.get());
 
+    gpuParticleManager_ = std::make_unique<GPUParticleManager>();
+    gpuParticleManager_->Initialize(
+        dxCommon_.get(),
+        srvManager_.get(),
+        textureManager_.get()
+    );
+    context->SetGPUParticleManager(gpuParticleManager_.get());
+
     // ImGui は DirectX / SRV / Window に依存するため最後の方で初期化する。
     imGuiManager_ = std::make_unique<ImGuiManager>();
     imGuiManager_->Initialize(dxCommon_.get(), srvManager_.get(), winApp);
@@ -63,6 +71,7 @@ void GraphicsSystem::Finalize() {
 
     // 依存関係があるため、初期化と逆順に解放する。
     imGuiManager_.reset();
+    gpuParticleManager_.reset();
     particleManager_.reset();
     camera_.reset();
     object3dCommon_.reset();

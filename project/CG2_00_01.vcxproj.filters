@@ -39,6 +39,7 @@
     <ClCompile Include="Engine\Graphics\Animation\SkinCluster.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\Cylinder.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\CylinderParticleSystem.cpp" />
+    <ClCompile Include="Engine\Graphics\Effects\GPUParticleManager.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\ParticleManager.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\Primitive.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\Ring.cpp" />
@@ -97,6 +98,7 @@
     <ClInclude Include="Engine\Graphics\Animation\SkinCluster.h" />
     <ClInclude Include="Engine\Graphics\Effects\Cylinder.h" />
     <ClInclude Include="Engine\Graphics\Effects\CylinderParticleSystem.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManager.h" />
     <ClInclude Include="Engine\Graphics\Effects\ParticleManager.h" />
     <ClInclude Include="Engine\Graphics\Effects\Primitive.h" />
     <ClInclude Include="Engine\Graphics\Effects\Ring.h" />
@@ -142,6 +144,10 @@
     <None Include="Resources\shaders\hlsl\Ring.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\CylinderEffect.VS.hlsl" />
     <None Include="Resources\shaders\hlsl\CylinderEffect.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\GPUParticle.hlsli" />
+    <None Include="Resources\shaders\hlsl\GPUParticle.CS.hlsl" />
+    <None Include="Resources\shaders\hlsl\GPUParticle.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\GPUParticle.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

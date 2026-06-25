@@ -8,6 +8,7 @@
 #include "SpriteCommon.h"
 #include "Object3dCommon.h"
 #include "ParticleManager.h"
+#include "GPUParticleManager.h"
 #include "ImGuiManager.h"
 #include "camera.h"
 
@@ -27,6 +28,7 @@ public:
     SpriteCommon* GetSpriteCommon() const { return spriteCommon_.get(); }
     Object3dCommon* GetObject3dCommon() const { return object3dCommon_.get(); }
     ParticleManager* GetParticleManager() const { return particleManager_.get(); }
+    GPUParticleManager* GetGPUParticleManager() const { return gpuParticleManager_.get(); }
     ImGuiManager* GetImGuiManager() const { return imGuiManager_.get(); }
     Camera* GetCamera() const { return camera_.get(); }
 
@@ -39,6 +41,7 @@ private:
     std::unique_ptr<SpriteCommon> spriteCommon_;
     std::unique_ptr<Object3dCommon> object3dCommon_;
     std::unique_ptr<ParticleManager> particleManager_;
+    std::unique_ptr<GPUParticleManager> gpuParticleManager_;
     std::unique_ptr<ImGuiManager> imGuiManager_;
     std::unique_ptr<Camera> camera_;
 };

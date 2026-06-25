@@ -155,6 +155,16 @@ void SceneDebugPanel::DrawEnvironmentTab(
     AnimationDebugController& animationDebug
 ) {
 #ifdef USE_IMGUI
+    ImGui::Checkbox(
+        "Show Terrain",
+        &sceneObjects.ShowTerrain()
+    );
+
+    ImGui::Checkbox(
+        "Show Axis",
+        &sceneObjects.ShowAxis()
+    );
+
     if (environment.DrawImGui()) {
         sceneObjects.SetEnvironmentCoefficient(
             environment.GetEnvironmentCoefficient()
