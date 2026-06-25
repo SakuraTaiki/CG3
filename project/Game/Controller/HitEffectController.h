@@ -9,6 +9,8 @@
 #include "Cylinder.h"
 #include "ParticleManager.h"
 
+class GPUParticleManager;
+
 class HitEffectController
 {
 public:
@@ -21,7 +23,8 @@ public:
         Primitive* primitive,
         Ring* ring,
         Cylinder* cylinder,
-        ParticleManager* particleManager
+        ParticleManager* particleManager,
+        GPUParticleManager* gpuParticleManager
     );
 
     void Emit(const Vector3& position);
@@ -54,6 +57,7 @@ private:
     Ring* ring_ = nullptr;
     Cylinder* cylinder_ = nullptr;
     ParticleManager* particleManager_ = nullptr;
+    GPUParticleManager* gpuParticleManager_ = nullptr;
 
     Type type_ = Type::Fire;
     float size_ = 1.0f;
@@ -77,4 +81,3 @@ private:
 
     std::string message_;
 };
-

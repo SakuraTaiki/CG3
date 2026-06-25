@@ -11,6 +11,7 @@ class TextureManager;
 class SpriteCommon;
 class Object3dCommon;
 class ParticleManager;
+class GPUParticleManager;
 class ImGuiManager;
 class Camera;
 
@@ -24,6 +25,7 @@ public:
     void SetSpriteCommon(SpriteCommon* spriteCommon) { spriteCommon_ = spriteCommon; }
     void SetObject3dCommon(Object3dCommon* object3dCommon) { object3dCommon_ = object3dCommon; }
     void SetParticleManager(ParticleManager* particleManager) { particleManager_ = particleManager; }
+    void SetGPUParticleManager(GPUParticleManager* gpuParticleManager) { gpuParticleManager_ = gpuParticleManager; }
     void SetImGuiManager(ImGuiManager* imGuiManager) { imGuiManager_ = imGuiManager; }
     void SetCamera(Camera* camera) { camera_ = camera; }
 
@@ -35,6 +37,7 @@ public:
     SpriteCommon* GetSpriteCommon() const { return spriteCommon_; }
     Object3dCommon* GetObject3dCommon() const { return object3dCommon_; }
     ParticleManager* GetParticleManager() const { return particleManager_; }
+    GPUParticleManager* GetGPUParticleManager() const { return gpuParticleManager_; }
     ImGuiManager* GetImGuiManager() const { return imGuiManager_; }
     Camera* GetCamera() const { return camera_; }
 
@@ -48,6 +51,7 @@ private:
     SpriteCommon* spriteCommon_ = nullptr;
     Object3dCommon* object3dCommon_ = nullptr;
     ParticleManager* particleManager_ = nullptr;
+    GPUParticleManager* gpuParticleManager_ = nullptr;
     ImGuiManager* imGuiManager_ = nullptr;
     Camera* camera_ = nullptr;
 };

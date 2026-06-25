@@ -178,6 +178,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Engine\Graphics\DirectXShaderCompiler.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\Cylinder.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\CylinderParticleSystem.cpp" />
+    <ClCompile Include="Engine\Graphics\Effects\GPUParticleManager.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\ParticleManager.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\Primitive.cpp" />
     <ClCompile Include="Engine\Graphics\Effects\Ring.cpp" />
@@ -251,6 +252,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Engine\Graphics\Effects\Cylinder.h" />
     <ClInclude Include="Engine\Graphics\Effects\CylinderParticleSystem.h" />
     <ClInclude Include="Engine\Graphics\Effects\EffectMath.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManager.h" />
     <ClInclude Include="Engine\Graphics\Effects\ParticleManager.h" />
     <ClInclude Include="Engine\Graphics\Effects\Primitive.h" />
     <ClInclude Include="Engine\Graphics\Effects\Ring.h" />
@@ -298,6 +300,16 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <None Include="Resources\shaders\hlsl\Grayscale.PS.hlsl">
       <FileType>Document</FileType>
     </None>
+    <None Include="Resources\shaders\hlsl\GPUParticle.CS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resources\shaders\hlsl\GPUParticle.PS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resources\shaders\hlsl\GPUParticle.VS.hlsl">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="Resources\shaders\hlsl\GPUParticle.hlsli" />
     <None Include="Resources\shaders\hlsl\Fullscreen.VS.hlsl">
       <FileType>Document</FileType>
     </None>

@@ -9,6 +9,7 @@
 #include "SpriteCommon.h"
 #include "Object3dCommon.h"
 #include "ParticleManager.h"
+#include "GPUParticleManager.h"
 #include "ImGuiManager.h"
 #include "camera.h"
 #include "WinApp.h"
@@ -56,7 +57,8 @@ void GameScene::Initialize(EngineContext* context) {
         primitive_.get(),
         ring_.get(),
         cylinder_.get(),
-        context_->GetParticleManager()
+        context_->GetParticleManager(),
+        context_->GetGPUParticleManager()
     );
 
     hitEffect_.ApplyFirePreset();
@@ -67,7 +69,7 @@ void GameScene::Initialize(EngineContext* context) {
 
 void GameScene::Finalize() {
     sceneObjects_.Finalize();
-    
+
     animationDebug_.Finalize();
     environment_.Finalize();
     sprite_.reset();
@@ -187,6 +189,7 @@ void GameScene::Update() {
     }
 
     context_->GetParticleManager()->Update(view, projection);
+    context_->GetGPUParticleManager()->Update(view, projection);
 
     sceneDebugPanel_.Draw(
         context_,
@@ -252,6 +255,7 @@ void GameScene::Draw3D() {
     }
 
     context_->GetParticleManager()->Draw();
+    context_->GetGPUParticleManager()->Draw();
 }
 
 void GameScene::Draw2D() {
