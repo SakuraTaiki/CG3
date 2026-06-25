@@ -13,7 +13,7 @@
 class GPUParticleManager
 {
 public:
-    static const uint32_t kMaxParticles = 4096;
+    static const uint32_t kMaxParticles = 1024;
     static const uint32_t kThreadCount = 1024;
 
     void Initialize(
@@ -87,8 +87,10 @@ private:
     void CreateComputeRootSignature();
     void CreateComputePipelineState();
     void CreateMesh();
+    void InitializeParticlesOnGPU();
     void UploadPendingParticles();
     void TransitionParticleResource(D3D12_RESOURCE_STATES afterState);
+   
 
 private:
     DirectXCommon* dxCommon_ = nullptr;
@@ -99,6 +101,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> graphicsPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> computeRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> initializePipelineState_;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
