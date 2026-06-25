@@ -285,11 +285,8 @@ void GPUParticleManager::CreateBuffers()
         D3DResourceHelper::Map<ParticleData>(
             uploadBuffer_.Get()
         );
-    std::memset(uploadData_, 0, particleBufferSize);
+    
     pendingIndices_.reserve(kMaxParticles);
-    for (uint32_t index = 0; index < kMaxParticles; ++index) {
-        pendingIndices_.push_back(index);
-    }
 
     viewProjectionBuffer_ =
         D3DResourceHelper::CreateUploadBuffer(
@@ -493,16 +490,21 @@ void GPUParticleManager::CreateComputeRootSignature()
 
 void GPUParticleManager::CreateComputePipelineState()
 {
-    auto csBlob = dxCommon_->CompileShader(
+    
+    auto updateCSBlob = dxCommon_->CompileShader(
         L"Resources/shaders/hlsl/GPUParticle.CS.hlsl",
+        L"cs_6_0"
+    );
+    auto initializeCSBlob = dxCommon_->CompileShader(
+        L"Resources/shaders/hlsl/InitializeGPUParticle.CS.hlsl",
         L"cs_6_0"
     );
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
     desc.pRootSignature = computeRootSignature_.Get();
     desc.CS = {
-        csBlob->GetBufferPointer(),
-        csBlob->GetBufferSize()
+        updateCSBlob->GetBufferPointer(),
+        updateCSBlob->GetBufferSize()
     };
 
     HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
@@ -510,20 +512,35 @@ void GPUParticleManager::CreateComputePipelineState()
         IID_PPV_ARGS(&computePipelineState_)
     );
     assert(SUCCEEDED(hr));
+
+    desc.CS = {
+        initializeCSBlob->GetBufferPointer(),
+        initializeCSBlob->GetBufferSize()
+    };
+
+    hr = dxCommon_->GetDevice()->CreateComputePipelineState(
+        &desc,
+        IID_PPV_ARGS(&initializePipelineState_)
+    );
+    assert(SUCCEEDED(hr));
+
 }
 
 void GPUParticleManager::CreateMesh()
 {
+
     VertexData vertices[] = {
-        {{-0.5f,  0.5f, 0.0f, 1.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
-        {{ 0.5f,  0.5f, 0.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
-        {{-0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
-        {{-0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
-        {{ 0.5f,  0.5f, 0.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
-        {{ 0.5f, -0.5f, 0.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
+     {{-0.5f,  0.5f, 0.0f, 1.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
+     {{ 0.5f,  0.5f, 0.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
+     {{-0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
+
+     {{-0.5f, -0.5f, 0.0f, 1.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
+     {{ 0.5f,  0.5f, 0.0f, 1.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}},
+     {{ 0.5f, -0.5f, 0.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, -1.0f}},
     };
 
     const UINT size = sizeof(vertices);
+
     vertexBuffer_ =
         D3DResourceHelper::CreateUploadBuffer(
             dxCommon_->GetDevice(),
@@ -534,6 +551,7 @@ void GPUParticleManager::CreateMesh()
         D3DResourceHelper::Map<VertexData>(
             vertexBuffer_.Get()
         );
+
     std::memcpy(data, vertices, size);
     vertexBuffer_->Unmap(0, nullptr);
 
@@ -541,6 +559,50 @@ void GPUParticleManager::CreateMesh()
         vertexBuffer_->GetGPUVirtualAddress();
     vertexBufferView_.SizeInBytes = size;
     vertexBufferView_.StrideInBytes = sizeof(VertexData);
+
+}
+
+void GPUParticleManager::InitializeParticlesOnGPU()
+{
+
+    updateData_->deltaTime = 0.0f;
+    updateData_->totalTime = 0.0f;
+    updateData_->particleCount = kMaxParticles;
+
+    TransitionParticleResource(
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS
+    );
+
+    ID3D12GraphicsCommandList* commandList =
+        dxCommon_->GetCommandList();
+
+    srvManager_->PreDraw();
+
+    commandList->SetComputeRootSignature(
+        computeRootSignature_.Get()
+    );
+    commandList->SetPipelineState(
+        initializePipelineState_.Get()
+    );
+    commandList->SetComputeRootDescriptorTable(
+        0,
+        srvManager_->GetGPUDescriptorHandle(particleUavIndex_)
+    );
+    commandList->SetComputeRootConstantBufferView(
+        1,
+        updateBuffer_->GetGPUVirtualAddress()
+    );
+    commandList->Dispatch(
+        (kMaxParticles + kThreadCount - 1) / kThreadCount,
+        1,
+        1
+    );
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barrier.UAV.pResource = particleBuffer_.Get();
+    commandList->ResourceBarrier(1, &barrier);
+
 }
 
 void GPUParticleManager::UploadPendingParticles()
