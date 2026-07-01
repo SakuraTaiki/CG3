@@ -2,25 +2,12 @@
 
 #include <algorithm>
 #include <cassert>
-#include <cmath>
 #include <cstring>
-#include <numbers>
-#include <random>
 
 #include "D3DResourceHelper.h"
 
 using Microsoft::WRL::ComPtr;
 
-namespace {
-    std::random_device seed;
-    std::mt19937_64 randomEngine(seed());
-
-    float RandomFloat(float minValue, float maxValue)
-    {
-        std::uniform_real_distribution<float> distribution(minValue, maxValue);
-        return distribution(randomEngine);
-    }
-}
 
 void GPUParticleManager::Initialize(
     DirectXCommon* dxCommon,
@@ -45,6 +32,7 @@ void GPUParticleManager::Initialize(
     CreateComputeRootSignature();
     CreateComputePipelineState();
     CreateMesh();
+    InitializeParticlesOnGPU();
 }
 
 void GPUParticleManager::Update(
@@ -53,8 +41,6 @@ void GPUParticleManager::Update(
 ) {
     constexpr float deltaTime = 1.0f / 60.0f;
     totalTime_ += deltaTime;
-
-    UploadPendingParticles();
 
     viewProjectionData_->billboard =
         Math::MakeBillboardMatrix(viewMatrix);
@@ -65,34 +51,50 @@ void GPUParticleManager::Update(
     updateData_->totalTime = totalTime_;
     updateData_->particleCount = kMaxParticles;
 
-    TransitionParticleResource(
-        D3D12_RESOURCE_STATE_UNORDERED_ACCESS
-    );
+    perFrameData_->time = totalTime_;
+    perFrameData_->deltaTime = deltaTime;
 
-    ID3D12GraphicsCommandList* commandList =
-        dxCommon_->GetCommandList();
+    TransitionParticleResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
+    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     srvManager_->PreDraw();
 
-    commandList->SetComputeRootSignature(
-        computeRootSignature_.Get()
-    );
-    commandList->SetPipelineState(
-        computePipelineState_.Get()
-    );
+    // Emit() / EmitSakura() が呼ばれたフレームだけGPUで発生させる。
+    if (emitRequested_)
+    {
+        DispatchEmit();
+        emitRequested_ = false;
+        emitterData_->emit = 0;
+
+        D3D12_RESOURCE_BARRIER emitBarriers[2]{};
+
+        emitBarriers[0].Type =
+            D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        emitBarriers[0].UAV.pResource =
+            particleBuffer_.Get();
+
+        emitBarriers[1].Type =
+            D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        emitBarriers[1].UAV.pResource =
+            freeCounterBuffer_.Get();
+
+        commandList->ResourceBarrier(
+            _countof(emitBarriers),
+            emitBarriers
+        );
+
+    }
+
+    commandList->SetComputeRootSignature(computeRootSignature_.Get());
+    commandList->SetPipelineState(computePipelineState_.Get());
     commandList->SetComputeRootDescriptorTable(
-        0,
-        srvManager_->GetGPUDescriptorHandle(particleUavIndex_)
-    );
+        0, srvManager_->GetGPUDescriptorHandle(particleUavIndex_));
     commandList->SetComputeRootConstantBufferView(
-        1,
-        updateBuffer_->GetGPUVirtualAddress()
-    );
+        4, updateBuffer_->GetGPUVirtualAddress());
     commandList->Dispatch(
         (kMaxParticles + kThreadCount - 1) / kThreadCount,
         1,
-        1
-    );
+        1);
 
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -145,111 +147,38 @@ void GPUParticleManager::Draw()
     );
 }
 
+
 void GPUParticleManager::Emit(
     const Vector3& position,
     uint32_t count,
     float sizeMultiplier
 ) {
-    sizeMultiplier = (std::max)(sizeMultiplier, 0.01f);
-
-    for (uint32_t index = 0; index < count; ++index) {
-        const uint32_t slot = emitIndex_;
-        emitIndex_ = (emitIndex_ + 1) % kMaxParticles;
-
-        const float angle =
-            RandomFloat(-std::numbers::pi_v<float>, std::numbers::pi_v<float>);
-        const float speed =
-            RandomFloat(0.025f, 0.085f) * sizeMultiplier;
-        const float width =
-            RandomFloat(0.16f, 0.42f) * sizeMultiplier;
-        const float height =
-            RandomFloat(0.38f, 0.95f) * sizeMultiplier;
-
-        ParticleData particle{};
-        particle.translate = {
-            position.x + RandomFloat(-0.3f, 0.3f) * sizeMultiplier,
-            position.y + RandomFloat(-0.2f, 0.2f) * sizeMultiplier,
-            position.z
-        };
-        particle.scale = { width, height, 1.0f };
-        particle.startScale = particle.scale;
-        particle.velocity = {
-            std::cos(angle) * speed * 0.3f,
-            RandomFloat(0.015f, 0.055f) * sizeMultiplier,
-            std::sin(angle) * speed * 0.1f
-        };
-        particle.acceleration = { 0.0f, -0.0007f, 0.0f };
-        particle.color = {
-            1.0f,
-            RandomFloat(0.12f, 0.55f),
-            RandomFloat(0.01f, 0.08f),
-            1.0f
-        };
-        particle.rotateZ = RandomFloat(-0.4f, 0.4f);
-        particle.angularVelocity = RandomFloat(-0.03f, 0.03f);
-        particle.lifeTime = 0.0f;
-        particle.maxTime = RandomFloat(0.32f, 0.72f);
-        particle.effectType = 0.0f;
-        particle.isAlive = 1.0f;
-
-        uploadData_[slot] = particle;
-        pendingIndices_.push_back(slot);
-    }
+    emitterData_->translate = position;
+    emitterData_->radius = 0.6f * (std::max)(sizeMultiplier, 0.01f);
+    emitterData_->count = count;
+    emitterData_->frequency = 0.5f;
+    emitterData_->frequencyTime = 0.0f;
+    emitterData_->emit = 1;
+    emitterData_->effectType = 0.0f;
+    emitterData_->sizeMultiplier = (std::max)(sizeMultiplier, 0.01f);
+    emitRequested_ = true;
 }
+
 
 void GPUParticleManager::EmitSakura(
     const Vector3& position,
     uint32_t count,
     float sizeMultiplier
 ) {
-    sizeMultiplier = (std::max)(sizeMultiplier, 0.01f);
-
-    for (uint32_t index = 0; index < count; ++index) {
-        const uint32_t slot = emitIndex_;
-        emitIndex_ = (emitIndex_ + 1) % kMaxParticles;
-
-        const float angle =
-            RandomFloat(-std::numbers::pi_v<float>, std::numbers::pi_v<float>);
-        const float radius =
-            std::sqrt(RandomFloat(0.0f, 1.0f)) * 0.6f * sizeMultiplier;
-        const float size =
-            RandomFloat(0.08f, 0.22f) * sizeMultiplier;
-
-        ParticleData particle{};
-        particle.translate = {
-            position.x + std::cos(angle) * radius,
-            position.y + RandomFloat(-0.25f, 0.35f) * sizeMultiplier,
-            position.z + std::sin(angle) * radius * 0.35f
-        };
-        particle.scale = {
-            size,
-            size * RandomFloat(1.2f, 1.7f),
-            1.0f
-        };
-        particle.startScale = particle.scale;
-        particle.velocity = {
-            std::cos(angle) * RandomFloat(0.025f, 0.07f) * sizeMultiplier,
-            RandomFloat(0.006f, 0.03f) * sizeMultiplier,
-            std::sin(angle) * RandomFloat(0.01f, 0.035f) * sizeMultiplier
-        };
-        particle.acceleration = { 0.0f, -0.0012f, 0.0f };
-        particle.color = {
-            1.0f,
-            RandomFloat(0.35f, 0.78f),
-            RandomFloat(0.62f, 0.92f),
-            1.0f
-        };
-        particle.rotateZ =
-            RandomFloat(-std::numbers::pi_v<float>, std::numbers::pi_v<float>);
-        particle.angularVelocity = RandomFloat(-0.12f, 0.12f);
-        particle.lifeTime = 0.0f;
-        particle.maxTime = RandomFloat(0.7f, 1.35f);
-        particle.effectType = 1.0f;
-        particle.isAlive = 1.0f;
-
-        uploadData_[slot] = particle;
-        pendingIndices_.push_back(slot);
-    }
+    emitterData_->translate = position;
+    emitterData_->radius = 0.6f * (std::max)(sizeMultiplier, 0.01f);
+    emitterData_->count = count;
+    emitterData_->frequency = 0.5f;
+    emitterData_->frequencyTime = 0.0f;
+    emitterData_->emit = 1;
+    emitterData_->effectType = 1.0f;
+    emitterData_->sizeMultiplier = (std::max)(sizeMultiplier, 0.01f);
+    emitRequested_ = true;
 }
 
 void GPUParticleManager::CreateBuffers()
@@ -276,17 +205,35 @@ void GPUParticleManager::CreateBuffers()
     );
     assert(SUCCEEDED(hr));
 
-    uploadBuffer_ =
-        D3DResourceHelper::CreateUploadBuffer(
-            device,
-            particleBufferSize
-        );
-    uploadData_ =
-        D3DResourceHelper::Map<ParticleData>(
-            uploadBuffer_.Get()
-        );
-    
-    pendingIndices_.reserve(kMaxParticles);
+    // CounterはGPUからのみ読み書きする。
+    D3D12_RESOURCE_DESC counterDesc =
+        D3DResourceHelper::MakeBufferResourceDesc(sizeof(int32_t));
+    counterDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    HRESULT counterHr = device->CreateCommittedResource(
+        &defaultHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &counterDesc,
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        nullptr,
+        IID_PPV_ARGS(&freeCounterBuffer_));
+    assert(SUCCEEDED(counterHr));
+
+    emitterBuffer_ = D3DResourceHelper::CreateUploadBuffer(
+        device,
+        D3DResourceHelper::AlignConstantBufferSize(sizeof(EmitterSphere)));
+    emitterData_ = D3DResourceHelper::Map<EmitterSphere>(emitterBuffer_.Get());
+    *emitterData_ = {};
+    emitterData_->count = 10;
+    emitterData_->frequency = 0.5f;
+    emitterData_->radius = 1.0f;
+    emitterData_->sizeMultiplier = 1.0f;
+
+    perFrameBuffer_ = D3DResourceHelper::CreateUploadBuffer(
+        device,
+        D3DResourceHelper::AlignConstantBufferSize(sizeof(PerFrame)));
+    perFrameData_ = D3DResourceHelper::Map<PerFrame>(perFrameBuffer_.Get());
+    *perFrameData_ = {};
 
     viewProjectionBuffer_ =
         D3DResourceHelper::CreateUploadBuffer(
@@ -330,6 +277,13 @@ void GPUParticleManager::CreateDescriptors()
         kMaxParticles,
         sizeof(ParticleData)
     );
+
+    freeCounterUavIndex_ = srvManager_->Allocate();
+    srvManager_->CreateUAVForStructuredBuffer(
+        freeCounterUavIndex_,
+        freeCounterBuffer_.Get(),
+        1,
+        sizeof(int32_t));
 }
 
 void GPUParticleManager::CreateGraphicsRootSignature()
@@ -442,28 +396,42 @@ void GPUParticleManager::CreateGraphicsPipelineState()
     assert(SUCCEEDED(hr));
 }
 
+
 void GPUParticleManager::CreateComputeRootSignature()
 {
-    D3D12_DESCRIPTOR_RANGE range{};
-    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    range.NumDescriptors = 1;
-    range.BaseShaderRegister = 0;
-    range.OffsetInDescriptorsFromTableStart =
+    D3D12_DESCRIPTOR_RANGE ranges[2]{};
+
+    ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    ranges[0].NumDescriptors = 1;
+    ranges[0].BaseShaderRegister = 0;
+    ranges[0].OffsetInDescriptorsFromTableStart =
         D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    D3D12_ROOT_PARAMETER rootParameters[2]{};
-    rootParameters[0].ParameterType =
-        D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[0].DescriptorTable.pDescriptorRanges = &range;
-    rootParameters[0].ShaderVisibility =
-        D3D12_SHADER_VISIBILITY_ALL;
+    ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    ranges[1].NumDescriptors = 1;
+    ranges[1].BaseShaderRegister = 1;
+    ranges[1].OffsetInDescriptorsFromTableStart =
+        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    rootParameters[1].ParameterType =
-        D3D12_ROOT_PARAMETER_TYPE_CBV;
-    rootParameters[1].Descriptor.ShaderRegister = 0;
-    rootParameters[1].ShaderVisibility =
-        D3D12_SHADER_VISIBILITY_ALL;
+    // 0:u0 Particle, 1:u1 Counter, 2:b0 Emitter,
+    // 3:b1 PerFrame, 4:b2 UpdateData
+    D3D12_ROOT_PARAMETER rootParameters[5]{};
+
+    for (UINT i = 0; i < 2; ++i)
+    {
+        rootParameters[i].ParameterType =
+            D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
+        rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
+        rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    }
+
+    for (UINT i = 0; i < 3; ++i)
+    {
+        rootParameters[i + 2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+        rootParameters[i + 2].Descriptor.ShaderRegister = i;
+        rootParameters[i + 2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    }
 
     D3D12_ROOT_SIGNATURE_DESC desc{};
     desc.NumParameters = _countof(rootParameters);
@@ -475,44 +443,52 @@ void GPUParticleManager::CreateComputeRootSignature()
         &desc,
         D3D_ROOT_SIGNATURE_VERSION_1,
         &blob,
-        &errorBlob
-    );
+        &errorBlob);
     assert(SUCCEEDED(hr));
 
     hr = dxCommon_->GetDevice()->CreateRootSignature(
         0,
         blob->GetBufferPointer(),
         blob->GetBufferSize(),
-        IID_PPV_ARGS(&computeRootSignature_)
-    );
+        IID_PPV_ARGS(&computeRootSignature_));
     assert(SUCCEEDED(hr));
 }
 
+
 void GPUParticleManager::CreateComputePipelineState()
 {
-    
     auto updateCSBlob = dxCommon_->CompileShader(
         L"Resources/shaders/hlsl/GPUParticle.CS.hlsl",
         L"cs_6_0"
     );
+
     auto initializeCSBlob = dxCommon_->CompileShader(
         L"Resources/shaders/hlsl/InitializeGPUParticle.CS.hlsl",
         L"cs_6_0"
     );
 
+    auto emitCSBlob = dxCommon_->CompileShader(
+        L"Resources/shaders/hlsl/EmitParticle.CS.hlsl",
+        L"cs_6_0"
+    );
+
     D3D12_COMPUTE_PIPELINE_STATE_DESC desc{};
     desc.pRootSignature = computeRootSignature_.Get();
+
+    // 更新用
     desc.CS = {
         updateCSBlob->GetBufferPointer(),
         updateCSBlob->GetBufferSize()
     };
 
-    HRESULT hr = dxCommon_->GetDevice()->CreateComputePipelineState(
-        &desc,
-        IID_PPV_ARGS(&computePipelineState_)
-    );
+    HRESULT hr =
+        dxCommon_->GetDevice()->CreateComputePipelineState(
+            &desc,
+            IID_PPV_ARGS(&computePipelineState_)
+        );
     assert(SUCCEEDED(hr));
 
+    // 初期化用
     desc.CS = {
         initializeCSBlob->GetBufferPointer(),
         initializeCSBlob->GetBufferSize()
@@ -524,7 +500,19 @@ void GPUParticleManager::CreateComputePipelineState()
     );
     assert(SUCCEEDED(hr));
 
+    // 発生用
+    desc.CS = {
+        emitCSBlob->GetBufferPointer(),
+        emitCSBlob->GetBufferSize()
+    };
+
+    hr = dxCommon_->GetDevice()->CreateComputePipelineState(
+        &desc,
+        IID_PPV_ARGS(&emitPipelineState_)
+    );
+    assert(SUCCEEDED(hr));
 }
+
 
 void GPUParticleManager::CreateMesh()
 {
@@ -588,51 +576,89 @@ void GPUParticleManager::InitializeParticlesOnGPU()
         0,
         srvManager_->GetGPUDescriptorHandle(particleUavIndex_)
     );
-    commandList->SetComputeRootConstantBufferView(
+
+    commandList->SetComputeRootDescriptorTable(
         1,
+        srvManager_->GetGPUDescriptorHandle(freeCounterUavIndex_)
+    );
+
+
+    // b2 : UpdateData
+    commandList->SetComputeRootConstantBufferView(
+        4,
         updateBuffer_->GetGPUVirtualAddress()
     );
+
     commandList->Dispatch(
         (kMaxParticles + kThreadCount - 1) / kThreadCount,
         1,
         1
     );
 
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barrier.UAV.pResource = particleBuffer_.Get();
-    commandList->ResourceBarrier(1, &barrier);
+
+    D3D12_RESOURCE_BARRIER barriers[2]{};
+    barriers[0].Type =
+        D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barriers[0].UAV.pResource =
+        particleBuffer_.Get();
+
+    barriers[1].Type =
+        D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barriers[1].UAV.pResource =
+        freeCounterBuffer_.Get();
+
+    commandList->ResourceBarrier(
+        _countof(barriers),
+        barriers
+    );
 
 }
 
-void GPUParticleManager::UploadPendingParticles()
+
+void GPUParticleManager::DispatchEmit()
 {
-    if (pendingIndices_.empty()) {
-        return;
-    }
-
-    TransitionParticleResource(
-        D3D12_RESOURCE_STATE_COPY_DEST
-    );
-
     ID3D12GraphicsCommandList* commandList =
         dxCommon_->GetCommandList();
 
-    for (uint32_t index : pendingIndices_) {
-        const UINT64 offset =
-            sizeof(ParticleData) * static_cast<UINT64>(index);
+    commandList->SetComputeRootSignature(
+        computeRootSignature_.Get()
+    );
 
-        commandList->CopyBufferRegion(
-            particleBuffer_.Get(),
-            offset,
-            uploadBuffer_.Get(),
-            offset,
-            sizeof(ParticleData)
-        );
-    }
+    commandList->SetPipelineState(
+        emitPipelineState_.Get()
+    );
 
-    pendingIndices_.clear();
+    // u0 : Particle
+    commandList->SetComputeRootDescriptorTable(
+        0,
+        srvManager_->GetGPUDescriptorHandle(
+            particleUavIndex_
+        )
+    );
+
+    // u1 : Counter
+    commandList->SetComputeRootDescriptorTable(
+        1,
+        srvManager_->GetGPUDescriptorHandle(
+            freeCounterUavIndex_
+        )
+    );
+
+    // b0 : EmitterSphere
+    commandList->SetComputeRootConstantBufferView(
+        2,
+        emitterBuffer_->GetGPUVirtualAddress()
+    );
+
+    // b1 : PerFrame
+    commandList->SetComputeRootConstantBufferView(
+        3,
+        perFrameBuffer_->GetGPUVirtualAddress()
+    );
+
+    commandList->Dispatch(1, 1, 1);
 }
+
 
 void GPUParticleManager::TransitionParticleResource(
     D3D12_RESOURCE_STATES afterState
