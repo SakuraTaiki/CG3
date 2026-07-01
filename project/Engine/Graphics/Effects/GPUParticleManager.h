@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <d3d12.h>
-#include <vector>
 #include <wrl.h>
 
 #include "DirectXCommon.h"
@@ -80,6 +79,26 @@ private:
         float pad;
     };
 
+    struct EmitterSphere
+    {
+        Vector3 translate;
+        float radius;
+        uint32_t count;
+        float frequency;
+        float frequencyTime;
+        uint32_t emit;
+        float effectType;
+        float sizeMultiplier;
+        float pad[2];
+    };
+
+    struct PerFrame
+    {
+        float time;
+        float deltaTime;
+        float pad[2];
+    };
+
     void CreateBuffers();
     void CreateDescriptors();
     void CreateGraphicsRootSignature();
@@ -88,10 +107,8 @@ private:
     void CreateComputePipelineState();
     void CreateMesh();
     void InitializeParticlesOnGPU();
-    void UploadPendingParticles();
     void TransitionParticleResource(D3D12_RESOURCE_STATES afterState);
-   
-
+    void DispatchEmit();
 private:
     DirectXCommon* dxCommon_ = nullptr;
     SrvManager* srvManager_ = nullptr;
@@ -109,8 +126,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> particleBuffer_;
     D3D12_RESOURCE_STATES particleResourceState_ = D3D12_RESOURCE_STATE_COPY_DEST;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer_;
-    ParticleData* uploadData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> viewProjectionBuffer_;
     ViewProjectionData* viewProjectionData_ = nullptr;
@@ -118,11 +133,21 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> updateBuffer_;
     UpdateData* updateData_ = nullptr;
 
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> emitPipelineState_;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> freeCounterBuffer_;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> emitterBuffer_;
+    EmitterSphere* emitterData_ = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> perFrameBuffer_;
+    PerFrame* perFrameData_ = nullptr;
+
     uint32_t particleSrvIndex_ = 0;
     uint32_t particleUavIndex_ = 0;
     uint32_t textureHandle_ = 0;
-    uint32_t emitIndex_ = 0;
+    uint32_t freeCounterUavIndex_ = 0;
+    bool emitRequested_ = false;
     float totalTime_ = 0.0f;
 
-    std::vector<uint32_t> pendingIndices_;
 };

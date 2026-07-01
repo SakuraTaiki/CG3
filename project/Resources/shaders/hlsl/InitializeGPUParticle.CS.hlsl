@@ -1,8 +1,9 @@
 #include "GPUParticle.hlsli"
 
 RWStructuredBuffer<GPUParticle> gParticles : register(u0);
+RWStructuredBuffer<int> gFreeCounter : register(u1);
 
-cbuffer UpdateData : register(b0)
+cbuffer UpdateData : register(b2)
 {
     float deltaTime;
     float totalTime;
@@ -21,7 +22,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
     gParticles[particleIndex] = (GPUParticle) 0;
 
-    // Visual check from the lesson:
-    // gParticles[particleIndex].scale = float3(0.5f, 0.5f, 0.5f);
-    // gParticles[particleIndex].color = float4(1.0f, 1.0f, 1.0f, 1.0f);
+    // 全threadが同じCounterを書かないよう、0番だけが初期化する。
+    if (particleIndex == 0)
+    {
+        gFreeCounter[0] = 0;
+    }
 }

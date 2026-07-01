@@ -149,6 +149,7 @@
     <None Include="Resources\shaders\hlsl\GPUParticle.VS.hlsl" />
     <None Include="Resources\shaders\hlsl\GPUParticle.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\InitializeGPUParticle.CS.hlsl" />
+    <None Include="Resources\shaders\hlsl\EmitParticle.CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

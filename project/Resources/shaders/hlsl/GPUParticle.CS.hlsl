@@ -2,7 +2,7 @@
 
 RWStructuredBuffer<GPUParticle> gParticles : register(u0);
 
-cbuffer UpdateData : register(b0)
+cbuffer UpdateData : register(b2)
 {
     float deltaTime;
     float totalTime;
