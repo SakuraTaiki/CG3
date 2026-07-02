@@ -188,6 +188,32 @@ public: // メンバ関数
         D3D12_CPU_DESCRIPTOR_HANDLE sourceHandle
     );
 
+    //================================
+    //Random
+    //================================
+
+    struct RandomSettings {
+        bool enabled = false;
+        bool animate = true;
+        bool showNoiseOnly = false;
+
+        float speed = 1.0f;
+        float scale = 720.0f;
+        float strength = 1.0f;
+    };
+
+    RandomSettings& GetRandomSettings() {
+        return randomSettings_;
+    }
+
+    const RandomSettings&
+        GetRandomSettings() const {
+        return randomSettings_;
+    }
+
+    void ResetRandomTime() {
+        randomTime_ = 0.0f;
+    }
 
 private: // メンバ関数(内部処理)
     void InitializeDevice();
@@ -251,12 +277,14 @@ private: // メンバ変数
 
     D3D12_GPU_DESCRIPTOR_HANDLE dissolveMaskSrvHandleGPU_{};
 
+
     VignetteSettings vignetteSettings_{};
     SmoothingSettings smoothingSettings_{};
     GaussianSettings gaussianSettings_{};
     OutlineSettings outlineSettings_{};
     RadialBlurSettings radialBlurSettings_{};
     DissolveSettings dissolveSettings_{};
+    RandomSettings randomSettings_{};
 
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -274,11 +302,12 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> outlinePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> radialBlurPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> dissolvePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> randomPipelineState_;
 
 
     uint32_t width_ = 1280;
 
     uint32_t height_ = 720;
     
-   
+    float randomTime_ = 0.0f;
 };

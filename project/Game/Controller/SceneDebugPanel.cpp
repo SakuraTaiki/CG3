@@ -170,6 +170,9 @@ void SceneDebugPanel::DrawPostEffectTab(
     auto& dissolve =
         dxCommon->GetDissolveSettings();
 
+    auto& random =
+        dxCommon->GetRandomSettings();
+
     Camera* camera =
         context->GetCamera();
 
@@ -571,8 +574,8 @@ void SceneDebugPanel::DrawPostEffectTab(
 
 
     //====================
-// Dissolve
-//====================
+    // Dissolve
+    //====================
 
     ImGui::SeparatorText("Dissolve");
 
@@ -643,6 +646,93 @@ void SceneDebugPanel::DrawPostEffectTab(
 
 
     //====================
+    //RandomNoise
+    //====================
+
+    ImGui::SeparatorText("Random Noise");
+
+    if (ImGui::Checkbox(
+        "Enable Random Noise",
+        &random.enabled
+    )) {
+        if (random.enabled) {
+            vignette.enabled = false;
+            smoothing.enabled = false;
+            gaussian.enabled = false;
+            outline.enabled = false;
+
+            // 追加済みの場合
+            radialBlur.enabled = false;
+            dissolve.enabled = false;
+
+            dxCommon->SetGrayScale(false);
+        }
+    }
+
+    ImGui::BeginDisabled(
+        !random.enabled
+    );
+
+    ImGui::Checkbox(
+        "Animate Random Noise",
+        &random.animate
+    );
+
+    ImGui::Checkbox(
+        "Show Noise Only",
+        &random.showNoiseOnly
+    );
+
+    ImGui::SliderFloat(
+        "Random Speed",
+        &random.speed,
+        0.0f,
+        10.0f,
+        "%.2f"
+    );
+
+    ImGui::SliderFloat(
+        "Random Scale",
+        &random.scale,
+        1.0f,
+        2000.0f,
+        "%.0f"
+    );
+
+    ImGui::SliderFloat(
+        "Random Strength",
+        &random.strength,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    if (ImGui::Button(
+        "Reset Random Settings"
+    )) {
+        const bool wasEnabled =
+            random.enabled;
+
+        random =
+            DirectXCommon::RandomSettings{};
+
+        random.enabled =
+            wasEnabled;
+
+        dxCommon->ResetRandomTime();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button(
+        "Reset Random Time"
+    )) {
+        dxCommon->ResetRandomTime();
+    }
+
+    ImGui::EndDisabled();
+
+    //====================
     // Current Effect
     //====================
 
@@ -655,6 +745,9 @@ void SceneDebugPanel::DrawPostEffectTab(
     if (outline.enabled) {
         currentEffect =
             "Depth Based Outline";
+    } else if (random.enabled) {
+        currentEffect =
+            "Random Noise";
     } else if (dissolve.enabled) {
         currentEffect =
             "Dissolve";
@@ -689,6 +782,7 @@ void SceneDebugPanel::DrawPostEffectTab(
         radialBlur.enabled = false;
         outline.enabled = false;
         dissolve.enabled = false;
+        random.enabled = false;
 
         dxCommon->SetGrayScale(false);
     }

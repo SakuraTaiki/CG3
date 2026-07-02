@@ -141,6 +141,10 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         commandList_->SetPipelineState(
             outlinePipelineState_.Get()
         );
+    } else if (randomSettings_.enabled) {
+        commandList_->SetPipelineState(
+            randomPipelineState_.Get()
+        );
     } else if (dissolveSettings_.enabled) {
         commandList_->SetPipelineState(
             dissolvePipelineState_.Get()
@@ -252,6 +256,68 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         );
     }
 
+    //===================================
+    //Random用
+    //===================================
+
+
+    else if (randomSettings_.enabled) {
+        if (randomSettings_.animate) {
+            constexpr float deltaTime =
+                1.0f / 60.0f;
+
+            randomTime_ +=
+                deltaTime;
+        }
+
+        struct RandomConstants {
+            float time;
+            float scale;
+            float strength;
+            float speed;
+
+            uint32_t showNoiseOnly;
+            float padding[3];
+        };
+
+        RandomConstants constants{};
+
+        constants.time =
+            randomTime_;
+
+        constants.scale =
+            std::clamp(
+                randomSettings_.scale,
+                1.0f,
+                2000.0f
+            );
+
+        constants.strength =
+            std::clamp(
+                randomSettings_.strength,
+                0.0f,
+                1.0f
+            );
+
+        constants.speed =
+            std::clamp(
+                randomSettings_.speed,
+                0.0f,
+                10.0f
+            );
+
+        constants.showNoiseOnly =
+            randomSettings_.showNoiseOnly
+            ? 1u
+            : 0u;
+
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            8,
+            &constants,
+            0
+        );
+    }
 
     //===================================
     //Dissolve用
@@ -1133,6 +1199,12 @@ void DirectXCommon::InitializeCopyImagePipeline()
             L"ps_6_0"
         );
 
+    auto randomPsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/RandomNoise.PS.hlsl",
+            L"ps_6_0"
+        );
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
     psoDesc.pRootSignature =
@@ -1273,6 +1345,25 @@ void DirectXCommon::InitializeCopyImagePipeline()
         &psoDesc,
         IID_PPV_ARGS(
             &dissolvePipelineState_
+        )
+    );
+
+    assert(SUCCEEDED(hr));
+
+
+    //==================================
+    //Random用
+    //==================================
+
+    psoDesc.PS = {
+    randomPsBlob->GetBufferPointer(),
+    randomPsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(
+            &randomPipelineState_
         )
     );
 
