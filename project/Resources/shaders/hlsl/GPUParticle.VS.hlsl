@@ -60,6 +60,9 @@ VertexShaderOutput main(
         output.position = float4(0.0f, 0.0f, 0.0f, 0.0f);
         output.texcoord = input.texcoord;
         output.color = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        
+        output.effectType = 0.0f;
+        
         return output;
     }
 
@@ -73,6 +76,8 @@ VertexShaderOutput main(
         mul(mul(input.position, world), viewProjection);
     output.texcoord = input.texcoord;
     output.color = particle.color;
+    output.effectType = particle.effectType;
+
 
     return output;
 }

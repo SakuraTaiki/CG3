@@ -59,51 +59,98 @@ void GPUParticleManager::Update(
     ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
     srvManager_->PreDraw();
 
-    // Emit() / EmitSakura() が呼ばれたフレームだけGPUで発生させる。
+   
+
     if (emitRequested_)
     {
         DispatchEmit();
-        emitRequested_ = false;
-        emitterData_->emit = 0;
 
-        D3D12_RESOURCE_BARRIER emitBarriers[2]{};
+        // Emit CSの書き込み完了後に
+        // Update CSを実行させる。
+        D3D12_RESOURCE_BARRIER barriers[2]{};
 
-        emitBarriers[0].Type =
+        barriers[0].Type =
             D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        emitBarriers[0].UAV.pResource =
+
+        barriers[0].Flags =
+            D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+        barriers[0].UAV.pResource =
             particleBuffer_.Get();
 
-        emitBarriers[1].Type =
+        barriers[1].Type =
             D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        emitBarriers[1].UAV.pResource =
+
+        barriers[1].Flags =
+            D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+        barriers[1].UAV.pResource =
             freeCounterBuffer_.Get();
 
         commandList->ResourceBarrier(
-            _countof(emitBarriers),
-            emitBarriers
+            _countof(barriers),
+            barriers
         );
 
+        emitRequested_ = false;
     }
 
-    commandList->SetComputeRootSignature(computeRootSignature_.Get());
-    commandList->SetPipelineState(computePipelineState_.Get());
-    commandList->SetComputeRootDescriptorTable(
-        0, srvManager_->GetGPUDescriptorHandle(particleUavIndex_));
-    commandList->SetComputeRootConstantBufferView(
-        4, updateBuffer_->GetGPUVirtualAddress());
-    commandList->Dispatch(
-        (kMaxParticles + kThreadCount - 1) / kThreadCount,
-        1,
-        1);
+    commandList->SetComputeRootSignature(
+        computeRootSignature_.Get()
+    );
 
-    D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barrier.UAV.pResource = particleBuffer_.Get();
-    commandList->ResourceBarrier(1, &barrier);
+    commandList->SetPipelineState(
+        computePipelineState_.Get()
+    );
+
+    // u0 : gParticles
+    commandList->SetComputeRootDescriptorTable(
+        0,
+        srvManager_->GetGPUDescriptorHandle(
+            particleUavIndex_
+        )
+    );
+
+    // b2 : UpdateData
+    commandList->SetComputeRootConstantBufferView(
+        4,
+        updateBuffer_->GetGPUVirtualAddress()
+    );
+
+    commandList->Dispatch(
+        (kMaxParticles + kThreadCount - 1) /
+        kThreadCount,
+        1,
+        1
+    );
+
+    // Update CSの書き込みを、
+    // 後続の描画や次の処理から参照可能にする。
+    D3D12_RESOURCE_BARRIER updateBarrier{};
+
+    updateBarrier.Type =
+        D3D12_RESOURCE_BARRIER_TYPE_UAV;
+
+    updateBarrier.Flags =
+        D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+    updateBarrier.UAV.pResource =
+        particleBuffer_.Get();
+
+    commandList->ResourceBarrier(
+        1,
+        &updateBarrier
+    );
 }
 
 void GPUParticleManager::Draw()
 {
+
+    if (!settings_.enabled)
+    {
+        return;
+    }
+
     ID3D12GraphicsCommandList* commandList =
         dxCommon_->GetCommandList();
 
@@ -147,38 +194,103 @@ void GPUParticleManager::Draw()
     );
 }
 
-
 void GPUParticleManager::Emit(
     const Vector3& position,
     uint32_t count,
     float sizeMultiplier
 ) {
+    if (!settings_.enabled)
+    {
+        return;
+    }
+
+    sizeMultiplier =
+        (std::max)(sizeMultiplier, 0.01f);
+
+    const int emitCount =
+        std::clamp(
+            settings_.fireCount,
+            1,
+            static_cast<int>(kMaxParticles)
+        );
+
     emitterData_->translate = position;
-    emitterData_->radius = 0.6f * (std::max)(sizeMultiplier, 0.01f);
-    emitterData_->count = count;
+
+    emitterData_->radius =
+        settings_.spawnRadius *
+        sizeMultiplier;
+
+    emitterData_->count =
+        static_cast<uint32_t>(emitCount);
+
     emitterData_->frequency = 0.5f;
     emitterData_->frequencyTime = 0.0f;
     emitterData_->emit = 1;
     emitterData_->effectType = 0.0f;
-    emitterData_->sizeMultiplier = (std::max)(sizeMultiplier, 0.01f);
-    emitRequested_ = true;
-}
 
+    emitterData_->sizeMultiplier =
+        sizeMultiplier *
+        (std::max)(settings_.particleScale, 0.01f);
+
+    emitterData_->mainColor =
+        settings_.fireMainColor;
+
+    emitterData_->subColor =
+        settings_.fireSubColor;
+
+    emitRequested_ = true;
+
+    // 既存APIとの互換性のため引数は残す。
+    (void)count;
+}
 
 void GPUParticleManager::EmitSakura(
     const Vector3& position,
     uint32_t count,
     float sizeMultiplier
 ) {
+    if (!settings_.enabled)
+    {
+        return;
+    }
+
+    sizeMultiplier =
+        (std::max)(sizeMultiplier, 0.01f);
+
+    const int emitCount =
+        std::clamp(
+            settings_.sakuraCount,
+            1,
+            static_cast<int>(kMaxParticles)
+        );
+
     emitterData_->translate = position;
-    emitterData_->radius = 0.6f * (std::max)(sizeMultiplier, 0.01f);
-    emitterData_->count = count;
+
+    emitterData_->radius =
+        settings_.spawnRadius *
+        sizeMultiplier;
+
+    emitterData_->count =
+        static_cast<uint32_t>(emitCount);
+
     emitterData_->frequency = 0.5f;
     emitterData_->frequencyTime = 0.0f;
     emitterData_->emit = 1;
     emitterData_->effectType = 1.0f;
-    emitterData_->sizeMultiplier = (std::max)(sizeMultiplier, 0.01f);
+
+    emitterData_->sizeMultiplier =
+        sizeMultiplier *
+        (std::max)(settings_.particleScale, 0.01f);
+
+    emitterData_->mainColor =
+        settings_.sakuraMainColor;
+
+    emitterData_->subColor =
+        settings_.sakuraSubColor;
+
     emitRequested_ = true;
+
+    (void)count;
 }
 
 void GPUParticleManager::CreateBuffers()
@@ -228,6 +340,12 @@ void GPUParticleManager::CreateBuffers()
     emitterData_->frequency = 0.5f;
     emitterData_->radius = 1.0f;
     emitterData_->sizeMultiplier = 1.0f;
+
+    emitterData_->mainColor =
+        settings_.fireMainColor;
+
+    emitterData_->subColor =
+        settings_.fireSubColor;
 
     perFrameBuffer_ = D3DResourceHelper::CreateUploadBuffer(
         device,

@@ -20,6 +20,8 @@ struct VertexShaderOutput
     float4 position : SV_POSITION;
     float2 texcoord : TEXCOORD0;
     float4 color : COLOR0;
+
+    nointerpolation float effectType : TEXCOORD1;
 };
 
 static const uint kMaxParticles = 1024;
@@ -28,15 +30,19 @@ struct EmitterSphere
 {
     float3 translate;
     float radius;
+
     uint count;
     float frequency;
     float frequencyTime;
     uint emit;
+
     float effectType;
     float sizeMultiplier;
     float2 emitterPad;
-};
 
+    float4 mainColor;
+    float4 subColor;
+};
 struct PerFrame
 {
     float time;

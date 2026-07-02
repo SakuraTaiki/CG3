@@ -15,6 +15,56 @@ public:
     static const uint32_t kMaxParticles = 1024;
     static const uint32_t kThreadCount = 1024;
 
+    struct Settings
+    {
+        bool enabled = true;
+
+        Vector4 fireMainColor = {
+            1.0f,
+            0.15f,
+            0.01f,
+            1.0f
+        };
+
+        Vector4 fireSubColor = {
+            1.0f,
+            0.65f,
+            0.05f,
+            1.0f
+        };
+
+        Vector4 sakuraMainColor = {
+            1.0f,
+            0.40f,
+            0.72f,
+            1.0f
+        };
+
+        Vector4 sakuraSubColor = {
+            1.0f,
+            0.82f,
+            0.92f,
+            1.0f
+        };
+
+        int fireCount = 128;
+        int sakuraCount = 80;
+
+        float particleScale = 1.0f;
+        float spawnRadius = 0.6f;
+    };
+
+    Settings& GetSettings()
+    {
+        return settings_;
+    }
+
+    const Settings& GetSettings() const
+    {
+        return settings_;
+    }
+
+
     void Initialize(
         DirectXCommon* dxCommon,
         SrvManager* srvManager,
@@ -83,13 +133,18 @@ private:
     {
         Vector3 translate;
         float radius;
+
         uint32_t count;
         float frequency;
         float frequencyTime;
         uint32_t emit;
+
         float effectType;
         float sizeMultiplier;
         float pad[2];
+
+        Vector4 mainColor;
+        Vector4 subColor;
     };
 
     struct PerFrame
@@ -98,6 +153,8 @@ private:
         float deltaTime;
         float pad[2];
     };
+
+    
 
     void CreateBuffers();
     void CreateDescriptors();
@@ -109,6 +166,7 @@ private:
     void InitializeParticlesOnGPU();
     void TransitionParticleResource(D3D12_RESOURCE_STATES afterState);
     void DispatchEmit();
+
 private:
     DirectXCommon* dxCommon_ = nullptr;
     SrvManager* srvManager_ = nullptr;
@@ -150,4 +208,5 @@ private:
     bool emitRequested_ = false;
     float totalTime_ = 0.0f;
 
+    Settings settings_{};
 };
