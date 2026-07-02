@@ -15,6 +15,7 @@
 #include "DirectXCommon.h"
 #include "ImGuiManager.h"
 #include "camera.h"
+#include "GPUParticleManager.h"
 
 #include <algorithm>
 
@@ -184,6 +185,9 @@ void SceneDebugPanel::DrawEffectTab(
     Cylinder* cylinder,
     Primitive* primitive
 ) {
+
+
+
 #ifdef USE_IMGUI
     ImGui::Checkbox(
         "Enable Primitive",
@@ -199,6 +203,169 @@ void SceneDebugPanel::DrawEffectTab(
         "Enable Cylinder",
         &hitEffect.EnableCylinder()
     );
+
+    GPUParticleManager* gpuParticleManager =
+        context->GetGPUParticleManager();
+
+    if (gpuParticleManager)
+    {
+        GPUParticleManager::Settings& settings =
+            gpuParticleManager->GetSettings();
+
+        ImGui::SeparatorText("GPU Particle");
+
+        ImGui::Checkbox(
+            "Enable GPU Particle",
+            &settings.enabled
+        );
+
+        ImGui::DragInt(
+            "GPU Fire Count",
+            &settings.fireCount,
+            1.0f,
+            1,
+            static_cast<int>(
+                GPUParticleManager::kMaxParticles
+                )
+        );
+
+        ImGui::DragInt(
+            "GPU Sakura Count",
+            &settings.sakuraCount,
+            1.0f,
+            1,
+            static_cast<int>(
+                GPUParticleManager::kMaxParticles
+                )
+        );
+
+        ImGui::DragFloat(
+            "GPU Particle Scale",
+            &settings.particleScale,
+            0.01f,
+            0.01f,
+            10.0f,
+            "%.2f"
+        );
+
+        ImGui::DragFloat(
+            "GPU Spawn Radius",
+            &settings.spawnRadius,
+            0.01f,
+            0.0f,
+            20.0f,
+            "%.2f"
+        );
+
+        ImGui::ColorEdit4(
+            "GPU Fire Main Color",
+            &settings.fireMainColor.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        ImGui::ColorEdit4(
+            "GPU Fire Sub Color",
+            &settings.fireSubColor.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        ImGui::ColorEdit4(
+            "GPU Sakura Main Color",
+            &settings.sakuraMainColor.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        ImGui::ColorEdit4(
+            "GPU Sakura Sub Color",
+            &settings.sakuraSubColor.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        if (ImGui::Button("Reset GPU Particle"))
+        {
+            settings =
+                GPUParticleManager::Settings{};
+        }
+
+        ImGui::SameLine();
+
+
+        ImGui::Text(
+            "GPU Particle : %s",
+            settings.enabled ? "ON" : "OFF"
+        );
+
+        ImGui::Text(
+            "Emit Position : %.2f, %.2f, %.2f",
+            hitEffect.GetPosition().x,
+            hitEffect.GetPosition().y,
+            hitEffect.GetPosition().z
+        );
+
+        ImGui::Text(
+            "Fire Count : %d",
+            settings.fireCount
+        );
+        
+        if (ImGui::Button("Preview GPU Particle"))
+        {
+            // OFFだった場合もPreviewではONにする
+            settings.enabled = true;
+
+            const Vector3 emitPosition =
+                hitEffect.GetPosition();
+
+            const float emitSize =
+                (std::max)(
+                    hitEffect.GetSize(),
+                    0.01f
+                    );
+
+            if (
+                hitEffect.GetType() ==
+                HitEffectController::Type::Sakura
+                ) {
+                settings.sakuraCount =
+                    std::clamp(
+                        settings.sakuraCount,
+                        1,
+                        static_cast<int>(
+                            GPUParticleManager::kMaxParticles
+                            )
+                    );
+
+                gpuParticleManager->EmitSakura(
+                    emitPosition,
+                    static_cast<uint32_t>(
+                        settings.sakuraCount
+                        ),
+                    emitSize
+                );
+            } else
+            {
+                settings.fireCount =
+                    std::clamp(
+                        settings.fireCount,
+                        1,
+                        static_cast<int>(
+                            GPUParticleManager::kMaxParticles
+                            )
+                    );
+
+                gpuParticleManager->Emit(
+                    emitPosition,
+                    static_cast<uint32_t>(
+                        settings.fireCount
+                        ),
+                    emitSize
+                );
+            }
+        }
+    }
 
     ImGui::SeparatorText("Hit Effect Type");
 

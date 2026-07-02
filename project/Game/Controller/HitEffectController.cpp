@@ -128,27 +128,59 @@ void HitEffectController::Emit(const Vector3& position) {
         }
         };
 
-    if (type_ == Type::Sakura) {
-        if (gpuParticleManager_) {
+    
+    if (type_ == Type::Sakura)
+    {
+        const bool useGPUParticle =
+            gpuParticleManager_ &&
+            gpuParticleManager_->GetSettings().enabled;
+
+        if (useGPUParticle)
+        {
             gpuParticleManager_->EmitSakura(
                 position,
-                80,
+                static_cast<uint32_t>(
+                    gpuParticleManager_
+                    ->GetSettings()
+                    .sakuraCount
+                    ),
                 effectSize
             );
-        }
-
-        if (!gpuParticleManager_ && particleManager_) {
-            particleManager_->EmitSakura(position, effectSize);
+        } else if (particleManager_)
+        {
+            // CG4_HitEffectの元の桜Particle
+            particleManager_->EmitSakura(
+                position,
+                effectSize
+            );
         }
 
         emitComponents();
         return;
     }
 
-    if (gpuParticleManager_) {
-        gpuParticleManager_->Emit(position, 128, effectSize);
-    } else if (particleManager_) {
-        particleManager_->Emit(position, 28);
+    const bool useGPUParticle =
+        gpuParticleManager_ &&
+        gpuParticleManager_->GetSettings().enabled;
+
+    if (useGPUParticle)
+    {
+        gpuParticleManager_->Emit(
+            position,
+            static_cast<uint32_t>(
+                gpuParticleManager_
+                ->GetSettings()
+                .fireCount
+                ),
+            effectSize
+        );
+    } else if (particleManager_)
+    {
+        // CG4_HitEffectの元の炎Particle
+        particleManager_->Emit(
+            position,
+            28
+        );
     }
 
     emitComponents();
