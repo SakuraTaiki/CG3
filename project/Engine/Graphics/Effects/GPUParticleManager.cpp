@@ -65,32 +65,22 @@ void GPUParticleManager::Update(
     {
         DispatchEmit();
 
-        // Emit CSの書き込み完了後に
-        // Update CSを実行させる。
-        D3D12_RESOURCE_BARRIER barriers[2]{};
+        // ===== 変更：Emitが書き込む3つのUAVを同期 =====
+        D3D12_RESOURCE_BARRIER barriers[3]{};
 
-        barriers[0].Type =
-            D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[0].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[0].UAV.pResource = particleBuffer_.Get();
 
-        barriers[0].Flags =
-            D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[1].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[1].UAV.pResource = freeListIndexBuffer_.Get();
 
-        barriers[0].UAV.pResource =
-            particleBuffer_.Get();
+        barriers[2].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barriers[2].Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barriers[2].UAV.pResource = freeListBuffer_.Get();
 
-        barriers[1].Type =
-            D3D12_RESOURCE_BARRIER_TYPE_UAV;
-
-        barriers[1].Flags =
-            D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-        barriers[1].UAV.pResource =
-            freeCounterBuffer_.Get();
-
-        commandList->ResourceBarrier(
-            _countof(barriers),
-            barriers
-        );
+        commandList->ResourceBarrier(_countof(barriers), barriers);
 
         emitRequested_ = false;
     }
@@ -103,19 +93,32 @@ void GPUParticleManager::Update(
         computePipelineState_.Get()
     );
 
+    
     // u0 : gParticles
     commandList->SetComputeRootDescriptorTable(
         0,
-        srvManager_->GetGPUDescriptorHandle(
-            particleUavIndex_
-        )
+        srvManager_->GetGPUDescriptorHandle(particleUavIndex_)
     );
 
-    // b2 : UpdateData
+    // ===== 追加：Updateでも寿命切れParticleをFreeListへ戻すため必要 =====
+    // u1 : gFreeListIndex
+    commandList->SetComputeRootDescriptorTable(
+        1,
+        srvManager_->GetGPUDescriptorHandle(freeListIndexUavIndex_)
+    );
+
+    // u2 : gFreeList
+    commandList->SetComputeRootDescriptorTable(
+        2,
+        srvManager_->GetGPUDescriptorHandle(freeListUavIndex_)
+    );
+
+    // ===== 変更：b2のRootParameterは5番 =====
     commandList->SetComputeRootConstantBufferView(
-        4,
+        5,
         updateBuffer_->GetGPUVirtualAddress()
     );
+
 
     commandList->Dispatch(
         (kMaxParticles + kThreadCount - 1) /
@@ -124,22 +127,21 @@ void GPUParticleManager::Update(
         1
     );
 
-    // Update CSの書き込みを、
-    // 後続の描画や次の処理から参照可能にする。
-    D3D12_RESOURCE_BARRIER updateBarrier{};
+    // ===== 変更：UpdateはParticleとFreeListの両方へ書き込む =====
+    D3D12_RESOURCE_BARRIER updateBarriers[3]{};
 
-    updateBarrier.Type =
-        D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[0].UAV.pResource = particleBuffer_.Get();
 
-    updateBarrier.Flags =
-        D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    updateBarriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[1].UAV.pResource = freeListIndexBuffer_.Get();
 
-    updateBarrier.UAV.pResource =
-        particleBuffer_.Get();
+    updateBarriers[2].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    updateBarriers[2].UAV.pResource = freeListBuffer_.Get();
 
     commandList->ResourceBarrier(
-        1,
-        &updateBarrier
+        _countof(updateBarriers),
+        updateBarriers
     );
 }
 
@@ -317,19 +319,42 @@ void GPUParticleManager::CreateBuffers()
     );
     assert(SUCCEEDED(hr));
 
-    // CounterはGPUからのみ読み書きする。
-    D3D12_RESOURCE_DESC counterDesc =
+    
+    // ===== 変更：FreeListの末尾位置を保存する1要素のバッファ =====
+    D3D12_RESOURCE_DESC freeListIndexDesc =
         D3DResourceHelper::MakeBufferResourceDesc(sizeof(int32_t));
-    counterDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+    freeListIndexDesc.Flags =
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-    HRESULT counterHr = device->CreateCommittedResource(
+    HRESULT freeListIndexHr = device->CreateCommittedResource(
         &defaultHeap,
         D3D12_HEAP_FLAG_NONE,
-        &counterDesc,
+        &freeListIndexDesc,
         D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
         nullptr,
-        IID_PPV_ARGS(&freeCounterBuffer_));
-    assert(SUCCEEDED(counterHr));
+        IID_PPV_ARGS(&freeListIndexBuffer_)
+    );
+    assert(SUCCEEDED(freeListIndexHr));
+
+
+    // ===== 追加：空きParticle番号を最大数分保存するバッファ =====
+    D3D12_RESOURCE_DESC freeListDesc =
+        D3DResourceHelper::MakeBufferResourceDesc(
+            sizeof(uint32_t) * kMaxParticles
+        );
+    freeListDesc.Flags =
+        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+    HRESULT freeListHr = device->CreateCommittedResource(
+        &defaultHeap,
+        D3D12_HEAP_FLAG_NONE,
+        &freeListDesc,
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+        nullptr,
+        IID_PPV_ARGS(&freeListBuffer_)
+    );
+    assert(SUCCEEDED(freeListHr));
+
 
     emitterBuffer_ = D3DResourceHelper::CreateUploadBuffer(
         device,
@@ -396,12 +421,22 @@ void GPUParticleManager::CreateDescriptors()
         sizeof(ParticleData)
     );
 
-    freeCounterUavIndex_ = srvManager_->Allocate();
+    freeListIndexUavIndex_ = srvManager_->Allocate();
     srvManager_->CreateUAVForStructuredBuffer(
-        freeCounterUavIndex_,
-        freeCounterBuffer_.Get(),
+        freeListIndexUavIndex_,
+        freeListIndexBuffer_.Get(),
         1,
-        sizeof(int32_t));
+        sizeof(int32_t)
+    );
+
+    // ===== 追加：u2 / gFreeList =====
+    freeListUavIndex_ = srvManager_->Allocate();
+    srvManager_->CreateUAVForStructuredBuffer(
+        freeListUavIndex_,
+        freeListBuffer_.Get(),
+        kMaxParticles,
+        sizeof(uint32_t)
+    );
 }
 
 void GPUParticleManager::CreateGraphicsRootSignature()
@@ -517,25 +552,26 @@ void GPUParticleManager::CreateGraphicsPipelineState()
 
 void GPUParticleManager::CreateComputeRootSignature()
 {
-    D3D12_DESCRIPTOR_RANGE ranges[2]{};
+    D3D12_DESCRIPTOR_RANGE ranges[3]{};
 
-    ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    ranges[0].NumDescriptors = 1;
-    ranges[0].BaseShaderRegister = 0;
-    ranges[0].OffsetInDescriptorsFromTableStart =
-        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    for (UINT i = 0; i < 3; ++i)
+    {
+        ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+        ranges[i].NumDescriptors = 1;
+        ranges[i].BaseShaderRegister = i;
+        ranges[i].OffsetInDescriptorsFromTableStart =
+            D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    }
 
-    ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    ranges[1].NumDescriptors = 1;
-    ranges[1].BaseShaderRegister = 1;
-    ranges[1].OffsetInDescriptorsFromTableStart =
-        D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+   // 0:u0 Particle
+   // 1:u1 FreeListIndex
+   // 2:u2 FreeList
+   // 3:b0 Emitter
+   // 4:b1 PerFrame
+   // 5:b2 UpdateData
+    D3D12_ROOT_PARAMETER rootParameters[6]{};
 
-    // 0:u0 Particle, 1:u1 Counter, 2:b0 Emitter,
-    // 3:b1 PerFrame, 4:b2 UpdateData
-    D3D12_ROOT_PARAMETER rootParameters[5]{};
-
-    for (UINT i = 0; i < 2; ++i)
+    for (UINT i = 0; i < 3; ++i)
     {
         rootParameters[i].ParameterType =
             D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -546,11 +582,14 @@ void GPUParticleManager::CreateComputeRootSignature()
 
     for (UINT i = 0; i < 3; ++i)
     {
-        rootParameters[i + 2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-        rootParameters[i + 2].Descriptor.ShaderRegister = i;
-        rootParameters[i + 2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+        rootParameters[i + 3].ParameterType =
+            D3D12_ROOT_PARAMETER_TYPE_CBV;
+        rootParameters[i + 3].Descriptor.ShaderRegister = i;
+        rootParameters[i + 3].ShaderVisibility =
+            D3D12_SHADER_VISIBILITY_ALL;
     }
 
+    
     D3D12_ROOT_SIGNATURE_DESC desc{};
     desc.NumParameters = _countof(rootParameters);
     desc.pParameters = rootParameters;
@@ -561,14 +600,17 @@ void GPUParticleManager::CreateComputeRootSignature()
         &desc,
         D3D_ROOT_SIGNATURE_VERSION_1,
         &blob,
-        &errorBlob);
+        &errorBlob
+    );
     assert(SUCCEEDED(hr));
+
 
     hr = dxCommon_->GetDevice()->CreateRootSignature(
         0,
         blob->GetBufferPointer(),
         blob->GetBufferSize(),
-        IID_PPV_ARGS(&computeRootSignature_));
+        IID_PPV_ARGS(&computeRootSignature_)
+    );
     assert(SUCCEEDED(hr));
 }
 
@@ -668,9 +710,9 @@ void GPUParticleManager::CreateMesh()
 
 }
 
+
 void GPUParticleManager::InitializeParticlesOnGPU()
 {
-
     updateData_->deltaTime = 0.0f;
     updateData_->totalTime = 0.0f;
     updateData_->particleCount = kMaxParticles;
@@ -690,20 +732,28 @@ void GPUParticleManager::InitializeParticlesOnGPU()
     commandList->SetPipelineState(
         initializePipelineState_.Get()
     );
+
+    // u0 : gParticles
     commandList->SetComputeRootDescriptorTable(
         0,
         srvManager_->GetGPUDescriptorHandle(particleUavIndex_)
     );
 
+    // ===== 変更：u1 : gFreeListIndex =====
     commandList->SetComputeRootDescriptorTable(
         1,
-        srvManager_->GetGPUDescriptorHandle(freeCounterUavIndex_)
+        srvManager_->GetGPUDescriptorHandle(freeListIndexUavIndex_)
     );
 
+    // ===== 追加：u2 : gFreeList =====
+    commandList->SetComputeRootDescriptorTable(
+        2,
+        srvManager_->GetGPUDescriptorHandle(freeListUavIndex_)
+    );
 
-    // b2 : UpdateData
+    // ===== 変更：b2のRootParameterは5番 =====
     commandList->SetComputeRootConstantBufferView(
-        4,
+        5,
         updateBuffer_->GetGPUVirtualAddress()
     );
 
@@ -713,24 +763,21 @@ void GPUParticleManager::InitializeParticlesOnGPU()
         1
     );
 
+    // 初期化した3つのUAVすべてを後続処理から参照可能にする。
+    D3D12_RESOURCE_BARRIER barriers[3]{};
 
-    D3D12_RESOURCE_BARRIER barriers[2]{};
-    barriers[0].Type =
-        D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barriers[0].UAV.pResource =
-        particleBuffer_.Get();
+    barriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barriers[0].UAV.pResource = particleBuffer_.Get();
 
-    barriers[1].Type =
-        D3D12_RESOURCE_BARRIER_TYPE_UAV;
-    barriers[1].UAV.pResource =
-        freeCounterBuffer_.Get();
+    barriers[1].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barriers[1].UAV.pResource = freeListIndexBuffer_.Get();
 
-    commandList->ResourceBarrier(
-        _countof(barriers),
-        barriers
-    );
+    barriers[2].Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barriers[2].UAV.pResource = freeListBuffer_.Get();
 
+    commandList->ResourceBarrier(_countof(barriers), barriers);
 }
+
 
 
 void GPUParticleManager::DispatchEmit()
@@ -741,36 +788,38 @@ void GPUParticleManager::DispatchEmit()
     commandList->SetComputeRootSignature(
         computeRootSignature_.Get()
     );
-
     commandList->SetPipelineState(
         emitPipelineState_.Get()
     );
 
-    // u0 : Particle
+    // u0 : gParticles
     commandList->SetComputeRootDescriptorTable(
         0,
-        srvManager_->GetGPUDescriptorHandle(
-            particleUavIndex_
-        )
+        srvManager_->GetGPUDescriptorHandle(particleUavIndex_)
     );
 
-    // u1 : Counter
+    // ===== 変更：u1 : gFreeListIndex =====
     commandList->SetComputeRootDescriptorTable(
         1,
-        srvManager_->GetGPUDescriptorHandle(
-            freeCounterUavIndex_
-        )
+        srvManager_->GetGPUDescriptorHandle(freeListIndexUavIndex_)
     );
 
+    // ===== 追加：u2 : gFreeList =====
+    commandList->SetComputeRootDescriptorTable(
+        2,
+        srvManager_->GetGPUDescriptorHandle(freeListUavIndex_)
+    );
+
+    // ===== 変更：CBVのRootParameter番号が1つ後ろへ移動 =====
     // b0 : EmitterSphere
     commandList->SetComputeRootConstantBufferView(
-        2,
+        3,
         emitterBuffer_->GetGPUVirtualAddress()
     );
 
     // b1 : PerFrame
     commandList->SetComputeRootConstantBufferView(
-        3,
+        4,
         perFrameBuffer_->GetGPUVirtualAddress()
     );
 
