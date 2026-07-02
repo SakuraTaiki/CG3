@@ -183,7 +183,6 @@ void SceneDebugPanel::DrawPostEffectTab(
     ImGui::Text("Post Effect Settings");
     ImGui::Separator();
 
-
     //====================
     // GrayScale
     //====================
@@ -398,7 +397,6 @@ void SceneDebugPanel::DrawPostEffectTab(
 
     ImGui::EndDisabled();
 
-    
     //====================
     // Depth Based Outline
     //====================
@@ -484,7 +482,6 @@ void SceneDebugPanel::DrawPostEffectTab(
     }
 
     ImGui::EndDisabled();
-
 
     //====================
     // 現在の状態

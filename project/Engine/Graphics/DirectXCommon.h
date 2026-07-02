@@ -104,10 +104,6 @@ public: // メンバ関数
     }
 
 
-    //=======================
-    //Outline
-    //=======================
-
     struct OutlineSettings {
         bool enabled = true;
 
@@ -193,13 +189,17 @@ private: // メンバ変数
 
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
 
-    D3D12_CPU_DESCRIPTOR_HANDLE depthTextureSrvHandleCPU_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE depthTextureSrvHandleGPU_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE
+        depthTextureSrvHandleCPU_{};
+
+    D3D12_GPU_DESCRIPTOR_HANDLE
+        depthTextureSrvHandleGPU_{};
 
     VignetteSettings vignetteSettings_{};
     SmoothingSettings smoothingSettings_{};
     GaussianSettings gaussianSettings_{};
     OutlineSettings outlineSettings_{};
+
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
@@ -213,7 +213,9 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> postEffectPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> smoothingPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> gaussianPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> outlinePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState>
+        outlinePipelineState_;
+
 
     uint32_t width_ = 1280;
 

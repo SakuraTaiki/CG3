@@ -793,9 +793,6 @@ void DirectXCommon::InitializeRenderTexture()
     renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
 
-    //========================
-    //Depth用SRVヒープ
-    //========================
     UINT srvSize =
         device_->GetDescriptorHandleIncrementSize(
             D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
@@ -828,8 +825,6 @@ void DirectXCommon::InitializeRenderTexture()
         depthTextureSrvHandleCPU_
     );
 
-
-
 }
 
 void DirectXCommon::InitializeCopyImagePipeline()
@@ -858,8 +853,9 @@ void DirectXCommon::InitializeCopyImagePipeline()
     rootParameters[1].Constants.Num32BitValues = 12;
     rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-    D3D12_STATIC_SAMPLER_DESC staticSamplers[2]{};
     
+    D3D12_STATIC_SAMPLER_DESC staticSamplers[2]{};
+
     // s0 : Color用Linear
     staticSamplers[0].Filter =
         D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -882,6 +878,7 @@ void DirectXCommon::InitializeCopyImagePipeline()
     staticSamplers[1].Filter =
         D3D12_FILTER_MIN_MAG_MIP_POINT;
     staticSamplers[1].ShaderRegister = 1;
+
 
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
     rootSignatureDesc.Flags =
@@ -1060,10 +1057,8 @@ void DirectXCommon::InitializeCopyImagePipeline()
 
     assert(SUCCEEDED(hr));
 
-    //==========================
-    //Outline
-    //==========================
 
+    //Outline
     psoDesc.PS = {
     outlinePsBlob->GetBufferPointer(),
     outlinePsBlob->GetBufferSize()

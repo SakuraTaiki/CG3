@@ -258,6 +258,8 @@ void GameScene::Draw3D() {
     context_->GetGPUParticleManager()->Draw();
 }
 
+
+
 void GameScene::Draw2D()
 {
     DirectXCommon* dxCommon =
