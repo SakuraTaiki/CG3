@@ -91,66 +91,174 @@ void DirectXCommon::PreDrawForRenderTexture()
 
 }
 
+
 void DirectXCommon::DrawRenderTextureToSwapChain()
 {
-
     TransitionResource(
         renderTextureResource_.Get(),
         renderTextureState_,
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+    );
 
-    renderTextureState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    renderTextureState_ =
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-    ID3D12DescriptorHeap* heaps[] = { renderTextureSrvHeap_.Get() };
-    commandList_->SetDescriptorHeaps(1, heaps);
+    ID3D12DescriptorHeap* heaps[] = {
+        renderTextureSrvHeap_.Get()
+    };
 
-    commandList_->SetGraphicsRootSignature(copyImageRootSignature_.Get());
+    commandList_->SetDescriptorHeaps(
+        1,
+        heaps
+    );
 
-    if (smoothingSettings_.enabled) {
-        commandList_->SetPipelineState(smoothingPipelineState_.Get());
+    commandList_->SetGraphicsRootSignature(
+        copyImageRootSignature_.Get()
+    );
+
+    if (gaussianSettings_.enabled) {
+        commandList_->SetPipelineState(
+            gaussianPipelineState_.Get()
+        );
+    } else if (smoothingSettings_.enabled) {
+        commandList_->SetPipelineState(
+            smoothingPipelineState_.Get()
+        );
     } else {
-        commandList_->SetPipelineState(postEffectPipelineState_.Get());
+        commandList_->SetPipelineState(
+            postEffectPipelineState_.Get()
+        );
     }
 
-    commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    commandList_->SetGraphicsRootDescriptorTable(0, renderTextureSrvHandleGPU_);
+    commandList_->IASetPrimitiveTopology(
+        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+    );
 
-    if (smoothingSettings_.enabled) {
+    commandList_->SetGraphicsRootDescriptorTable(
+        0,
+        renderTextureSrvHandleGPU_
+    );
+
+    if (gaussianSettings_.enabled) {
+        struct GaussianConstants {
+            uint32_t blurRadius;
+            float sigma;
+            float blurStrength;
+            float padding;
+        } constants{};
+
+        constants.blurRadius =
+            static_cast<uint32_t>(
+                std::clamp(
+                    gaussianSettings_.radius,
+                    1,
+                    4
+                )
+                );
+
+        constants.sigma =
+            std::clamp(
+                gaussianSettings_.sigma,
+                0.1f,
+                10.0f
+            );
+
+        constants.blurStrength =
+            std::clamp(
+                gaussianSettings_.strength,
+                0.0f,
+                1.0f
+            );
+
+        commandList_
+            ->SetGraphicsRoot32BitConstants(
+                1,
+                4,
+                &constants,
+                0
+            );
+    } else if (smoothingSettings_.enabled) {
         struct SmoothingConstants {
             uint32_t blurRadius;
             float blurStrength;
             float padding[2];
         } constants{};
 
-        constants.blurRadius = static_cast<uint32_t>(
-            std::clamp(smoothingSettings_.radius, 1, 4));
-        constants.blurStrength =
-            std::clamp(smoothingSettings_.strength, 0.0f, 1.0f);
+        constants.blurRadius =
+            static_cast<uint32_t>(
+                std::clamp(
+                    smoothingSettings_.radius,
+                    1,
+                    4
+                )
+                );
 
-        commandList_->SetGraphicsRoot32BitConstants(1, 4, &constants, 0);
+        constants.blurStrength =
+            std::clamp(
+                smoothingSettings_.strength,
+                0.0f,
+                1.0f
+            );
+
+        commandList_
+            ->SetGraphicsRoot32BitConstants(
+                1,
+                4,
+                &constants,
+                0
+            );
     } else {
         struct PostEffectConstants {
             float vignetteIntensity;
             float vignetteRadius;
             float vignetteSoftness;
             float aspectRatio;
+
             uint32_t enableVignette;
             uint32_t enableGrayScale;
             uint32_t padding[2];
         } constants{};
 
-        constants.vignetteIntensity = vignetteSettings_.intensity;
-        constants.vignetteRadius = vignetteSettings_.radius;
-        constants.vignetteSoftness = vignetteSettings_.softness;
-        constants.aspectRatio = static_cast<float>(width_) / static_cast<float>(height_);
-        constants.enableVignette = vignetteSettings_.enabled ? 1u : 0u;
-        constants.enableGrayScale = enableGrayScale_ ? 1u : 0u;
-        commandList_->SetGraphicsRoot32BitConstants(1, 8, &constants, 0);
+        constants.vignetteIntensity =
+            vignetteSettings_.intensity;
+
+        constants.vignetteRadius =
+            vignetteSettings_.radius;
+
+        constants.vignetteSoftness =
+            vignetteSettings_.softness;
+
+        constants.aspectRatio =
+            static_cast<float>(width_) /
+            static_cast<float>(height_);
+
+        constants.enableVignette =
+            vignetteSettings_.enabled
+            ? 1u
+            : 0u;
+
+        constants.enableGrayScale =
+            enableGrayScale_
+            ? 1u
+            : 0u;
+
+        commandList_
+            ->SetGraphicsRoot32BitConstants(
+                1,
+                8,
+                &constants,
+                0
+            );
     }
 
-    commandList_->DrawInstanced(3, 1, 0, 0);
-
+    commandList_->DrawInstanced(
+        3,
+        1,
+        0,
+        0
+    );
 }
+
 
 void DirectXCommon::InitializeDevice() {
     // DXGIファクトリーの生成
@@ -545,6 +653,12 @@ void DirectXCommon::InitializeCopyImagePipeline()
             L"ps_6_0"
         );
 
+    auto gaussianPsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/GaussianFilter.PS.hlsl",
+            L"ps_6_0"
+        );
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
     psoDesc.pRootSignature =
@@ -616,6 +730,7 @@ void DirectXCommon::InitializeCopyImagePipeline()
     );
     assert(SUCCEEDED(hr));
 
+    //smoothing
     psoDesc.PS = {
         smoothingPsBlob->GetBufferPointer(),
         smoothingPsBlob->GetBufferSize()
@@ -625,6 +740,21 @@ void DirectXCommon::InitializeCopyImagePipeline()
         &psoDesc,
         IID_PPV_ARGS(&smoothingPipelineState_)
     );
+    assert(SUCCEEDED(hr));
+
+    //GaussianFilter
+    psoDesc.PS = {
+    gaussianPsBlob->GetBufferPointer(),
+    gaussianPsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(
+            &gaussianPipelineState_
+        )
+    );
+
     assert(SUCCEEDED(hr));
 }
 

@@ -202,6 +202,8 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
             wasEnabled;
     }
 
+    ImGui::EndDisabled();
+
     //====================
     //Smoothing
     //====================
@@ -249,7 +251,75 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
     ImGui::EndDisabled();
 
 
+    //=====================
+    //GaussianFilter
+    //=====================
+    ImGui::SeparatorText("Gaussian Filter");
+
+    DirectXCommon::GaussianSettings& gaussian =
+        context
+        ->GetDxCommon()
+        ->GetGaussianSettings();
+
+    if (ImGui::Checkbox(
+        "Enable Gaussian Filter",
+        &gaussian.enabled
+    )) {
+        if (gaussian.enabled) {
+            smoothing.enabled = false;
+            vignette.enabled = false;
+        }
+    }
+
+    ImGui::BeginDisabled(
+        !gaussian.enabled
+    );
+
+    ImGui::SliderInt(
+        "Gaussian Radius",
+        &gaussian.radius,
+        1,
+        4
+    );
+
+    ImGui::SliderFloat(
+        "Gaussian Sigma",
+        &gaussian.sigma,
+        0.1f,
+        10.0f,
+        "%.2f"
+    );
+
+    ImGui::SliderFloat(
+        "Gaussian Strength",
+        &gaussian.strength,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    const int gaussianKernelSize =
+        gaussian.radius * 2 + 1;
+
+    ImGui::Text(
+        "Gaussian Kernel : %d x %d",
+        gaussianKernelSize,
+        gaussianKernelSize
+    );
+
+    if (ImGui::Button("Reset Gaussian")) {
+        const bool wasEnabled =
+            gaussian.enabled;
+
+        gaussian =
+            DirectXCommon::GaussianSettings{};
+
+        gaussian.enabled =
+            wasEnabled;
+    }
+
     ImGui::EndDisabled();
+
 
 #endif
 }

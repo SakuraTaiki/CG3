@@ -84,6 +84,25 @@ public: // メンバ関数
         return smoothingSettings_;
     }
 
+    //==================
+    //GaussianFilter
+    //==================
+
+    struct GaussianSettings {
+        bool enabled = false;
+        int radius = 2;
+        float sigma = 2.0f;
+        float strength = 1.0f;
+    };
+
+    GaussianSettings& GetGaussianSettings() {
+        return gaussianSettings_;
+    }
+
+    const GaussianSettings& GetGaussianSettings() const {
+        return gaussianSettings_;
+    }
+
 
 private: // メンバ関数(内部処理)
     void InitializeDevice();
@@ -141,6 +160,7 @@ private: // メンバ変数
 
     VignetteSettings vignetteSettings_{};
     SmoothingSettings smoothingSettings_{};
+    GaussianSettings gaussianSettings_{};
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
@@ -153,6 +173,7 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> grayScalePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> postEffectPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> smoothingPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> gaussianPipelineState_;
 
     uint32_t width_ = 1280;
 
