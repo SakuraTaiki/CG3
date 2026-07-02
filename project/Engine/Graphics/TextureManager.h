@@ -23,6 +23,10 @@ public:
     // テクスチャのサイズを取得（切り抜き計算用）
     const D3D12_RESOURCE_DESC& GetResourceDesc(uint32_t textureHandle);
 
+    D3D12_CPU_DESCRIPTOR_HANDLE GetSrvHandleCPU(
+        uint32_t textureHandle
+    );
+
 private:
     // 内部用：テクスチャデータ構造体
     struct TextureData {

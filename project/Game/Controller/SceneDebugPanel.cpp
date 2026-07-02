@@ -167,6 +167,9 @@ void SceneDebugPanel::DrawPostEffectTab(
     auto& outline =
         dxCommon->GetOutlineSettings();
 
+    auto& dissolve =
+        dxCommon->GetDissolveSettings();
+
     Camera* camera =
         context->GetCamera();
 
@@ -566,6 +569,79 @@ void SceneDebugPanel::DrawPostEffectTab(
 
     ImGui::EndDisabled();
 
+
+    //====================
+// Dissolve
+//====================
+
+    ImGui::SeparatorText("Dissolve");
+
+    if (ImGui::Checkbox(
+        "Enable Dissolve",
+        &dissolve.enabled
+    )) {
+        if (dissolve.enabled) {
+            vignette.enabled = false;
+            smoothing.enabled = false;
+            gaussian.enabled = false;
+            outline.enabled = false;
+
+            // RadialBlur追加済みの場合
+            radialBlur.enabled = false;
+
+            dxCommon->SetGrayScale(false);
+        }
+    }
+
+    ImGui::BeginDisabled(
+        !dissolve.enabled
+    );
+
+    ImGui::SliderFloat(
+        "Dissolve Threshold",
+        &dissolve.threshold,
+        0.0f,
+        1.0f,
+        "%.3f"
+    );
+
+    ImGui::SliderFloat(
+        "Dissolve Edge Width",
+        &dissolve.edgeWidth,
+        0.001f,
+        0.25f,
+        "%.3f"
+    );
+
+    ImGui::SliderFloat(
+        "Dissolve Edge Intensity",
+        &dissolve.edgeIntensity,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    ImGui::ColorEdit4(
+        "Dissolve Edge Color",
+        dissolve.edgeColor
+    );
+
+    if (ImGui::Button(
+        "Reset Dissolve"
+    )) {
+        const bool wasEnabled =
+            dissolve.enabled;
+
+        dissolve =
+            DirectXCommon::DissolveSettings{};
+
+        dissolve.enabled =
+            wasEnabled;
+    }
+
+    ImGui::EndDisabled();
+
+
     //====================
     // Current Effect
     //====================
@@ -579,6 +655,9 @@ void SceneDebugPanel::DrawPostEffectTab(
     if (outline.enabled) {
         currentEffect =
             "Depth Based Outline";
+    } else if (dissolve.enabled) {
+        currentEffect =
+            "Dissolve";
     } else if (radialBlur.enabled) {
         currentEffect =
             "Radial Blur";
@@ -609,6 +688,7 @@ void SceneDebugPanel::DrawPostEffectTab(
         gaussian.enabled = false;
         radialBlur.enabled = false;
         outline.enabled = false;
+        dissolve.enabled = false;
 
         dxCommon->SetGrayScale(false);
     }

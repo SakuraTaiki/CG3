@@ -141,6 +141,10 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         commandList_->SetPipelineState(
             outlinePipelineState_.Get()
         );
+    } else if (dissolveSettings_.enabled) {
+        commandList_->SetPipelineState(
+            dissolvePipelineState_.Get()
+        );
     } else if (radialBlurSettings_.enabled) {
         commandList_->SetPipelineState(
             radialBlurPipelineState_.Get()
@@ -248,6 +252,63 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         );
     }
 
+
+    //===================================
+    //Dissolve用
+    //===================================
+
+    else if (dissolveSettings_.enabled) {
+        struct DissolveConstants {
+            float threshold;
+            float edgeWidth;
+            float edgeIntensity;
+            float padding;
+
+            float edgeColor[4];
+        };
+
+        DissolveConstants constants{};
+
+        constants.threshold =
+            std::clamp(
+                dissolveSettings_.threshold,
+                0.0f,
+                1.0f
+            );
+
+        constants.edgeWidth =
+            std::clamp(
+                dissolveSettings_.edgeWidth,
+                0.001f,
+                0.25f
+            );
+
+        constants.edgeIntensity =
+            std::clamp(
+                dissolveSettings_.edgeIntensity,
+                0.0f,
+                1.0f
+            );
+
+        constants.edgeColor[0] =
+            dissolveSettings_.edgeColor[0];
+
+        constants.edgeColor[1] =
+            dissolveSettings_.edgeColor[1];
+
+        constants.edgeColor[2] =
+            dissolveSettings_.edgeColor[2];
+
+        constants.edgeColor[3] =
+            dissolveSettings_.edgeColor[3];
+
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            8,
+            &constants,
+            0
+        );
+    }
 
     //==================================================
     //RadialBlur
@@ -467,6 +528,18 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
     }
 }
 
+
+void DirectXCommon::SetDissolveMaskSrv(D3D12_CPU_DESCRIPTOR_HANDLE sourceHandle)
+{
+
+    device_->CopyDescriptorsSimple(
+        1,
+        dissolveMaskSrvHandleCPU_,
+        sourceHandle,
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+    );
+
+}
 
 void DirectXCommon::InitializeDevice() {
     // DXGIファクトリーの生成
@@ -841,7 +914,7 @@ void DirectXCommon::InitializeRenderTexture()
 
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = 2;
+    srvHeapDesc.NumDescriptors = 3;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&renderTextureSrvHeap_));
@@ -893,6 +966,22 @@ void DirectXCommon::InitializeRenderTexture()
         depthTextureSrvHandleCPU_
     );
 
+    //============================
+    //Dissolve用
+    //============================
+
+    dissolveMaskSrvHandleCPU_ =
+        renderTextureSrvHandleCPU_;
+
+    dissolveMaskSrvHandleCPU_.ptr +=
+        srvSize * 2;
+
+    dissolveMaskSrvHandleGPU_ =
+        renderTextureSrvHandleGPU_;
+
+    dissolveMaskSrvHandleGPU_.ptr +=
+        srvSize * 2;
+
 }
 
 void DirectXCommon::InitializeCopyImagePipeline()
@@ -901,7 +990,10 @@ void DirectXCommon::InitializeCopyImagePipeline()
 
     D3D12_DESCRIPTOR_RANGE descriptorRange{};
     descriptorRange.BaseShaderRegister = 0;
-    descriptorRange.NumDescriptors = 2;
+    // t0 = RenderTexture
+    // t1 = DepthTexture
+    // t2 = DissolveMask
+    descriptorRange.NumDescriptors = 3;
     descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRange.OffsetInDescriptorsFromTableStart =
         D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -1035,6 +1127,12 @@ void DirectXCommon::InitializeCopyImagePipeline()
         );
 
 
+    auto dissolvePsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/Dissolve.PS.hlsl",
+            L"ps_6_0"
+        );
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
     psoDesc.pRootSignature =
@@ -1157,6 +1255,24 @@ void DirectXCommon::InitializeCopyImagePipeline()
         &psoDesc,
         IID_PPV_ARGS(
             &radialBlurPipelineState_
+        )
+    );
+
+    assert(SUCCEEDED(hr));
+
+    //=============================
+    //Dissolve用
+    //=============================
+
+    psoDesc.PS = {
+    dissolvePsBlob->GetBufferPointer(),
+    dissolvePsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(
+            &dissolvePipelineState_
         )
     );
 

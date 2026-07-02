@@ -160,6 +160,35 @@ public: // メンバ関数
     }
 
 
+    struct DissolveSettings {
+        bool enabled = false;
+
+        float threshold = 0.0f;
+        float edgeWidth = 0.03f;
+        float edgeIntensity = 1.0f;
+
+        float edgeColor[4] = {
+            1.0f,
+            0.4f,
+            0.0f,
+            1.0f
+        };
+    };
+
+    DissolveSettings& GetDissolveSettings() {
+        return dissolveSettings_;
+    }
+
+    const DissolveSettings&
+        GetDissolveSettings() const {
+        return dissolveSettings_;
+    }
+
+    void SetDissolveMaskSrv(
+        D3D12_CPU_DESCRIPTOR_HANDLE sourceHandle
+    );
+
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -214,17 +243,20 @@ private: // メンバ変数
 
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
 
-    D3D12_CPU_DESCRIPTOR_HANDLE
-        depthTextureSrvHandleCPU_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE depthTextureSrvHandleCPU_{};
 
-    D3D12_GPU_DESCRIPTOR_HANDLE
-        depthTextureSrvHandleGPU_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE depthTextureSrvHandleGPU_{};
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dissolveMaskSrvHandleCPU_{};
+
+    D3D12_GPU_DESCRIPTOR_HANDLE dissolveMaskSrvHandleGPU_{};
 
     VignetteSettings vignetteSettings_{};
     SmoothingSettings smoothingSettings_{};
     GaussianSettings gaussianSettings_{};
     OutlineSettings outlineSettings_{};
     RadialBlurSettings radialBlurSettings_{};
+    DissolveSettings dissolveSettings_{};
 
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -241,6 +273,7 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> gaussianPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> outlinePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> radialBlurPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> dissolvePipelineState_;
 
 
     uint32_t width_ = 1280;

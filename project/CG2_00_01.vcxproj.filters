@@ -155,6 +155,7 @@
     <None Include="Resources\shaders\hlsl\GaussianFilter.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\DepthBasedOutline.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\RadialBlur.PS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Dissolve.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />
