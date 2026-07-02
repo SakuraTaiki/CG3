@@ -138,6 +138,7 @@ void SceneDebugPanel::DrawSceneControl(
 
 void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
 #ifdef USE_IMGUI
+
     ImGui::Text("Post Effect Settings");
     ImGui::Separator();
 
@@ -147,6 +148,59 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
     if (ImGui::Checkbox("GrayScale", &enableGrayScale)) {
         context->GetDxCommon()->SetGrayScale(enableGrayScale);
     }
+
+
+    ImGui::SeparatorText("Vignetting");
+
+    DirectXCommon::VignetteSettings& vignette =
+        context
+        ->GetDxCommon()
+        ->GetVignetteSettings();
+
+    ImGui::Checkbox(
+        "Enable Vignetting",
+        &vignette.enabled
+    );
+
+    ImGui::BeginDisabled(!vignette.enabled);
+
+    ImGui::SliderFloat(
+        "Intensity",
+        &vignette.intensity,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    ImGui::SliderFloat(
+        "Radius",
+        &vignette.radius,
+        0.0f,
+        1.5f,
+        "%.2f"
+    );
+
+    ImGui::SliderFloat(
+        "Softness",
+        &vignette.softness,
+        0.01f,
+        1.0f,
+        "%.2f"
+    );
+
+    if (ImGui::Button("Reset Vignetting")) {
+        const bool wasEnabled =
+            vignette.enabled;
+
+        vignette =
+            DirectXCommon::VignetteSettings{};
+
+        vignette.enabled =
+            wasEnabled;
+    }
+
+    ImGui::EndDisabled();
+
 #endif
 }
 

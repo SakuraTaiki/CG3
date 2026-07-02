@@ -61,6 +61,19 @@ public: // メンバ関数
         return enableGrayScale_;
     }
 
+    
+    struct VignetteSettings {
+        bool enabled = false;
+        float intensity = 0.75f;
+        float radius = 0.75f;
+        float softness = 0.35f;
+    };
+
+    VignetteSettings& GetVignetteSettings() {
+        return vignetteSettings_;
+    }
+
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -115,6 +128,8 @@ private: // メンバ変数
 
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
 
+    VignetteSettings vignetteSettings_{};
+
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
     ComPtr<ID3D12RootSignature> copyImageRootSignature_;
@@ -124,9 +139,11 @@ private: // メンバ変数
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> normalCopyPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> grayScalePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> postEffectPipelineState_;
 
     uint32_t width_ = 1280;
 
     uint32_t height_ = 720;
-       
+    
+   
 };
