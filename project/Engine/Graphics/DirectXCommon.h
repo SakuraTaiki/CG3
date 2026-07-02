@@ -74,6 +74,17 @@ public: // メンバ関数
     }
 
 
+    struct SmoothingSettings {
+        bool enabled = false;
+        int radius = 1;
+        float strength = 1.0f;
+    };
+
+    SmoothingSettings& GetSmoothingSettings() {
+        return smoothingSettings_;
+    }
+
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -129,6 +140,7 @@ private: // メンバ変数
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
 
     VignetteSettings vignetteSettings_{};
+    SmoothingSettings smoothingSettings_{};
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
@@ -140,6 +152,7 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> normalCopyPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> grayScalePipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> postEffectPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> smoothingPipelineState_;
 
     uint32_t width_ = 1280;
 
