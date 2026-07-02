@@ -149,6 +149,9 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
         context->GetDxCommon()->SetGrayScale(enableGrayScale);
     }
 
+    //===================
+    //Vignetting
+    //===================
 
     ImGui::SeparatorText("Vignetting");
 
@@ -198,6 +201,53 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
         vignette.enabled =
             wasEnabled;
     }
+
+    //====================
+    //Smoothing
+    //====================
+
+    ImGui::SeparatorText("Smoothing");
+
+    DirectXCommon::SmoothingSettings& smoothing =
+        context
+        ->GetDxCommon()
+        ->GetSmoothingSettings();
+
+    ImGui::Checkbox(
+        "Enable Smoothing",
+        &smoothing.enabled
+    );
+
+    ImGui::BeginDisabled(
+        !smoothing.enabled
+    );
+
+    ImGui::SliderInt(
+        "Blur Radius",
+        &smoothing.radius,
+        1,
+        4
+    );
+
+    ImGui::SliderFloat(
+        "Blur Strength",
+        &smoothing.strength,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    const int kernelSize =
+        smoothing.radius * 2 + 1;
+
+    ImGui::Text(
+        "Kernel : %d x %d",
+        kernelSize,
+        kernelSize
+    );
+
+    ImGui::EndDisabled();
+
 
     ImGui::EndDisabled();
 
