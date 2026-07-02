@@ -141,7 +141,6 @@ void SceneDebugPanel::DrawPostEffectTab(
     EngineContext* context
 ) {
 #ifdef USE_IMGUI
-
     if (!context) {
         return;
     }
@@ -153,25 +152,24 @@ void SceneDebugPanel::DrawPostEffectTab(
         return;
     }
 
-    // 先にすべて取得することで、
-    // 各設定を相互に無効化できるようにする
-    DirectXCommon::VignetteSettings& vignette =
+    auto& vignette =
         dxCommon->GetVignetteSettings();
 
-    DirectXCommon::SmoothingSettings& smoothing =
+    auto& smoothing =
         dxCommon->GetSmoothingSettings();
 
-    DirectXCommon::GaussianSettings& gaussian =
+    auto& gaussian =
         dxCommon->GetGaussianSettings();
 
-    DirectXCommon::OutlineSettings& outline =
+    auto& radialBlur =
+        dxCommon->GetRadialBlurSettings();
+
+    auto& outline =
         dxCommon->GetOutlineSettings();
 
     Camera* camera =
         context->GetCamera();
 
-    // OutlineでView空間深度を復元するため、
-    // CameraのNear/Farと同期する
     if (camera) {
         outline.nearClip =
             camera->GetNearClip();
@@ -199,9 +197,11 @@ void SceneDebugPanel::DrawPostEffectTab(
         );
 
         if (enableGrayScale) {
-            outline.enabled = false;
+            vignette.enabled = false;
             smoothing.enabled = false;
             gaussian.enabled = false;
+            radialBlur.enabled = false;
+            outline.enabled = false;
         }
     }
 
@@ -218,7 +218,10 @@ void SceneDebugPanel::DrawPostEffectTab(
         if (vignette.enabled) {
             smoothing.enabled = false;
             gaussian.enabled = false;
+            radialBlur.enabled = false;
             outline.enabled = false;
+
+            dxCommon->SetGrayScale(false);
         }
     }
 
@@ -278,6 +281,7 @@ void SceneDebugPanel::DrawPostEffectTab(
         if (smoothing.enabled) {
             vignette.enabled = false;
             gaussian.enabled = false;
+            radialBlur.enabled = false;
             outline.enabled = false;
 
             dxCommon->SetGrayScale(false);
@@ -331,7 +335,9 @@ void SceneDebugPanel::DrawPostEffectTab(
     // Gaussian Filter
     //====================
 
-    ImGui::SeparatorText("Gaussian Filter");
+    ImGui::SeparatorText(
+        "Gaussian Filter"
+    );
 
     if (ImGui::Checkbox(
         "Enable Gaussian Filter",
@@ -340,6 +346,7 @@ void SceneDebugPanel::DrawPostEffectTab(
         if (gaussian.enabled) {
             vignette.enabled = false;
             smoothing.enabled = false;
+            radialBlur.enabled = false;
             outline.enabled = false;
 
             dxCommon->SetGrayScale(false);
@@ -398,6 +405,81 @@ void SceneDebugPanel::DrawPostEffectTab(
     ImGui::EndDisabled();
 
     //====================
+    // Radial Blur
+    //====================
+
+    ImGui::SeparatorText("Radial Blur");
+
+    if (ImGui::Checkbox(
+        "Enable Radial Blur",
+        &radialBlur.enabled
+    )) {
+        if (radialBlur.enabled) {
+            vignette.enabled = false;
+            smoothing.enabled = false;
+            gaussian.enabled = false;
+            outline.enabled = false;
+
+            dxCommon->SetGrayScale(false);
+        }
+    }
+
+    ImGui::BeginDisabled(
+        !radialBlur.enabled
+    );
+
+    ImGui::SliderFloat2(
+        "Blur Center (UV)",
+        radialBlur.center,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    ImGui::SliderFloat(
+        "Radial Blur Width",
+        &radialBlur.blurWidth,
+        0.0f,
+        0.1f,
+        "%.4f"
+    );
+
+    ImGui::SliderFloat(
+        "Radial Blur Strength",
+        &radialBlur.strength,
+        0.0f,
+        1.0f,
+        "%.2f"
+    );
+
+    ImGui::SliderInt(
+        "Radial Samples",
+        &radialBlur.sampleCount,
+        2,
+        32
+    );
+
+    ImGui::TextDisabled(
+        "Center: (0,0) top-left / "
+        "(1,1) bottom-right"
+    );
+
+    if (ImGui::Button(
+        "Reset Radial Blur"
+    )) {
+        const bool wasEnabled =
+            radialBlur.enabled;
+
+        radialBlur =
+            DirectXCommon::RadialBlurSettings{};
+
+        radialBlur.enabled =
+            wasEnabled;
+    }
+
+    ImGui::EndDisabled();
+
+    //====================
     // Depth Based Outline
     //====================
 
@@ -413,6 +495,7 @@ void SceneDebugPanel::DrawPostEffectTab(
             vignette.enabled = false;
             smoothing.enabled = false;
             gaussian.enabled = false;
+            radialBlur.enabled = false;
 
             dxCommon->SetGrayScale(false);
         }
@@ -484,7 +567,7 @@ void SceneDebugPanel::DrawPostEffectTab(
     ImGui::EndDisabled();
 
     //====================
-    // 現在の状態
+    // Current Effect
     //====================
 
     ImGui::SeparatorText(
@@ -494,15 +577,23 @@ void SceneDebugPanel::DrawPostEffectTab(
     const char* currentEffect = "None";
 
     if (outline.enabled) {
-        currentEffect = "Depth Based Outline";
+        currentEffect =
+            "Depth Based Outline";
+    } else if (radialBlur.enabled) {
+        currentEffect =
+            "Radial Blur";
     } else if (gaussian.enabled) {
-        currentEffect = "Gaussian Filter";
+        currentEffect =
+            "Gaussian Filter";
     } else if (smoothing.enabled) {
-        currentEffect = "Smoothing";
+        currentEffect =
+            "Smoothing";
     } else if (vignette.enabled) {
-        currentEffect = "Vignetting";
+        currentEffect =
+            "Vignetting";
     } else if (dxCommon->GetGrayScale()) {
-        currentEffect = "GrayScale";
+        currentEffect =
+            "GrayScale";
     }
 
     ImGui::Text(
@@ -516,11 +607,11 @@ void SceneDebugPanel::DrawPostEffectTab(
         vignette.enabled = false;
         smoothing.enabled = false;
         gaussian.enabled = false;
+        radialBlur.enabled = false;
         outline.enabled = false;
 
         dxCommon->SetGrayScale(false);
     }
-
 #endif
 }
 

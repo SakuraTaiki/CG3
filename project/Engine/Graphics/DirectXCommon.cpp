@@ -141,6 +141,10 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         commandList_->SetPipelineState(
             outlinePipelineState_.Get()
         );
+    } else if (radialBlurSettings_.enabled) {
+        commandList_->SetPipelineState(
+            radialBlurPipelineState_.Get()
+        );
     } else if (gaussianSettings_.enabled) {
         commandList_->SetPipelineState(
             gaussianPipelineState_.Get()
@@ -243,6 +247,70 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
             0
         );
     }
+
+
+    //==================================================
+    //RadialBlur
+    //==================================================
+
+
+    else if (radialBlurSettings_.enabled) {
+        struct RadialBlurConstants {
+            float center[2];
+            float blurWidth;
+            float strength;
+
+            uint32_t sampleCount;
+            float padding[3];
+        };
+
+        RadialBlurConstants constants{};
+
+        constants.center[0] =
+            std::clamp(
+                radialBlurSettings_.center[0],
+                0.0f,
+                1.0f
+            );
+
+        constants.center[1] =
+            std::clamp(
+                radialBlurSettings_.center[1],
+                0.0f,
+                1.0f
+            );
+
+        constants.blurWidth =
+            std::clamp(
+                radialBlurSettings_.blurWidth,
+                0.0f,
+                0.1f
+            );
+
+        constants.strength =
+            std::clamp(
+                radialBlurSettings_.strength,
+                0.0f,
+                1.0f
+            );
+
+        constants.sampleCount =
+            static_cast<uint32_t>(
+                std::clamp(
+                    radialBlurSettings_.sampleCount,
+                    2,
+                    32
+                )
+                );
+
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            8,
+            &constants,
+            0
+        );
+    }
+
 
     //==================================================
     // GaussianFilter
@@ -959,6 +1027,14 @@ void DirectXCommon::InitializeCopyImagePipeline()
             L"ps_6_0"
         );
 
+
+    auto radialBlurPsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/RadialBlur.PS.hlsl",
+            L"ps_6_0"
+        );
+
+
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
 
     psoDesc.pRootSignature =
@@ -1067,6 +1143,21 @@ void DirectXCommon::InitializeCopyImagePipeline()
     hr = device_->CreateGraphicsPipelineState(
         &psoDesc,
         IID_PPV_ARGS(&outlinePipelineState_)
+    );
+
+    assert(SUCCEEDED(hr));
+
+
+    psoDesc.PS = {
+    radialBlurPsBlob->GetBufferPointer(),
+    radialBlurPsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(
+            &radialBlurPipelineState_
+        )
     );
 
     assert(SUCCEEDED(hr));
