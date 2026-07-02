@@ -136,39 +136,98 @@ void SceneDebugPanel::DrawSceneControl(
 #endif
 }
 
-void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
+
+void SceneDebugPanel::DrawPostEffectTab(
+    EngineContext* context
+) {
 #ifdef USE_IMGUI
+
+    if (!context) {
+        return;
+    }
+
+    DirectXCommon* dxCommon =
+        context->GetDxCommon();
+
+    if (!dxCommon) {
+        return;
+    }
+
+    // 先にすべて取得することで、
+    // 各設定を相互に無効化できるようにする
+    DirectXCommon::VignetteSettings& vignette =
+        dxCommon->GetVignetteSettings();
+
+    DirectXCommon::SmoothingSettings& smoothing =
+        dxCommon->GetSmoothingSettings();
+
+    DirectXCommon::GaussianSettings& gaussian =
+        dxCommon->GetGaussianSettings();
+
+    DirectXCommon::OutlineSettings& outline =
+        dxCommon->GetOutlineSettings();
+
+    Camera* camera =
+        context->GetCamera();
+
+    // OutlineでView空間深度を復元するため、
+    // CameraのNear/Farと同期する
+    if (camera) {
+        outline.nearClip =
+            camera->GetNearClip();
+
+        outline.farClip =
+            camera->GetFarClip();
+    }
 
     ImGui::Text("Post Effect Settings");
     ImGui::Separator();
 
-    bool enableGrayScale =
-        context->GetDxCommon()->GetGrayScale();
+    //====================
+    // GrayScale
+    //====================
 
-    if (ImGui::Checkbox("GrayScale", &enableGrayScale)) {
-        context->GetDxCommon()->SetGrayScale(enableGrayScale);
+    bool enableGrayScale =
+        dxCommon->GetGrayScale();
+
+    if (ImGui::Checkbox(
+        "GrayScale",
+        &enableGrayScale
+    )) {
+        dxCommon->SetGrayScale(
+            enableGrayScale
+        );
+
+        if (enableGrayScale) {
+            outline.enabled = false;
+            smoothing.enabled = false;
+            gaussian.enabled = false;
+        }
     }
 
-    //===================
-    //Vignetting
-    //===================
+    //====================
+    // Vignetting
+    //====================
 
     ImGui::SeparatorText("Vignetting");
 
-    DirectXCommon::VignetteSettings& vignette =
-        context
-        ->GetDxCommon()
-        ->GetVignetteSettings();
-
-    ImGui::Checkbox(
+    if (ImGui::Checkbox(
         "Enable Vignetting",
         &vignette.enabled
+    )) {
+        if (vignette.enabled) {
+            smoothing.enabled = false;
+            gaussian.enabled = false;
+            outline.enabled = false;
+        }
+    }
+
+    ImGui::BeginDisabled(
+        !vignette.enabled
     );
 
-    ImGui::BeginDisabled(!vignette.enabled);
-
     ImGui::SliderFloat(
-        "Intensity",
+        "Vignette Intensity",
         &vignette.intensity,
         0.0f,
         1.0f,
@@ -176,7 +235,7 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
     );
 
     ImGui::SliderFloat(
-        "Radius",
+        "Vignette Radius",
         &vignette.radius,
         0.0f,
         1.5f,
@@ -184,14 +243,16 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
     );
 
     ImGui::SliderFloat(
-        "Softness",
+        "Vignette Softness",
         &vignette.softness,
         0.01f,
         1.0f,
         "%.2f"
     );
 
-    if (ImGui::Button("Reset Vignetting")) {
+    if (ImGui::Button(
+        "Reset Vignetting"
+    )) {
         const bool wasEnabled =
             vignette.enabled;
 
@@ -205,20 +266,23 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
     ImGui::EndDisabled();
 
     //====================
-    //Smoothing
+    // Smoothing
     //====================
 
     ImGui::SeparatorText("Smoothing");
 
-    DirectXCommon::SmoothingSettings& smoothing =
-        context
-        ->GetDxCommon()
-        ->GetSmoothingSettings();
-
-    ImGui::Checkbox(
+    if (ImGui::Checkbox(
         "Enable Smoothing",
         &smoothing.enabled
-    );
+    )) {
+        if (smoothing.enabled) {
+            vignette.enabled = false;
+            gaussian.enabled = false;
+            outline.enabled = false;
+
+            dxCommon->SetGrayScale(false);
+        }
+    }
 
     ImGui::BeginDisabled(
         !smoothing.enabled
@@ -239,35 +303,46 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
         "%.2f"
     );
 
-    const int kernelSize =
+    const int smoothingKernelSize =
         smoothing.radius * 2 + 1;
 
     ImGui::Text(
         "Kernel : %d x %d",
-        kernelSize,
-        kernelSize
+        smoothingKernelSize,
+        smoothingKernelSize
     );
+
+    if (ImGui::Button(
+        "Reset Smoothing"
+    )) {
+        const bool wasEnabled =
+            smoothing.enabled;
+
+        smoothing =
+            DirectXCommon::SmoothingSettings{};
+
+        smoothing.enabled =
+            wasEnabled;
+    }
 
     ImGui::EndDisabled();
 
+    //====================
+    // Gaussian Filter
+    //====================
 
-    //=====================
-    //GaussianFilter
-    //=====================
     ImGui::SeparatorText("Gaussian Filter");
-
-    DirectXCommon::GaussianSettings& gaussian =
-        context
-        ->GetDxCommon()
-        ->GetGaussianSettings();
 
     if (ImGui::Checkbox(
         "Enable Gaussian Filter",
         &gaussian.enabled
     )) {
         if (gaussian.enabled) {
-            smoothing.enabled = false;
             vignette.enabled = false;
+            smoothing.enabled = false;
+            outline.enabled = false;
+
+            dxCommon->SetGrayScale(false);
         }
     }
 
@@ -307,7 +382,9 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
         gaussianKernelSize
     );
 
-    if (ImGui::Button("Reset Gaussian")) {
+    if (ImGui::Button(
+        "Reset Gaussian"
+    )) {
         const bool wasEnabled =
             gaussian.enabled;
 
@@ -320,9 +397,133 @@ void SceneDebugPanel::DrawPostEffectTab(EngineContext* context) {
 
     ImGui::EndDisabled();
 
+    //====================
+    // Depth Based Outline
+    //====================
+
+    ImGui::SeparatorText(
+        "Depth Based Outline"
+    );
+
+    if (ImGui::Checkbox(
+        "Enable Depth Outline",
+        &outline.enabled
+    )) {
+        if (outline.enabled) {
+            vignette.enabled = false;
+            smoothing.enabled = false;
+            gaussian.enabled = false;
+
+            dxCommon->SetGrayScale(false);
+        }
+    }
+
+    ImGui::BeginDisabled(
+        !outline.enabled
+    );
+
+    ImGui::ColorEdit4(
+        "Outline Color",
+        outline.color
+    );
+
+    ImGui::SliderFloat(
+        "Outline Threshold",
+        &outline.threshold,
+        0.001f,
+        1.0f,
+        "%.3f"
+    );
+
+    ImGui::SliderFloat(
+        "Outline Strength",
+        &outline.strength,
+        0.0f,
+        5.0f,
+        "%.2f"
+    );
+
+    ImGui::SliderInt(
+        "Outline Thickness",
+        &outline.thickness,
+        1,
+        4
+    );
+
+    ImGui::Text(
+        "Near Clip : %.3f",
+        outline.nearClip
+    );
+
+    ImGui::Text(
+        "Far Clip : %.3f",
+        outline.farClip
+    );
+
+    if (ImGui::Button(
+        "Reset Outline"
+    )) {
+        const bool wasEnabled =
+            outline.enabled;
+
+        outline =
+            DirectXCommon::OutlineSettings{};
+
+        outline.enabled =
+            wasEnabled;
+
+        if (camera) {
+            outline.nearClip =
+                camera->GetNearClip();
+
+            outline.farClip =
+                camera->GetFarClip();
+        }
+    }
+
+    ImGui::EndDisabled();
+
+    //====================
+    // 現在の状態
+    //====================
+
+    ImGui::SeparatorText(
+        "Current Post Effect"
+    );
+
+    const char* currentEffect = "None";
+
+    if (outline.enabled) {
+        currentEffect = "Depth Based Outline";
+    } else if (gaussian.enabled) {
+        currentEffect = "Gaussian Filter";
+    } else if (smoothing.enabled) {
+        currentEffect = "Smoothing";
+    } else if (vignette.enabled) {
+        currentEffect = "Vignetting";
+    } else if (dxCommon->GetGrayScale()) {
+        currentEffect = "GrayScale";
+    }
+
+    ImGui::Text(
+        "Active : %s",
+        currentEffect
+    );
+
+    if (ImGui::Button(
+        "Disable All Post Effects"
+    )) {
+        vignette.enabled = false;
+        smoothing.enabled = false;
+        gaussian.enabled = false;
+        outline.enabled = false;
+
+        dxCommon->SetGrayScale(false);
+    }
 
 #endif
 }
+
 
 void SceneDebugPanel::DrawEnvironmentTab(
     EnvironmentController& environment,
