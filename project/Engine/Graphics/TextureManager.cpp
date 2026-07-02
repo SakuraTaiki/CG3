@@ -208,3 +208,11 @@ D3D12_GPU_DESCRIPTOR_HANDLE TextureManager::GetSrvHandleGPU(uint32_t textureHand
 const D3D12_RESOURCE_DESC& TextureManager::GetResourceDesc(uint32_t textureHandle) {
     return textures_[textureHandle].resourceDesc;
 }
+
+D3D12_CPU_DESCRIPTOR_HANDLE TextureManager::GetSrvHandleCPU(uint32_t textureHandle)
+{
+    assert(textureHandle < textures_.size());
+
+    return textures_[textureHandle]
+        .srvHandleCPU;
+}

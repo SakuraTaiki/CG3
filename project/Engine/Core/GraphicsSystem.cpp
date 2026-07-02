@@ -19,6 +19,18 @@ void GraphicsSystem::Initialize(WinApp* winApp, EngineContext* context) {
     textureManager_->Initialize(dxCommon_.get(), srvManager_.get());
     context->SetTextureManager(textureManager_.get());
 
+    // Dissolveマスクを読み込む
+    const uint32_t dissolveMaskHandle =
+        textureManager_->LoadTexture(
+            "Resources/noise0.png"
+        );
+
+    dxCommon_->SetDissolveMaskSrv(
+        textureManager_->GetSrvHandleCPU(
+            dissolveMaskHandle
+        )
+    );
+
     // Sprite 用の共通描画設定。
     spriteCommon_ = std::make_unique<SpriteCommon>();
     spriteCommon_->SetTextureManager(textureManager_.get());
