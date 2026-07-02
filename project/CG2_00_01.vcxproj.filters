@@ -150,6 +150,7 @@
     <None Include="Resources\shaders\hlsl\GPUParticle.PS.hlsl" />
     <None Include="Resources\shaders\hlsl\InitializeGPUParticle.CS.hlsl" />
     <None Include="Resources\shaders\hlsl\EmitParticle.CS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Vignette.PS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="externals\imgui\LICENSE.txt" />

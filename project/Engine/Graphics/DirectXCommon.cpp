@@ -91,35 +91,89 @@ void DirectXCommon::PreDrawForRenderTexture()
 
 }
 
+
 void DirectXCommon::DrawRenderTextureToSwapChain()
 {
-
     TransitionResource(
         renderTextureResource_.Get(),
         renderTextureState_,
-        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+    );
 
-    renderTextureState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    renderTextureState_ =
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-    ID3D12DescriptorHeap* heaps[] = { renderTextureSrvHeap_.Get() };
-    commandList_->SetDescriptorHeaps(1, heaps);
+    ID3D12DescriptorHeap* heaps[] = {
+        renderTextureSrvHeap_.Get()
+    };
 
-    commandList_->SetGraphicsRootSignature(copyImageRootSignature_.Get());
+    commandList_->SetDescriptorHeaps(
+        1,
+        heaps
+    );
 
-    if (enableGrayScale_) {
-        commandList_->SetPipelineState(
-            grayScalePipelineState_.Get());
-    } else {
-        commandList_->SetPipelineState(
-            normalCopyPipelineState_.Get());
-    }
+    commandList_->SetGraphicsRootSignature(
+        copyImageRootSignature_.Get()
+    );
 
-    commandList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    commandList_->SetGraphicsRootDescriptorTable(0, renderTextureSrvHandleGPU_);
+    commandList_->SetPipelineState(
+        postEffectPipelineState_.Get()
+    );
 
-    commandList_->DrawInstanced(3, 1, 0, 0);
+    commandList_->IASetPrimitiveTopology(
+        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
+    );
 
+    commandList_->SetGraphicsRootDescriptorTable(
+        0,
+        renderTextureSrvHandleGPU_
+    );
+
+    struct PostEffectConstants {
+        float vignetteIntensity;
+        float vignetteRadius;
+        float vignetteSoftness;
+        float aspectRatio;
+
+        uint32_t enableVignette;
+        uint32_t enableGrayScale;
+        uint32_t padding[2];
+    } constants{};
+
+    constants.vignetteIntensity =
+        vignetteSettings_.intensity;
+
+    constants.vignetteRadius =
+        vignetteSettings_.radius;
+
+    constants.vignetteSoftness =
+        vignetteSettings_.softness;
+
+    constants.aspectRatio =
+        static_cast<float>(width_) /
+        static_cast<float>(height_);
+
+    constants.enableVignette =
+        vignetteSettings_.enabled ? 1u : 0u;
+
+    constants.enableGrayScale =
+        enableGrayScale_ ? 1u : 0u;
+
+    commandList_->SetGraphicsRoot32BitConstants(
+        1,
+        8,
+        &constants,
+        0
+    );
+
+    commandList_->DrawInstanced(
+        3,
+        1,
+        0,
+        0
+    );
 }
+
 
 void DirectXCommon::InitializeDevice() {
     // DXGIファクトリーの生成
@@ -412,45 +466,85 @@ void DirectXCommon::InitializeCopyImagePipeline()
     D3D12_DESCRIPTOR_RANGE descriptorRange{};
     descriptorRange.BaseShaderRegister = 0;
     descriptorRange.NumDescriptors = 1;
-    descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    descriptorRange.RangeType =
+        D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRange.OffsetInDescriptorsFromTableStart =
         D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    D3D12_ROOT_PARAMETER rootParameter{};
-    rootParameter.ParameterType =
+    D3D12_ROOT_PARAMETER rootParameters[2]{};
+
+    // RenderTexture
+    rootParameters[0].ParameterType =
         D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-    rootParameter.DescriptorTable.pDescriptorRanges =
+
+    rootParameters[0]
+        .DescriptorTable
+        .pDescriptorRanges =
         &descriptorRange;
-    rootParameter.DescriptorTable.NumDescriptorRanges = 1;
-    rootParameter.ShaderVisibility =
+
+    rootParameters[0]
+        .DescriptorTable
+        .NumDescriptorRanges = 1;
+
+    rootParameters[0].ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
+
+    // Vignetting・GrayScale用の32bit定数
+    rootParameters[1].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+
+    rootParameters[1].Constants.ShaderRegister = 0;
+    rootParameters[1].Constants.RegisterSpace = 0;
+    rootParameters[1].Constants.Num32BitValues = 8;
+
+    rootParameters[1].ShaderVisibility =
         D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_STATIC_SAMPLER_DESC staticSampler{};
+
     staticSampler.Filter =
         D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+
     staticSampler.AddressU =
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
     staticSampler.AddressV =
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
     staticSampler.AddressW =
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
     staticSampler.ComparisonFunc =
         D3D12_COMPARISON_FUNC_NEVER;
-    staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+
+    staticSampler.MaxLOD =
+        D3D12_FLOAT32_MAX;
+
     staticSampler.ShaderRegister = 0;
+
     staticSampler.ShaderVisibility =
         D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+
     rootSignatureDesc.Flags =
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    rootSignatureDesc.pParameters = &rootParameter;
-    rootSignatureDesc.NumParameters = 1;
-    rootSignatureDesc.pStaticSamplers = &staticSampler;
+
+    rootSignatureDesc.pParameters =
+        rootParameters;
+
+    rootSignatureDesc.NumParameters = 2;
+
+    rootSignatureDesc.pStaticSamplers =
+        &staticSampler;
+
     rootSignatureDesc.NumStaticSamplers = 1;
 
-    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
-    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob>
+        signatureBlob;
+
+    Microsoft::WRL::ComPtr<ID3DBlob>
+        errorBlob;
 
     hr = D3D12SerializeRootSignature(
         &rootSignatureDesc,
@@ -467,6 +561,7 @@ void DirectXCommon::InitializeCopyImagePipeline()
                     )
             );
         }
+
         assert(false);
     }
 
@@ -474,8 +569,11 @@ void DirectXCommon::InitializeCopyImagePipeline()
         0,
         signatureBlob->GetBufferPointer(),
         signatureBlob->GetBufferSize(),
-        IID_PPV_ARGS(&copyImageRootSignature_)
+        IID_PPV_ARGS(
+            &copyImageRootSignature_
+        )
     );
+
     assert(SUCCEEDED(hr));
 
     auto vsBlob =
@@ -496,12 +594,21 @@ void DirectXCommon::InitializeCopyImagePipeline()
             L"ps_6_0"
         );
 
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc{};
+    auto postEffectPsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/Vignette.PS.hlsl",
+            L"ps_6_0"
+        );
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC
+        psoDesc{};
 
     psoDesc.pRootSignature =
         copyImageRootSignature_.Get();
 
-    psoDesc.InputLayout.pInputElementDescs = nullptr;
+    psoDesc.InputLayout.pInputElementDescs =
+        nullptr;
+
     psoDesc.InputLayout.NumElements = 0;
 
     psoDesc.VS = {
@@ -509,16 +616,22 @@ void DirectXCommon::InitializeCopyImagePipeline()
         vsBlob->GetBufferSize()
     };
 
-    psoDesc.BlendState.RenderTarget[0].RenderTargetWriteMask =
+    psoDesc.BlendState
+        .RenderTarget[0]
+        .RenderTargetWriteMask =
         D3D12_COLOR_WRITE_ENABLE_ALL;
 
     psoDesc.RasterizerState.FillMode =
         D3D12_FILL_MODE_SOLID;
+
     psoDesc.RasterizerState.CullMode =
         D3D12_CULL_MODE_NONE;
 
-    psoDesc.DepthStencilState.DepthEnable = false;
-    psoDesc.DepthStencilState.StencilEnable = false;
+    psoDesc.DepthStencilState.DepthEnable =
+        false;
+
+    psoDesc.DepthStencilState.StencilEnable =
+        false;
 
     psoDesc.SampleMask =
         D3D12_DEFAULT_SAMPLE_MASK;
@@ -527,12 +640,13 @@ void DirectXCommon::InitializeCopyImagePipeline()
         D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
     psoDesc.NumRenderTargets = 1;
+
     psoDesc.RTVFormats[0] =
         DXGI_FORMAT_R8G8B8A8_UNORM;
 
     psoDesc.SampleDesc.Count = 1;
 
-    // 通常表示用 PSO
+    // 通常コピー
     psoDesc.PS = {
         normalPsBlob->GetBufferPointer(),
         normalPsBlob->GetBufferSize()
@@ -540,11 +654,14 @@ void DirectXCommon::InitializeCopyImagePipeline()
 
     hr = device_->CreateGraphicsPipelineState(
         &psoDesc,
-        IID_PPV_ARGS(&normalCopyPipelineState_)
+        IID_PPV_ARGS(
+            &normalCopyPipelineState_
+        )
     );
+
     assert(SUCCEEDED(hr));
 
-    // グレースケール用 PSO
+    // GrayScale
     psoDesc.PS = {
         grayPsBlob->GetBufferPointer(),
         grayPsBlob->GetBufferSize()
@@ -552,8 +669,26 @@ void DirectXCommon::InitializeCopyImagePipeline()
 
     hr = device_->CreateGraphicsPipelineState(
         &psoDesc,
-        IID_PPV_ARGS(&grayScalePipelineState_)
+        IID_PPV_ARGS(
+            &grayScalePipelineState_
+        )
     );
+
+    assert(SUCCEEDED(hr));
+
+    // Vignetting・GrayScale統合シェーダー
+    psoDesc.PS = {
+        postEffectPsBlob->GetBufferPointer(),
+        postEffectPsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(
+            &postEffectPipelineState_
+        )
+    );
+
     assert(SUCCEEDED(hr));
 }
 
