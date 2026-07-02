@@ -193,18 +193,26 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12PipelineState> emitPipelineState_;
 
-    Microsoft::WRL::ComPtr<ID3D12Resource> freeCounterBuffer_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> emitterBuffer_;
     EmitterSphere* emitterData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> perFrameBuffer_;
     PerFrame* perFrameData_ = nullptr;
 
+    // ===== 追加：FreeListの末尾位置。-1なら空きParticleなし =====
+    Microsoft::WRL::ComPtr<ID3D12Resource> freeListIndexBuffer_;
+
+    // ===== 追加：空いているParticle番号を格納する配列 =====
+    Microsoft::WRL::ComPtr<ID3D12Resource> freeListBuffer_;
+
     uint32_t particleSrvIndex_ = 0;
     uint32_t particleUavIndex_ = 0;
     uint32_t textureHandle_ = 0;
-    uint32_t freeCounterUavIndex_ = 0;
+
+    // ===== 追加：それぞれのUAVディスクリプタ番号 =====
+    uint32_t freeListIndexUavIndex_ = 0;
+    uint32_t freeListUavIndex_ = 0;
+
     bool emitRequested_ = false;
     float totalTime_ = 0.0f;
 
