@@ -104,6 +104,41 @@ public: // メンバ関数
     }
 
 
+    //=======================
+    //Outline
+    //=======================
+
+    struct OutlineSettings {
+        bool enabled = true;
+
+        float color[4] = {
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f
+        };
+
+        // 小さいほど弱い深度差も線になる
+        float threshold = 0.05f;
+
+        float strength = 1.0f;
+
+        // 1～4
+        int thickness = 1;
+
+        // Cameraと同じ値にする
+        float nearClip = 0.1f;
+        float farClip = 100.0f;
+    };
+
+    OutlineSettings& GetOutlineSettings() {
+        return outlineSettings_;
+    }
+
+    const OutlineSettings& GetOutlineSettings() const {
+        return outlineSettings_;
+    }
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -158,9 +193,13 @@ private: // メンバ変数
 
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
 
+    D3D12_CPU_DESCRIPTOR_HANDLE depthTextureSrvHandleCPU_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE depthTextureSrvHandleGPU_{};
+
     VignetteSettings vignetteSettings_{};
     SmoothingSettings smoothingSettings_{};
     GaussianSettings gaussianSettings_{};
+    OutlineSettings outlineSettings_{};
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
@@ -174,6 +213,7 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> postEffectPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> smoothingPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> gaussianPipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> outlinePipelineState_;
 
     uint32_t width_ = 1280;
 

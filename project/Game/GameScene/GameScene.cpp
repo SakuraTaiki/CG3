@@ -258,15 +258,33 @@ void GameScene::Draw3D() {
     context_->GetGPUParticleManager()->Draw();
 }
 
-void GameScene::Draw2D() {
-    DirectXCommon* dxCommon = context_->GetDxCommon();
+void GameScene::Draw2D()
+{
+    DirectXCommon* dxCommon =
+        context_->GetDxCommon();
 
     dxCommon->PreDraw();
 
+    // Near/FarだけはCameraと毎フレーム同期する
+    Camera* camera =
+        context_->GetCamera();
+
+    if (camera) {
+        auto& outline =
+            dxCommon->GetOutlineSettings();
+
+        outline.nearClip =
+            camera->GetNearClip();
+
+        outline.farClip =
+            camera->GetFarClip();
+    }
+
+    // enabled、色、強度、太さなどは
+    // ImGuiで変更した値をそのまま使用する
     dxCommon->DrawRenderTextureToSwapChain();
 
     context_->GetSrvManager()->PreDraw();
-
     context_->GetSpriteCommon()->PreDraw();
 
     if (sprite_ && showDebugSprite_) {

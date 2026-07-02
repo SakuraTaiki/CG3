@@ -94,6 +94,10 @@ void DirectXCommon::PreDrawForRenderTexture()
 
 void DirectXCommon::DrawRenderTextureToSwapChain()
 {
+    //==================================================
+    // RenderTextureをPixelShaderから読める状態へ変更
+    //==================================================
+
     TransitionResource(
         renderTextureResource_.Get(),
         renderTextureState_,
@@ -102,6 +106,19 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
 
     renderTextureState_ =
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+    // Outlineが有効な場合はDepthもPixelShaderから読み込む
+    if (outlineSettings_.enabled) {
+        TransitionResource(
+            depthStencilResource_.Get(),
+            D3D12_RESOURCE_STATE_DEPTH_WRITE,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+        );
+    }
+
+    //==================================================
+    // DescriptorHeap設定
+    //==================================================
 
     ID3D12DescriptorHeap* heaps[] = {
         renderTextureSrvHeap_.Get()
@@ -112,11 +129,19 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         heaps
     );
 
+    //==================================================
+    // RootSignature・PSO設定
+    //==================================================
+
     commandList_->SetGraphicsRootSignature(
         copyImageRootSignature_.Get()
     );
 
-    if (gaussianSettings_.enabled) {
+    if (outlineSettings_.enabled) {
+        commandList_->SetPipelineState(
+            outlinePipelineState_.Get()
+        );
+    } else if (gaussianSettings_.enabled) {
         commandList_->SetPipelineState(
             gaussianPipelineState_.Get()
         );
@@ -134,18 +159,104 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
     );
 
+    // t0 = RenderTexture
+    // t1 = DepthTexture
+    //
+    // 2つのSRVが同じDescriptorHeap内で連続しているため、
+    // 先頭のGPUハンドルを指定すれば両方参照できる
     commandList_->SetGraphicsRootDescriptorTable(
         0,
         renderTextureSrvHandleGPU_
     );
 
-    if (gaussianSettings_.enabled) {
+    //==================================================
+    // Outline
+    //==================================================
+
+    if (outlineSettings_.enabled) {
+        struct OutlineConstants {
+            float outlineColor[4];
+
+            float outlineThreshold;
+            float outlineStrength;
+            float nearClip;
+            float farClip;
+
+            uint32_t outlineThickness;
+            uint32_t enableOutline;
+            float padding[2];
+        };
+
+        OutlineConstants constants{};
+
+        constants.outlineColor[0] =
+            outlineSettings_.color[0];
+
+        constants.outlineColor[1] =
+            outlineSettings_.color[1];
+
+        constants.outlineColor[2] =
+            outlineSettings_.color[2];
+
+        constants.outlineColor[3] =
+            outlineSettings_.color[3];
+
+        constants.outlineThreshold =
+            (std::max)(
+                outlineSettings_.threshold,
+                0.00001f
+                );
+
+        constants.outlineStrength =
+            (std::max)(
+                outlineSettings_.strength,
+                0.0f
+                );
+
+        constants.nearClip =
+            (std::max)(
+                outlineSettings_.nearClip,
+                0.00001f
+                );
+
+        constants.farClip =
+            (std::max)(
+                outlineSettings_.farClip,
+                constants.nearClip + 0.00001f
+                );
+
+        constants.outlineThickness =
+            static_cast<uint32_t>(
+                std::clamp(
+                    outlineSettings_.thickness,
+                    1,
+                    4
+                )
+                );
+
+        constants.enableOutline = 1;
+
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            12,
+            &constants,
+            0
+        );
+    }
+
+    //==================================================
+    // GaussianFilter
+    //==================================================
+
+    else if (gaussianSettings_.enabled) {
         struct GaussianConstants {
             uint32_t blurRadius;
             float sigma;
             float blurStrength;
             float padding;
-        } constants{};
+        };
+
+        GaussianConstants constants{};
 
         constants.blurRadius =
             static_cast<uint32_t>(
@@ -170,19 +281,26 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
                 1.0f
             );
 
-        commandList_
-            ->SetGraphicsRoot32BitConstants(
-                1,
-                4,
-                &constants,
-                0
-            );
-    } else if (smoothingSettings_.enabled) {
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            4,
+            &constants,
+            0
+        );
+    }
+
+    //==================================================
+    // BoxFilter
+    //==================================================
+
+    else if (smoothingSettings_.enabled) {
         struct SmoothingConstants {
             uint32_t blurRadius;
             float blurStrength;
             float padding[2];
-        } constants{};
+        };
+
+        SmoothingConstants constants{};
 
         constants.blurRadius =
             static_cast<uint32_t>(
@@ -200,14 +318,19 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
                 1.0f
             );
 
-        commandList_
-            ->SetGraphicsRoot32BitConstants(
-                1,
-                4,
-                &constants,
-                0
-            );
-    } else {
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            4,
+            &constants,
+            0
+        );
+    }
+
+    //==================================================
+    // Vignette・Grayscale
+    //==================================================
+
+    else {
         struct PostEffectConstants {
             float vignetteIntensity;
             float vignetteRadius;
@@ -217,7 +340,9 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
             uint32_t enableVignette;
             uint32_t enableGrayScale;
             uint32_t padding[2];
-        } constants{};
+        };
+
+        PostEffectConstants constants{};
 
         constants.vignetteIntensity =
             vignetteSettings_.intensity;
@@ -242,14 +367,17 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
             ? 1u
             : 0u;
 
-        commandList_
-            ->SetGraphicsRoot32BitConstants(
-                1,
-                8,
-                &constants,
-                0
-            );
+        commandList_->SetGraphicsRoot32BitConstants(
+            1,
+            8,
+            &constants,
+            0
+        );
     }
+
+    //==================================================
+    // Fullscreen Triangle描画
+    //==================================================
 
     commandList_->DrawInstanced(
         3,
@@ -257,6 +385,18 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         0,
         0
     );
+
+    //==================================================
+    // Depthを次フレームの書き込み状態へ戻す
+    //==================================================
+
+    if (outlineSettings_.enabled) {
+        TransitionResource(
+            depthStencilResource_.Get(),
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+            D3D12_RESOURCE_STATE_DEPTH_WRITE
+        );
+    }
 }
 
 
@@ -367,7 +507,7 @@ void DirectXCommon::InitializeDepthStencilView() {
     resourceDesc.Height = height_;
     resourceDesc.MipLevels = 1;
     resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    resourceDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
     resourceDesc.SampleDesc.Count = 1;
     resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
@@ -381,7 +521,22 @@ void DirectXCommon::InitializeDepthStencilView() {
         &heapProps, D3D12_HEAP_FLAG_NONE, &resourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&depthStencilResource_));
     assert(SUCCEEDED(hr));
 
-    device_->CreateDepthStencilView(depthStencilResource_.Get(), nullptr, dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart());
+    
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+    dsvDesc.Format =
+        DXGI_FORMAT_D24_UNORM_S8_UINT;
+    dsvDesc.ViewDimension =
+        D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Flags =
+        D3D12_DSV_FLAG_NONE;
+
+    device_->CreateDepthStencilView(
+        depthStencilResource_.Get(),
+        &dsvDesc,
+        dsvDescriptorHeap_
+        ->GetCPUDescriptorHandleForHeapStart()
+    );
+
 }
 
 void DirectXCommon::InitializeFence() {
@@ -399,44 +554,139 @@ DirectXCommon::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
     return shaderCompiler_.Compile(filePath, profile);
 }
 
-void DirectXCommon::PreDraw() {
-    // バックバッファのインデックス取得
-    UINT backBufferIndex = swapChain_->GetCurrentBackBufferIndex();
 
-    // リソースバリア（Present -> RenderTarget）
+void DirectXCommon::PreDraw()
+{
+    // 現在表示対象になっているBackBufferを取得
+    UINT backBufferIndex =
+        swapChain_->GetCurrentBackBufferIndex();
+
+    //==================================================
+    // BackBufferを描画可能な状態へ変更
+    //==================================================
+
     D3D12_RESOURCE_BARRIER barrier{};
-    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-    barrier.Transition.pResource = swapChainResources_[backBufferIndex].Get();
-    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-    commandList_->ResourceBarrier(1, &barrier);
+    barrier.Type =
+        D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags =
+        D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
-    // RTV / DSV セット
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-    rtvHandle.ptr += (backBufferIndex * device_->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
-    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = dsvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
-    commandList_->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
+    barrier.Transition.pResource =
+        swapChainResources_[backBufferIndex].Get();
 
-    // クリア処理
-    float clearColor[] = { 0.1f, 0.25f, 0.5f, 1.0f }; // 背景色
-    commandList_->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
-    commandList_->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+    barrier.Transition.StateBefore =
+        D3D12_RESOURCE_STATE_PRESENT;
 
-    // ビューポート / シザー
+    barrier.Transition.StateAfter =
+        D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+    barrier.Transition.Subresource =
+        D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+    commandList_->ResourceBarrier(
+        1,
+        &barrier
+    );
+
+    //==================================================
+    // 現在のBackBufferに対応するRTVを取得
+    //==================================================
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
+        rtvDescriptorHeap_
+        ->GetCPUDescriptorHandleForHeapStart();
+
+    UINT rtvDescriptorSize =
+        device_->GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE_RTV
+        );
+
+    rtvHandle.ptr +=
+        static_cast<SIZE_T>(
+            backBufferIndex
+            ) *
+        static_cast<SIZE_T>(
+            rtvDescriptorSize
+            );
+
+    //==================================================
+    // BackBufferだけをRenderTargetとして設定
+    //==================================================
+
+    // DepthStencilはここでは設定しない。
+    //
+    // PreDrawForRenderTexture()で作成された深度情報を
+    // DrawRenderTextureToSwapChain()のOutline処理で使用するため。
+    commandList_->OMSetRenderTargets(
+        1,
+        &rtvHandle,
+        false,
+        nullptr
+    );
+
+    //==================================================
+    // BackBufferをクリア
+    //==================================================
+
+    const float clearColor[] = {
+        0.1f,
+        0.25f,
+        0.5f,
+        1.0f
+    };
+
+    commandList_->ClearRenderTargetView(
+        rtvHandle,
+        clearColor,
+        0,
+        nullptr
+    );
+
+    // ここでは深度バッファをクリアしない。
+    // 深度のクリアはPreDrawForRenderTexture()で行う。
+
+    //==================================================
+    // Viewport設定
+    //==================================================
+
     D3D12_VIEWPORT viewport{};
-    viewport.Width = (float)width_;
-    viewport.Height = (float)height_;
+    viewport.TopLeftX = 0.0f;
+    viewport.TopLeftY = 0.0f;
+
+    viewport.Width =
+        static_cast<float>(width_);
+
+    viewport.Height =
+        static_cast<float>(height_);
+
     viewport.MinDepth = 0.0f;
     viewport.MaxDepth = 1.0f;
-    commandList_->RSSetViewports(1, &viewport);
+
+    commandList_->RSSetViewports(
+        1,
+        &viewport
+    );
+
+    //==================================================
+    // ScissorRect設定
+    //==================================================
 
     D3D12_RECT scissorRect{};
-    scissorRect.right = width_;
-    scissorRect.bottom = height_;
-    commandList_->RSSetScissorRects(1, &scissorRect);
+    scissorRect.left = 0;
+    scissorRect.top = 0;
+
+    scissorRect.right =
+        static_cast<LONG>(width_);
+
+    scissorRect.bottom =
+        static_cast<LONG>(height_);
+
+    commandList_->RSSetScissorRects(
+        1,
+        &scissorRect
+    );
 }
+
 
 void DirectXCommon::PostDraw() {
     UINT backBufferIndex = swapChain_->GetCurrentBackBufferIndex();
@@ -523,7 +773,7 @@ void DirectXCommon::InitializeRenderTexture()
 
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = 1;
+    srvHeapDesc.NumDescriptors = 2;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&renderTextureSrvHeap_));
@@ -542,6 +792,44 @@ void DirectXCommon::InitializeRenderTexture()
 
     renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
+
+    //========================
+    //Depth用SRVヒープ
+    //========================
+    UINT srvSize =
+        device_->GetDescriptorHandleIncrementSize(
+            D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+        );
+
+    depthTextureSrvHandleCPU_ =
+        renderTextureSrvHandleCPU_;
+
+    depthTextureSrvHandleCPU_.ptr += srvSize;
+
+    depthTextureSrvHandleGPU_ =
+        renderTextureSrvHandleGPU_;
+
+    depthTextureSrvHandleGPU_.ptr += srvSize;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC depthSrvDesc{};
+    depthSrvDesc.Format =
+        DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+    depthSrvDesc.Shader4ComponentMapping =
+        D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    depthSrvDesc.ViewDimension =
+        D3D12_SRV_DIMENSION_TEXTURE2D;
+    depthSrvDesc.Texture2D.MipLevels = 1;
+    depthSrvDesc.Texture2D.MostDetailedMip = 0;
+    depthSrvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+    device_->CreateShaderResourceView(
+        depthStencilResource_.Get(),
+        &depthSrvDesc,
+        depthTextureSrvHandleCPU_
+    );
+
+
+
 }
 
 void DirectXCommon::InitializeCopyImagePipeline()
@@ -550,7 +838,7 @@ void DirectXCommon::InitializeCopyImagePipeline()
 
     D3D12_DESCRIPTOR_RANGE descriptorRange{};
     descriptorRange.BaseShaderRegister = 0;
-    descriptorRange.NumDescriptors = 1;
+    descriptorRange.NumDescriptors = 2;
     descriptorRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     descriptorRange.OffsetInDescriptorsFromTableStart =
         D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -567,32 +855,41 @@ void DirectXCommon::InitializeCopyImagePipeline()
     rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     rootParameters[1].Constants.ShaderRegister = 0;
     rootParameters[1].Constants.RegisterSpace = 0;
-    rootParameters[1].Constants.Num32BitValues = 8;
+    rootParameters[1].Constants.Num32BitValues = 12;
     rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-    D3D12_STATIC_SAMPLER_DESC staticSampler{};
-    staticSampler.Filter =
+    D3D12_STATIC_SAMPLER_DESC staticSamplers[2]{};
+    
+    // s0 : Color用Linear
+    staticSamplers[0].Filter =
         D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-    staticSampler.AddressU =
+    staticSamplers[0].AddressU =
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    staticSampler.AddressV =
+    staticSamplers[0].AddressV =
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    staticSampler.AddressW =
+    staticSamplers[0].AddressW =
         D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-    staticSampler.ComparisonFunc =
+    staticSamplers[0].ComparisonFunc =
         D3D12_COMPARISON_FUNC_NEVER;
-    staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
-    staticSampler.ShaderRegister = 0;
-    staticSampler.ShaderVisibility =
+    staticSamplers[0].MaxLOD =
+        D3D12_FLOAT32_MAX;
+    staticSamplers[0].ShaderRegister = 0;
+    staticSamplers[0].ShaderVisibility =
         D3D12_SHADER_VISIBILITY_PIXEL;
+
+    // s1 : Depth用Point
+    staticSamplers[1] = staticSamplers[0];
+    staticSamplers[1].Filter =
+        D3D12_FILTER_MIN_MAG_MIP_POINT;
+    staticSamplers[1].ShaderRegister = 1;
 
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
     rootSignatureDesc.Flags =
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
     rootSignatureDesc.pParameters = rootParameters;
     rootSignatureDesc.NumParameters = 2;
-    rootSignatureDesc.pStaticSamplers = &staticSampler;
-    rootSignatureDesc.NumStaticSamplers = 1;
+    rootSignatureDesc.pStaticSamplers = staticSamplers;
+    rootSignatureDesc.NumStaticSamplers = 2;
 
     Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
     Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
@@ -656,6 +953,12 @@ void DirectXCommon::InitializeCopyImagePipeline()
     auto gaussianPsBlob =
         CompileShader(
             L"Resources/shaders/hlsl/GaussianFilter.PS.hlsl",
+            L"ps_6_0"
+        );
+
+    auto outlinePsBlob =
+        CompileShader(
+            L"Resources/shaders/hlsl/DepthBasedOutline.PS.hlsl",
             L"ps_6_0"
         );
 
@@ -756,6 +1059,23 @@ void DirectXCommon::InitializeCopyImagePipeline()
     );
 
     assert(SUCCEEDED(hr));
+
+    //==========================
+    //Outline
+    //==========================
+
+    psoDesc.PS = {
+    outlinePsBlob->GetBufferPointer(),
+    outlinePsBlob->GetBufferSize()
+    };
+
+    hr = device_->CreateGraphicsPipelineState(
+        &psoDesc,
+        IID_PPV_ARGS(&outlinePipelineState_)
+    );
+
+    assert(SUCCEEDED(hr));
+
 }
 
 void DirectXCommon::TransitionResource(ID3D12Resource* resource, D3D12_RESOURCE_STATES beforeState, D3D12_RESOURCE_STATES afterState)
