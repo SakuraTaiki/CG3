@@ -135,6 +135,31 @@ public: // メンバ関数
         return outlineSettings_;
     }
 
+
+    struct RadialBlurSettings {
+        bool enabled = false;
+
+        // UV座標。画面中央は(0.5, 0.5)
+        float center[2] = {
+            0.5f,
+            0.5f
+        };
+
+        float blurWidth = 0.01f;
+        float strength = 1.0f;
+        int sampleCount = 10;
+    };
+
+    RadialBlurSettings& GetRadialBlurSettings() {
+        return radialBlurSettings_;
+    }
+
+    const RadialBlurSettings&
+        GetRadialBlurSettings() const {
+        return radialBlurSettings_;
+    }
+
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();
@@ -199,6 +224,7 @@ private: // メンバ変数
     SmoothingSettings smoothingSettings_{};
     GaussianSettings gaussianSettings_{};
     OutlineSettings outlineSettings_{};
+    RadialBlurSettings radialBlurSettings_{};
 
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -213,8 +239,8 @@ private: // メンバ変数
     Microsoft::WRL::ComPtr<ID3D12PipelineState> postEffectPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> smoothingPipelineState_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> gaussianPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState>
-        outlinePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> outlinePipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> radialBlurPipelineState_;
 
 
     uint32_t width_ = 1280;
