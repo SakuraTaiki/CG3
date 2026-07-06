@@ -7,6 +7,8 @@
 #include "CameraDebugController.h"
 #include "EnvironmentController.h"
 #include "SceneObjectController.h"
+#include "Object3dCommon.h"
+
 
 #include "Ring.h"
 #include "Cylinder.h"
@@ -18,6 +20,7 @@
 #include "GPUParticleManager.h"
 
 #include <algorithm>
+#include <cmath>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -71,7 +74,13 @@ void SceneDebugPanel::Draw(
         }
 
         if (ImGui::BeginTabItem("Environment")) {
-            DrawEnvironmentTab(environment, sceneObjects, animationDebug);
+            DrawEnvironmentTab(
+                context->GetObject3dCommon(),
+                environment,
+                sceneObjects,
+                animationDebug
+            );
+
             ImGui::EndTabItem();
         }
 
@@ -791,6 +800,7 @@ void SceneDebugPanel::DrawPostEffectTab(
 
 
 void SceneDebugPanel::DrawEnvironmentTab(
+    Object3dCommon* object3dCommon,
     EnvironmentController& environment,
     SceneObjectController& sceneObjects,
     AnimationDebugController& animationDebug
@@ -815,6 +825,252 @@ void SceneDebugPanel::DrawEnvironmentTab(
             environment.GetEnvironmentCoefficient()
         );
     }
+
+    if (!object3dCommon) {
+        return;
+    }
+
+
+    ImGui::SeparatorText("Light Settings");
+
+    // ==================================================
+    // DirectionalLight
+    // ==================================================
+
+    if (ImGui::CollapsingHeader(
+        "Directional Light",
+        ImGuiTreeNodeFlags_DefaultOpen
+    )) {
+        DirectionalLight& light =
+            object3dCommon->GetDirectionalLight();
+
+        ImGui::ColorEdit4(
+            "Directional Color",
+            &light.color.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        if (ImGui::DragFloat3(
+            "Directional Direction",
+            &light.direction.x,
+            0.01f,
+            -1.0f,
+            1.0f
+        )) {
+            float length = std::sqrt(
+                light.direction.x * light.direction.x +
+                light.direction.y * light.direction.y +
+                light.direction.z * light.direction.z
+            );
+
+            if (length > 0.0001f) {
+                light.direction.x /= length;
+                light.direction.y /= length;
+                light.direction.z /= length;
+            }
+        }
+
+        ImGui::DragFloat(
+            "Directional Intensity",
+            &light.intensity,
+            0.01f,
+            0.0f,
+            20.0f
+        );
+
+        if (ImGui::Button("Reset Directional Light")) {
+            light.color =
+            { 1.0f, 1.0f, 1.0f, 1.0f };
+
+            light.direction =
+            { 0.0f, -1.0f, 0.0f };
+
+            light.intensity = 0.2f;
+        }
+    }
+
+    // ==================================================
+    // SpotLight
+    // ==================================================
+
+    if (ImGui::CollapsingHeader(
+        "Spot Light",
+        ImGuiTreeNodeFlags_DefaultOpen
+    )) {
+        SpotLight& light =
+            object3dCommon->GetSpotLight();
+
+        ImGui::ColorEdit4(
+            "Spot Color",
+            &light.color.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        ImGui::DragFloat3(
+            "Spot Position",
+            &light.position.x,
+            0.05f,
+            -100.0f,
+            100.0f
+        );
+
+        if (ImGui::DragFloat3(
+            "Spot Direction",
+            &light.direction.x,
+            0.01f,
+            -1.0f,
+            1.0f
+        )) {
+            float length = std::sqrt(
+                light.direction.x * light.direction.x +
+                light.direction.y * light.direction.y +
+                light.direction.z * light.direction.z
+            );
+
+            if (length > 0.0001f) {
+                light.direction.x /= length;
+                light.direction.y /= length;
+                light.direction.z /= length;
+            }
+        }
+
+        ImGui::DragFloat(
+            "Spot Intensity",
+            &light.intensity,
+            0.05f,
+            0.0f,
+            100.0f
+        );
+
+        ImGui::DragFloat(
+            "Spot Distance",
+            &light.distance,
+            0.1f,
+            0.1f,
+            200.0f
+        );
+
+        ImGui::DragFloat(
+            "Spot Decay",
+            &light.decay,
+            0.01f,
+            0.01f,
+            10.0f
+        );
+
+        constexpr float kPi =
+            3.14159265358979323846f;
+
+        // shaderにはcos値を渡しているため、
+        // ImGuiでは扱いやすい角度へ一度戻す
+        float outerAngle =
+            std::acos(std::clamp(
+                light.cosAngle,
+                -1.0f,
+                1.0f
+            )) * 180.0f / kPi;
+
+        float innerAngle =
+            std::acos(std::clamp(
+                light.cosFalloffStart,
+                -1.0f,
+                1.0f
+            )) * 180.0f / kPi;
+
+        bool angleChanged = false;
+
+        angleChanged |= ImGui::SliderFloat(
+            "Spot Inner Angle",
+            &innerAngle,
+            0.0f,
+            89.0f,
+            "%.1f deg"
+        );
+
+        angleChanged |= ImGui::SliderFloat(
+            "Spot Outer Angle",
+            &outerAngle,
+            1.0f,
+            89.0f,
+            "%.1f deg"
+        );
+
+        if (angleChanged) {
+            // 内側角度が外側を超えないようにする
+            innerAngle = std::clamp(
+                innerAngle,
+                0.0f,
+                outerAngle
+            );
+
+            outerAngle = std::clamp(
+                outerAngle,
+                innerAngle,
+                89.0f
+            );
+
+            light.cosAngle =
+                std::cos(
+                    outerAngle * kPi / 180.0f
+                );
+
+            light.cosFalloffStart =
+                std::cos(
+                    innerAngle * kPi / 180.0f
+                );
+        }
+
+        ImGui::Spacing();
+
+        ImGui::TextDisabled(
+            "Inner: %.1f deg / Outer: %.1f deg",
+            innerAngle,
+            outerAngle
+        );
+
+        ImGui::TextDisabled(
+            "Cos Inner: %.3f / Cos Outer: %.3f",
+            light.cosFalloffStart,
+            light.cosAngle
+        );
+
+        if (ImGui::Button("Reset Spot Light")) {
+            light.color =
+            { 1.0f, 1.0f, 1.0f, 1.0f };
+
+            light.position =
+            { 0.0f, 5.0f, 0.0f };
+
+            light.direction =
+            { 0.0f, -1.0f, 0.0f };
+
+            light.intensity = 4.0f;
+            light.distance = 15.0f;
+            light.decay = 2.0f;
+
+            light.cosAngle =
+                std::cos(
+                    30.0f * kPi / 180.0f
+                );
+
+            light.cosFalloffStart =
+                std::cos(
+                    20.0f * kPi / 180.0f
+                );
+
+            light.padding = 0.0f;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Turn Off Spot Light")) {
+            light.intensity = 0.0f;
+        }
+    }
+
+
 #endif
 }
 

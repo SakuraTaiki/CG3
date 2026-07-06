@@ -12,6 +12,7 @@ class SceneObjectController;
 class Ring;
 class Cylinder;
 class Primitive;
+class Object3dCommon;
 
 class SceneDebugPanel {
 public:
@@ -47,6 +48,7 @@ private:
     void DrawPostEffectTab(EngineContext* context);
 
     void DrawEnvironmentTab(
+        Object3dCommon* object3dCommon,
         EnvironmentController& environment,
         SceneObjectController& sceneObjects,
         AnimationDebugController& animationDebug

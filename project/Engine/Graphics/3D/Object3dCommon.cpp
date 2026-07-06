@@ -1,6 +1,7 @@
 #include "Object3dCommon.h"
 #include "Logger.h" // ログ用
 #include <cassert>
+#include <cmath>
 
 using namespace Microsoft::WRL;
 
@@ -30,8 +31,10 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
     }
 
     CreateLightBuffer();
+    CreateSpotLightBuffer();
     SetDefaultLight();
 
+    
     OutputDebugStringA("Object3dCommon::Initialize Finish\n");
 }
 
@@ -55,6 +58,29 @@ void Object3dCommon::SetDefaultLight() {
         lightData_->direction = { 0.0f, -1.0f, 0.0f };
         lightData_->intensity = 1.0f;
     }
+
+    if (spotLightData_) {
+        spotLightData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
+        spotLightData_->position = { 0.0f, 5.0f, 0.0f };
+        spotLightData_->intensity = 4.0f;
+
+        spotLightData_->direction =
+            Math::Normalize(Vector3{ 0.0f, -1.0f, 0.0f });
+
+        spotLightData_->distance = 15.0f;
+        spotLightData_->decay = 2.0f;
+
+        // 外側30度
+        spotLightData_->cosAngle =
+            std::cos(30.0f * 3.1415926535f / 180.0f);
+
+        // 20度から減衰開始
+        spotLightData_->cosFalloffStart =
+            std::cos(20.0f * 3.1415926535f / 180.0f);
+
+        spotLightData_->padding = 0.0f;
+    }
+
 }
 
 void Object3dCommon::CreateRootSignature() {
@@ -69,7 +95,7 @@ void Object3dCommon::CreateRootSignature() {
 // 3: Camera         PS b2
 // 4: Texture2D      PS t0
 // 5: Environment    PS t1
-    D3D12_ROOT_PARAMETER rootParameters[7] = {};
+    D3D12_ROOT_PARAMETER rootParameters[8] = {};
 
     // 0. Material
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
@@ -135,6 +161,15 @@ void Object3dCommon::CreateRootSignature() {
     rootParameters[6].DescriptorTable.NumDescriptorRanges = 1;
     rootParameters[6].DescriptorTable.pDescriptorRanges = &matrixPaletteRange;
     rootParameters[6].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+    // 7. SpotLight PS b3
+    rootParameters[7].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_CBV;
+
+    rootParameters[7].Descriptor.ShaderRegister = 3;
+    rootParameters[7].Descriptor.RegisterSpace = 0;
+    rootParameters[7].ShaderVisibility =
+        D3D12_SHADER_VISIBILITY_PIXEL;
 
     D3D12_STATIC_SAMPLER_DESC staticSampler{};
     staticSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -243,4 +278,49 @@ void Object3dCommon::CreateLightBuffer() {
 
     device->CreateCommittedResource(&heapProps, D3D12_HEAP_FLAG_NONE, &resDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&lightResource_));
     lightResource_->Map(0, nullptr, (void**)&lightData_);
+}
+
+void Object3dCommon::CreateSpotLightBuffer()
+{
+
+    auto device = dxCommon_->GetDevice();
+
+    D3D12_HEAP_PROPERTIES heapProps{};
+    heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+    heapProps.CPUPageProperty =
+        D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    heapProps.MemoryPoolPreference =
+        D3D12_MEMORY_POOL_UNKNOWN;
+    heapProps.CreationNodeMask = 1;
+    heapProps.VisibleNodeMask = 1;
+
+    D3D12_RESOURCE_DESC resourceDesc{};
+    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    resourceDesc.Width =
+        (sizeof(SpotLight) + 0xff) & ~0xff;
+    resourceDesc.Height = 1;
+    resourceDesc.DepthOrArraySize = 1;
+    resourceDesc.MipLevels = 1;
+    resourceDesc.SampleDesc.Count = 1;
+    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    HRESULT hr = device->CreateCommittedResource(
+        &heapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&spotLightResource_)
+    );
+
+    assert(SUCCEEDED(hr));
+
+    hr = spotLightResource_->Map(
+        0,
+        nullptr,
+        reinterpret_cast<void**>(&spotLightData_)
+    );
+
+    assert(SUCCEEDED(hr));
+
 }
