@@ -4,5 +4,8 @@ class Camera;
 
 class CameraDebugController {
 public:
-    void DrawImGui(Camera* camera);
+    void Update(Camera* camera);
+
+private:
+    float wheelZoomSpeed_ = 2.0f;
 };

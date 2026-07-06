@@ -46,6 +46,10 @@ void SceneDebugPanel::Draw(
 
     context->GetImGuiManager()->Begin();
 
+    cameraDebug.Update(
+        context->GetCamera()
+    );
+
     ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(420.0f, 520.0f), ImGuiCond_FirstUseEver);
 
@@ -92,7 +96,7 @@ void SceneDebugPanel::Draw(
         ImGui::EndTabBar();
     }
 
-    cameraDebug.DrawImGui(context->GetCamera());
+    
 
     ImGui::End();
 
