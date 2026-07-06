@@ -24,7 +24,7 @@ float4 main(VertexShaderOutput input) : SV_TARGET
         height
     );
 
-    float2 texelSize = float2(
+    float2 upStepSize = float2(
         rcp((float) width),
         rcp((float) height)
     );
@@ -35,13 +35,7 @@ float4 main(VertexShaderOutput input) : SV_TARGET
         4
     );
 
-    float4 blurColor =
-        float4(
-            0.0f,
-            0.0f,
-            0.0f,
-            0.0f
-        );
+    float4 colorSum = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
     int sampleCount = 0;
 
@@ -55,9 +49,9 @@ float4 main(VertexShaderOutput input) : SV_TARGET
                 float2(
                     (float) x,
                     (float) y
-                ) * texelSize;
+                ) * upStepSize;
 
-            blurColor +=
+            colorSum +=
                 gTexture.Sample(
                     gSampler,
                     input.texcoord + offset
@@ -67,7 +61,7 @@ float4 main(VertexShaderOutput input) : SV_TARGET
         }
     }
 
-    blurColor /= (float) sampleCount;
+    float4 blurColor = colorSum / (float) sampleCount;
 
     float4 originalColor =
         gTexture.Sample(
@@ -75,11 +69,10 @@ float4 main(VertexShaderOutput input) : SV_TARGET
             input.texcoord
         );
 
-    float4 result = lerp(
+      // ぼかし強度を反映
+    return lerp(
         originalColor,
         blurColor,
         saturate(gBlurStrength)
     );
-
-    return result;
 }
