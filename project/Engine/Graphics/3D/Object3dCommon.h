@@ -31,6 +31,17 @@ struct SpotLight
     float padding;
 };
 
+struct PointLight {
+    Vector4 color;
+
+    Vector3 position;
+    float intensity;
+
+    float radius;
+    float decay;
+    float padding[2];
+};
+
 class Object3dCommon {
 public:
     void Initialize(DirectXCommon* dxCommon);
@@ -100,9 +111,46 @@ public:
 
 
     //=============================================
+    //PointLight
+    //=============================================
+
+
+    void SetPointLightColor(const Vector4& color) {
+        if (pointLightData_) {
+            pointLightData_->color = color;
+        }
+    }
+
+    void SetPointLightPosition(const Vector3& position) {
+        if (pointLightData_) {
+            pointLightData_->position = position;
+        }
+    }
+
+    void SetPointLightIntensity(float intensity) {
+        if (pointLightData_) {
+            pointLightData_->intensity = intensity;
+        }
+    }
+
+    void SetPointLightRadius(float radius) {
+        if (pointLightData_) {
+            pointLightData_->radius = radius;
+        }
+    }
+
+    void SetPointLightDecay(float decay) {
+        if (pointLightData_) {
+            pointLightData_->decay = decay;
+        }
+    }
+
+
+    //=============================================
     //Imgui用LightGet関数群
     //=============================================
 
+    //DirectionalLight
     DirectionalLight& GetDirectionalLight() {
         return *lightData_;
     }
@@ -111,6 +159,7 @@ public:
         return *lightData_;
     }
 
+    //SpotLight
     SpotLight& GetSpotLight() {
         return *spotLightData_;
     }
@@ -119,13 +168,25 @@ public:
         return *spotLightData_;
     }
 
+    //PointLight
+    PointLight& GetPointLight() {
+        return *pointLightData_;
+    }
 
+    const PointLight& GetPointLight() const {
+        return *pointLightData_;
+    }
 
     D3D12_GPU_VIRTUAL_ADDRESS GetSpotLightGPUVirtualAddress() const {
         return spotLightResource_->GetGPUVirtualAddress();
     }
 
     D3D12_GPU_VIRTUAL_ADDRESS GetLightGPUVirtualAddress() const { return lightResource_->GetGPUVirtualAddress(); }
+
+    D3D12_GPU_VIRTUAL_ADDRESS
+        GetPointLightGPUVirtualAddress() const {
+        return pointLightResource_->GetGPUVirtualAddress();
+    }
 
     // ★重要: TextureManagerのセット
     void SetTextureManager(TextureManager* textureManager) { textureManager_ = textureManager; }
@@ -143,6 +204,7 @@ private:
     void CreateGraphicsPipeline();
     void CreateLightBuffer();
     void CreateSpotLightBuffer();
+    void CreatePointLightBuffer();
 
 private:
     DirectXCommon* dxCommon_ = nullptr;
@@ -154,8 +216,12 @@ private:
     // 平行光源用
     Microsoft::WRL::ComPtr<ID3D12Resource> lightResource_;
     Microsoft::WRL::ComPtr<ID3D12Resource> spotLightResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> pointLightResource_;
+
+
     DirectionalLight* lightData_ = nullptr;
     SpotLight* spotLightData_ = nullptr;
+    PointLight* pointLightData_ = nullptr;
 
     //デフォルトカメラ用メンバ変数
     Camera* defaultCamera_ = nullptr;
