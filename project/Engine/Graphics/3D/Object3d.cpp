@@ -183,6 +183,12 @@ void Object3d::Draw() {
         object3dCommon_->GetSpotLightGPUVirtualAddress()
     );
 
+
+    commandList->SetGraphicsRootConstantBufferView(
+        8,
+        object3dCommon_->GetPointLightGPUVirtualAddress()
+    );
+
     if (object3dCommon_->GetTextureManager()) {
         auto gpuHandle =
             object3dCommon_->GetTextureManager()->GetSrvHandleGPU(

@@ -1071,8 +1071,79 @@ void SceneDebugPanel::DrawEnvironmentTab(
     }
 
 
+    //===================================
+    //PointLight
+    //===================================
+    if (ImGui::CollapsingHeader(
+        "Point Light",
+        ImGuiTreeNodeFlags_DefaultOpen
+    )) {
+        PointLight& light =
+            object3dCommon->GetPointLight();
+
+        ImGui::ColorEdit4(
+            "Point Color",
+            &light.color.x,
+            ImGuiColorEditFlags_Float |
+            ImGuiColorEditFlags_HDR
+        );
+
+        ImGui::DragFloat3(
+            "Point Position",
+            &light.position.x,
+            0.05f,
+            -100.0f,
+            100.0f
+        );
+
+        ImGui::DragFloat(
+            "Point Intensity",
+            &light.intensity,
+            0.05f,
+            0.0f,
+            100.0f
+        );
+
+        ImGui::DragFloat(
+            "Point Radius",
+            &light.radius,
+            0.1f,
+            0.1f,
+            200.0f
+        );
+
+        ImGui::DragFloat(
+            "Point Decay",
+            &light.decay,
+            0.01f,
+            0.01f,
+            10.0f
+        );
+
+        if (ImGui::Button("Reset Point Light")) {
+            light.color =
+            { 1.0f, 1.0f, 1.0f, 1.0f };
+
+            light.position =
+            { 0.0f, 3.0f, 0.0f };
+
+            light.intensity = 2.0f;
+            light.radius = 10.0f;
+            light.decay = 2.0f;
+
+            light.padding[0] = 0.0f;
+            light.padding[1] = 0.0f;
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Turn Off Point Light")) {
+            light.intensity = 0.0f;
+        }
+    } // Point LightのCollapsingHeader
+
 #endif
-}
+} // DrawEnvironmentTab
 
 void SceneDebugPanel::DrawEffectTab(
     EngineContext* context,
