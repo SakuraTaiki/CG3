@@ -57,6 +57,24 @@ struct DirectionalLight
     float intensity;
 };
 
+
+struct SpotLight
+{
+    float32_t4 color;
+
+    float32_t3 position;
+    float intensity;
+
+    float32_t3 direction;
+    float distance;
+
+    float decay;
+    float cosAngle;
+    float cosFalloffStart;
+    float padding;
+};
+
+
 struct CameraForGPU
 {
     float32_t3 worldPosition;

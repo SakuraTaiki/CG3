@@ -178,6 +178,11 @@ void Object3d::Draw() {
         cameraResource_->GetGPUVirtualAddress()
     );
 
+    commandList->SetGraphicsRootConstantBufferView(
+        7,
+        object3dCommon_->GetSpotLightGPUVirtualAddress()
+    );
+
     if (object3dCommon_->GetTextureManager()) {
         auto gpuHandle =
             object3dCommon_->GetTextureManager()->GetSrvHandleGPU(
@@ -222,4 +227,7 @@ void Object3d::Draw() {
     } else {
         model_->Draw(commandList);
     }
+
+   
+
 }
