@@ -75,6 +75,18 @@ struct SpotLight
 };
 
 
+struct PointLight
+{
+    float32_t4 color;
+
+    float32_t3 position;
+    float intensity;
+
+    float radius;
+    float decay;
+    float32_t2 padding;
+};
+
 struct CameraForGPU
 {
     float32_t3 worldPosition;
