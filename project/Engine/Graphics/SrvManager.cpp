@@ -30,7 +30,14 @@ void SrvManager::Initialize(DirectXCommon* dxCommon) {
         );
 }
 
+
 uint32_t SrvManager::Allocate() {
+    if (!freeIndices_.empty()) {
+        uint32_t index = freeIndices_.back();
+        freeIndices_.pop_back();
+        return index;
+    }
+
     assert(CheckCanAllocate());
 
     uint32_t index = useIndex_;
@@ -38,6 +45,30 @@ uint32_t SrvManager::Allocate() {
 
     return index;
 }
+
+
+void SrvManager::Free(uint32_t index) {
+    assert(index < useIndex_);
+    freeIndices_.push_back(index);
+}
+
+
+uint32_t SrvManager::GetDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE handle) const {
+    D3D12_CPU_DESCRIPTOR_HANDLE start =
+        descriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+
+    assert(handle.ptr >= start.ptr);
+    assert(descriptorSize_ != 0);
+
+    SIZE_T diff = handle.ptr - start.ptr;
+    assert(diff % descriptorSize_ == 0);
+
+    uint32_t index = static_cast<uint32_t>(diff / descriptorSize_);
+    assert(index < kMaxSRVCount);
+
+    return index;
+}
+
 
 bool SrvManager::CheckCanAllocate() const {
     return useIndex_ < kMaxSRVCount;
