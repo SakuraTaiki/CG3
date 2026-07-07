@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <d3d12.h>
 #include <wrl.h>
+#include<vector>
 
 class DirectXCommon;
 
@@ -43,9 +44,14 @@ public:
         return descriptorHeap_.Get();
     }
 
+    void Free(uint32_t index);
+    uint32_t GetDescriptorIndex(D3D12_CPU_DESCRIPTOR_HANDLE handle) const;
+
 private:
     DirectXCommon* directXCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap_;
     uint32_t descriptorSize_ = 0;
     uint32_t useIndex_ = 0;
+
+    std::vector<uint32_t> freeIndices_;
 };

@@ -18,21 +18,49 @@ void ImGuiManager::Initialize(
     dxCommon_ = dxCommon;
     srvManager_ = srvManager;
 
+    IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
     ImGui::StyleColorsDark();
 
     ImGui_ImplWin32_Init(winApp->GetHwnd());
 
-    uint32_t srvIndex = srvManager_->Allocate();
+    ImGui_ImplDX12_InitInfo initInfo{};
+    initInfo.Device = dxCommon_->GetDevice();
+    initInfo.CommandQueue = dxCommon_->GetCommandQueue();
+    initInfo.NumFramesInFlight = static_cast<int>(dxCommon_->GetSwapChainResourcesNum());
+    initInfo.RTVFormat = dxCommon_->GetRTVFormat();
+    initInfo.DSVFormat = dxCommon_->GetDSVFormat();
+    initInfo.SrvDescriptorHeap = srvManager_->GetDescriptorHeap();
+    initInfo.UserData = srvManager_;
 
-    ImGui_ImplDX12_Init(
-        dxCommon_->GetDevice(),
-        static_cast<int>(dxCommon_->GetSwapChainResourcesNum()),
-        dxCommon_->GetRTVFormat(),
-        srvManager_->GetDescriptorHeap(),
-        srvManager_->GetCPUDescriptorHandle(srvIndex),
-        srvManager_->GetGPUDescriptorHandle(srvIndex)
-    );
+    initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info,
+        D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle)
+        {
+            SrvManager* srvManager = static_cast<SrvManager*>(info->UserData);
+
+            uint32_t srvIndex = srvManager->Allocate();
+
+            *outCpuHandle = srvManager->GetCPUDescriptorHandle(srvIndex);
+            *outGpuHandle = srvManager->GetGPUDescriptorHandle(srvIndex);
+        };
+
+    initInfo.SrvDescriptorFreeFn = [](ImGui_ImplDX12_InitInfo* info,
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE)
+        {
+            SrvManager* srvManager = static_cast<SrvManager*>(info->UserData);
+
+            uint32_t srvIndex = srvManager->GetDescriptorIndex(cpuHandle);
+            srvManager->Free(srvIndex);
+        };
+
+    ImGui_ImplDX12_Init(&initInfo);
 
 #endif
 }
@@ -55,6 +83,12 @@ void ImGuiManager::Begin()
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+
+    ImGui::DockSpaceOverViewport(
+        0,
+        ImGui::GetMainViewport(),
+        ImGuiDockNodeFlags_PassthruCentralNode
+    );
 
 #endif
 }
