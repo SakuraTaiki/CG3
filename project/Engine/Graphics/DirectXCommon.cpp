@@ -617,6 +617,20 @@ void DirectXCommon::SetDissolveMaskSrv(D3D12_CPU_DESCRIPTOR_HANDLE sourceHandle)
 
 }
 
+void DirectXCommon::PrepareRenderTextureForImgui()
+{
+
+    TransitionResource(
+        renderTextureResource_.Get(),
+        renderTextureState_,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+    );
+
+    renderTextureState_ =
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+}
+
 void DirectXCommon::InitializeDevice() {
     // DXGIファクトリーの生成
 #ifdef _DEBUG
