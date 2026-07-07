@@ -20,6 +20,8 @@
 #include "camera.h"
 #include "GPUParticleManager.h"
 #include "ModelManager.h"
+#include "TextureManager.h"
+
 
 #include <algorithm>
 #include <cmath>
@@ -304,6 +306,51 @@ namespace {
     }
 
 
+    bool ApplySelectedPngTextureToObject(
+        Object3d* object,
+        TextureManager* textureManager
+    ) {
+#ifdef USE_IMGUI
+        if (!object) {
+            AddEditorLog(EditorLogType::Error, "Texture apply failed: target object is null.");
+            return false;
+        }
+
+        if (!textureManager) {
+            AddEditorLog(EditorLogType::Error, "Texture apply failed: TextureManager is null.");
+            return false;
+        }
+
+        const std::string& assetPath =
+            GetSelectedAssetPath();
+
+        if (assetPath.empty()) {
+            AddEditorLog(EditorLogType::Warning, "Texture apply failed: no asset selected.");
+            return false;
+        }
+
+        if (!EndsWith(assetPath, ".png")) {
+            AddEditorLog(EditorLogType::Warning, "Only .png texture assets can be applied now.");
+            return false;
+        }
+
+        uint32_t textureHandle =
+            textureManager->LoadTexture(assetPath);
+
+        object->SetOverrideTexture(textureHandle);
+
+        AddEditorLog(
+            EditorLogType::Info,
+            "Applied texture: " + assetPath + " -> " + GetModelApplyTargetName()
+        );
+
+        return true;
+#else
+        return false;
+#endif
+    }
+
+
     bool DrawAssetItem(const char* label, const char* path) {
 #ifdef USE_IMGUI
         const bool selected =
@@ -397,7 +444,7 @@ namespace {
     }
 
 
-    void DrawAssetInspector(SceneObjectController& sceneObjects) {
+    void DrawAssetInspector(EngineContext* context, SceneObjectController& sceneObjects) {
 #ifdef USE_IMGUI
         const std::string& path =
             GetSelectedAssetPath();
@@ -437,21 +484,61 @@ namespace {
 
         DrawModelApplyTargetCombo();
 
+        Object3d* targetObject =
+            GetModelApplyTargetObject(sceneObjects);
+
+        TextureManager* textureManager = nullptr;
+
+        if (context && context->GetObject3dCommon()) {
+            textureManager =
+                context->GetObject3dCommon()->GetTextureManager();
+        }
+
         const bool canApplyModel =
             EndsWith(path, ".obj");
 
+        const bool canApplyTexture =
+            EndsWith(path, ".png");
+
         ImGui::BeginDisabled(!canApplyModel);
 
-        if (ImGui::Button("Apply To Selected Object")) {
-            ApplySelectedObjModelToObject(
-                GetModelApplyTargetObject(sceneObjects)
+        if (ImGui::Button("Apply Model To Target")) {
+            ApplySelectedObjModelToObject(targetObject);
+        }
+
+        ImGui::EndDisabled();
+
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(!canApplyTexture);
+
+        if (ImGui::Button("Apply Texture To Target")) {
+            ApplySelectedPngTextureToObject(
+                targetObject,
+                textureManager
             );
         }
 
         ImGui::EndDisabled();
 
-        if (!canApplyModel) {
-            ImGui::TextDisabled("Only .obj assets can be applied now.");
+
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(!targetObject || !targetObject->HasOverrideTexture());
+
+        if (ImGui::Button("Clear Texture")) {
+            targetObject->ClearOverrideTexture();
+            AddEditorLog(
+                EditorLogType::Info,
+                std::string("Cleared override texture: ") + GetModelApplyTargetName()
+            );
+        }
+
+        ImGui::EndDisabled();
+
+
+        if (!canApplyModel && !canApplyTexture) {
+            ImGui::TextDisabled("Only .obj models and .png textures can be applied now.");
         }
 
         ImGui::SeparatorText("Preview");
@@ -833,7 +920,7 @@ void SceneDebugPanel::DrawInspectorWindow(
         break;
 
     case EditorSelection::Asset:
-        DrawAssetInspector(sceneObjects);
+        DrawAssetInspector(context,sceneObjects);
         break;
     }
 

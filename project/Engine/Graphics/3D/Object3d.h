@@ -90,6 +90,28 @@ public:
         environmentTextureHandle_ = textureHandle;
     }
 
+    bool useOverrideTexture_ = false;
+    uint32_t overrideTextureHandle_ = 0;
+
+    void SetOverrideTexture(uint32_t textureHandle) {
+        overrideTextureHandle_ = textureHandle;
+        useOverrideTexture_ = true;
+    }
+
+    void ClearOverrideTexture() {
+        useOverrideTexture_ = false;
+        overrideTextureHandle_ = 0;
+    }
+
+    bool HasOverrideTexture() const {
+        return useOverrideTexture_;
+    }
+
+    uint32_t GetOverrideTextureHandle() const {
+        return overrideTextureHandle_;
+    }
+
+
     float GetEnvironmentCoefficient() const {
         if (!materialData_) {
             return 0.0f;

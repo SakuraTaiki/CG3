@@ -190,15 +190,22 @@ void Object3d::Draw() {
     );
 
     if (object3dCommon_->GetTextureManager()) {
+       
+        const uint32_t mainTextureHandle =
+            useOverrideTexture_
+            ? overrideTextureHandle_
+            : model_->GetTextureHandle();
+
         auto gpuHandle =
             object3dCommon_->GetTextureManager()->GetSrvHandleGPU(
-                model_->GetTextureHandle()
+                mainTextureHandle
             );
 
         commandList->SetGraphicsRootDescriptorTable(
             4,
             gpuHandle
         );
+
 
         if (environmentTextureHandle_ != 0) {
             auto envHandle =
