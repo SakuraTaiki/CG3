@@ -10,6 +10,7 @@
 #include "Object3dCommon.h"
 
 
+
 #include "Ring.h"
 #include "Cylinder.h"
 #include "Primitive.h"
@@ -18,6 +19,7 @@
 #include "ImGuiManager.h"
 #include "camera.h"
 #include "GPUParticleManager.h"
+#include "ModelManager.h"
 
 #include <algorithm>
 #include <cmath>
@@ -153,6 +155,155 @@ namespace {
         AddEditorLog(EditorLogType::Info, "Selected asset: " + path);
     }
 
+
+    SceneObjectController::EditorObjectType& GetModelApplyTarget() {
+        static SceneObjectController::EditorObjectType target =
+            SceneObjectController::EditorObjectType::Terrain;
+
+        return target;
+    }
+
+    const char* GetModelApplyTargetName() {
+        switch (GetModelApplyTarget()) {
+        case SceneObjectController::EditorObjectType::Terrain:
+            return "Terrain";
+
+        case SceneObjectController::EditorObjectType::AxisPositive:
+            return "Axis +X";
+
+        case SceneObjectController::EditorObjectType::AxisNegative:
+            return "Axis -X";
+
+        default:
+            return "Unknown";
+        }
+    }
+
+
+    void DrawModelApplyTargetCombo() {
+#ifdef USE_IMGUI
+        SceneObjectController::EditorObjectType& target =
+            GetModelApplyTarget();
+
+        int currentTarget =
+            static_cast<int>(target);
+
+        const char* targetNames[] = {
+            "Terrain",
+            "Axis +X",
+            "Axis -X"
+        };
+
+        if (ImGui::Combo(
+            "Target",
+            &currentTarget,
+            targetNames,
+            IM_ARRAYSIZE(targetNames)
+        )) {
+            target =
+                static_cast<SceneObjectController::EditorObjectType>(
+                    currentTarget
+                    );
+
+            AddEditorLog(
+                EditorLogType::Info,
+                std::string("Model apply target changed: ") + GetModelApplyTargetName()
+            );
+        }
+#endif
+    }
+
+
+    Object3d* GetModelApplyTargetObject(SceneObjectController& sceneObjects) {
+        return sceneObjects.GetEditorObject(
+            GetModelApplyTarget()
+        );
+    }
+
+    bool SplitResourceModelPath(
+        const std::string& path,
+        std::string& directoryPath,
+        std::string& modelName
+    ) {
+        if (!EndsWith(path, ".obj")) {
+            return false;
+        }
+
+        const size_t slashPos =
+            path.find_last_of("/\\");
+
+        if (slashPos == std::string::npos) {
+            directoryPath = "Resources";
+            modelName = path;
+            return true;
+        }
+
+        directoryPath =
+            path.substr(0, slashPos);
+
+        modelName =
+            path.substr(slashPos + 1);
+
+        return true;
+    }
+
+    bool ApplySelectedObjModelToObject(Object3d* object) {
+#ifdef USE_IMGUI
+        if (!object) {
+            AddEditorLog(EditorLogType::Error, "Apply failed: target object is null.");
+            return false;
+        }
+
+        const std::string& assetPath =
+            GetSelectedAssetPath();
+
+        if (assetPath.empty()) {
+            AddEditorLog(EditorLogType::Warning, "Apply failed: no asset selected.");
+            return false;
+        }
+
+        if (!EndsWith(assetPath, ".obj")) {
+            AddEditorLog(EditorLogType::Warning, "Only .obj model assets can be applied now.");
+            return false;
+        }
+
+        std::string directoryPath;
+        std::string modelName;
+
+        if (!SplitResourceModelPath(
+            assetPath,
+            directoryPath,
+            modelName
+        )) {
+            AddEditorLog(EditorLogType::Error, "Apply failed: invalid model path.");
+            return false;
+        }
+
+        Model* model =
+            ModelManager::Load(
+                directoryPath,
+                modelName
+            );
+
+        if (!model) {
+            AddEditorLog(EditorLogType::Error, "Apply failed: model load returned null.");
+            return false;
+        }
+
+        object->SetModel(model);
+
+        AddEditorLog(
+            EditorLogType::Info,
+            "Applied model: " + assetPath + " -> " + GetModelApplyTargetName()
+        );
+
+        return true;
+#else
+        return false;
+#endif
+    }
+
+
     bool DrawAssetItem(const char* label, const char* path) {
 #ifdef USE_IMGUI
         const bool selected =
@@ -245,7 +396,8 @@ namespace {
 #endif
     }
 
-    void DrawAssetInspector() {
+
+    void DrawAssetInspector(SceneObjectController& sceneObjects) {
 #ifdef USE_IMGUI
         const std::string& path =
             GetSelectedAssetPath();
@@ -281,20 +433,42 @@ namespace {
             AddEditorLog(EditorLogType::Info, "Ping asset: " + path);
         }
 
+        ImGui::SeparatorText("Apply");
+
+        DrawModelApplyTargetCombo();
+
+        const bool canApplyModel =
+            EndsWith(path, ".obj");
+
+        ImGui::BeginDisabled(!canApplyModel);
+
+        if (ImGui::Button("Apply To Selected Object")) {
+            ApplySelectedObjModelToObject(
+                GetModelApplyTargetObject(sceneObjects)
+            );
+        }
+
+        ImGui::EndDisabled();
+
+        if (!canApplyModel) {
+            ImGui::TextDisabled("Only .obj assets can be applied now.");
+        }
+
         ImGui::SeparatorText("Preview");
 
         if (EndsWith(path, ".png")) {
             ImGui::TextDisabled("Texture preview will be added in a later step.");
-        } else if (EndsWith(path, ".obj") || EndsWith(path, ".gltf") || EndsWith(path, ".fbx")) {
-            ImGui::TextDisabled("Model preview will be added in a later step.");
+        } else if (EndsWith(path, ".obj")) {
+            ImGui::TextDisabled("OBJ model asset.");
+        } else if (EndsWith(path, ".gltf") || EndsWith(path, ".fbx")) {
+            ImGui::TextDisabled("glTF / FBX apply will be added later.");
         } else if (EndsWith(path, ".hlsl") || EndsWith(path, ".hlsli")) {
-            ImGui::TextDisabled("Shader source preview will be added in a later step.");
+            ImGui::TextDisabled("Shader source preview will be added later.");
         } else {
             ImGui::TextDisabled("No preview available.");
         }
 #endif
     }
-
 }
 
 void SceneDebugPanel::Draw(
@@ -457,6 +631,7 @@ void SceneDebugPanel::DrawHierarchyWindow(
             selected_ == EditorSelection::Terrain
         )) {
             selected_ = EditorSelection::Terrain;
+            GetModelApplyTarget() = SceneObjectController::EditorObjectType::Terrain;
         }
 
         if (ImGui::Selectable(
@@ -464,6 +639,7 @@ void SceneDebugPanel::DrawHierarchyWindow(
             selected_ == EditorSelection::AxisPositive
         )) {
             selected_ = EditorSelection::AxisPositive;
+            GetModelApplyTarget() = SceneObjectController::EditorObjectType::AxisPositive;
         }
 
         if (ImGui::Selectable(
@@ -471,6 +647,7 @@ void SceneDebugPanel::DrawHierarchyWindow(
             selected_ == EditorSelection::AxisNegative
         )) {
             selected_ = EditorSelection::AxisNegative;
+            GetModelApplyTarget() = SceneObjectController::EditorObjectType::AxisNegative;
         }
 
         ImGui::Separator();
@@ -656,7 +833,7 @@ void SceneDebugPanel::DrawInspectorWindow(
         break;
 
     case EditorSelection::Asset:
-        DrawAssetInspector();
+        DrawAssetInspector(sceneObjects);
         break;
     }
 
@@ -668,6 +845,12 @@ void SceneDebugPanel::DrawInspectorWindow(
 void SceneDebugPanel::DrawProjectWindow() {
 #ifdef USE_IMGUI
     ImGui::Begin("Project");
+
+    auto DrawProjectAsset = [this](const char* label, const char* path) {
+        if (DrawAssetItem(label, path)) {
+            selected_ = EditorSelection::Asset;
+        }
+        };
 
     ImGui::TextDisabled("Assets");
     ImGui::Separator();
@@ -703,14 +886,14 @@ void SceneDebugPanel::DrawProjectWindow() {
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_SpanAvailWidth
         )) {
-            DrawAssetItem("axis.obj", "Resources/axis.obj");
-            DrawAssetItem("plane.obj", "Resources/plane.obj");
-            DrawAssetItem("terrain.obj", "Resources/terrain/terrain.obj");
-            DrawAssetItem("bunny.obj", "Resources/bunny/bunny.obj");
-            DrawAssetItem("fence.obj", "Resources/fence/fence.obj");
-            DrawAssetItem("AnimatedCube.gltf", "Resources/AnimatedCube/AnimatedCube.gltf");
-            DrawAssetItem("human/walk.gltf", "Resources/human/walk.gltf");
-            DrawAssetItem("human/walk.fbx", "Resources/human/walk.fbx");
+            DrawProjectAsset("axis.obj", "Resources/axis.obj");
+            DrawProjectAsset("plane.obj", "Resources/plane.obj");
+            DrawProjectAsset("terrain.obj", "Resources/terrain/terrain.obj");
+            DrawProjectAsset("bunny.obj", "Resources/bunny/bunny.obj");
+            DrawProjectAsset("fence.obj", "Resources/fence/fence.obj");
+            DrawProjectAsset("AnimatedCube.gltf", "Resources/AnimatedCube/AnimatedCube.gltf");
+            DrawProjectAsset("human/walk.gltf", "Resources/human/walk.gltf");
+            DrawProjectAsset("human/walk.fbx", "Resources/human/walk.fbx");
 
             ImGui::TreePop();
         }
@@ -721,11 +904,11 @@ void SceneDebugPanel::DrawProjectWindow() {
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_SpanAvailWidth
         )) {
-            DrawAssetItem("monsterBall.png", "Resources/monsterBall.png");
-            DrawAssetItem("noise0.png", "Resources/noise0.png");
-            DrawAssetItem("uvChecker.png", "Resources/uvChecker.png");
-            DrawAssetItem("white.png", "Resources/white.png");
-            DrawAssetItem("fence.png", "Resources/fence/fence.png");
+            DrawProjectAsset("monsterBall.png", "Resources/monsterBall.png");
+            DrawProjectAsset("noise0.png", "Resources/noise0.png");
+            DrawProjectAsset("uvChecker.png", "Resources/uvChecker.png");
+            DrawProjectAsset("white.png", "Resources/white.png");
+            DrawProjectAsset("fence.png", "Resources/fence/fence.png");
 
             ImGui::TreePop();
         }
@@ -736,12 +919,12 @@ void SceneDebugPanel::DrawProjectWindow() {
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_SpanAvailWidth
         )) {
-            DrawAssetItem("Object3d.VS.hlsl", "Resources/shaders/hlsl/Object3d.VS.hlsl");
-            DrawAssetItem("Object3d.PS.hlsl", "Resources/shaders/hlsl/Object3d.PS.hlsl");
-            DrawAssetItem("Particle.VS.hlsl", "Resources/shaders/hlsl/Particle.VS.hlsl");
-            DrawAssetItem("Particle.PS.hlsl", "Resources/shaders/hlsl/Particle.PS.hlsl");
-            DrawAssetItem("CopyImage.PS.hlsl", "Resources/shaders/hlsl/CopyImage.PS.hlsl");
-            DrawAssetItem("GaussianFilter.PS.hlsl", "Resources/shaders/hlsl/GaussianFilter.PS.hlsl");
+            DrawProjectAsset("Object3d.VS.hlsl", "Resources/shaders/hlsl/Object3d.VS.hlsl");
+            DrawProjectAsset("Object3d.PS.hlsl", "Resources/shaders/hlsl/Object3d.PS.hlsl");
+            DrawProjectAsset("Particle.VS.hlsl", "Resources/shaders/hlsl/Particle.VS.hlsl");
+            DrawProjectAsset("Particle.PS.hlsl", "Resources/shaders/hlsl/Particle.PS.hlsl");
+            DrawProjectAsset("CopyImage.PS.hlsl", "Resources/shaders/hlsl/CopyImage.PS.hlsl");
+            DrawProjectAsset("GaussianFilter.PS.hlsl", "Resources/shaders/hlsl/GaussianFilter.PS.hlsl");
 
             ImGui::TreePop();
         }
@@ -751,8 +934,8 @@ void SceneDebugPanel::DrawProjectWindow() {
             ImGuiTreeNodeFlags_OpenOnArrow |
             ImGuiTreeNodeFlags_SpanAvailWidth
         )) {
-            DrawAssetItem("Fire.txt", "Resources/Settings/HitEffects/Fire.txt");
-            DrawAssetItem("cherryBlossoms.txt", "Resources/Settings/HitEffects/cherryBlossoms.txt");
+            DrawProjectAsset("Fire.txt", "Resources/Settings/HitEffects/Fire.txt");
+            DrawProjectAsset("cherryBlossoms.txt", "Resources/Settings/HitEffects/cherryBlossoms.txt");
 
             ImGui::TreePop();
         }
