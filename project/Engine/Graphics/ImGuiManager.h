@@ -19,8 +19,16 @@ public:
 
     void Draw();
 
+    void UpdateGameViewTexture();
+
+    uint32_t GetGameViewSrvIndex() const {
+        return gameViewSrvIndex_;
+    }
+
 private:
     DirectXCommon* dxCommon_ = nullptr;
     SrvManager* srvManager_ = nullptr;
+
+    uint32_t gameViewSrvIndex_ = 0;
 };
 

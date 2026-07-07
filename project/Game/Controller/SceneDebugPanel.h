@@ -105,6 +105,9 @@ private:
         AnimationDebugController& animationDebug
     );
 
+
+    void DrawGameViewWindow(EngineContext* context);
+
 private:
     EditorSelection selected_ = EditorSelection::Terrain;
 };

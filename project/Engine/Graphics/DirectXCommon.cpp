@@ -594,6 +594,16 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
     }
 }
 
+void DirectXCommon::CopyRenderTextureSrvTo(D3D12_CPU_DESCRIPTOR_HANDLE destinationHandle)
+{
+    device_->CopyDescriptorsSimple(
+        1,
+        destinationHandle,
+        renderTextureSrvHandleCPU_,
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
+    );
+}
+
 
 void DirectXCommon::SetDissolveMaskSrv(D3D12_CPU_DESCRIPTOR_HANDLE sourceHandle)
 {
