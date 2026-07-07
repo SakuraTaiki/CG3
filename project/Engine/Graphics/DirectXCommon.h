@@ -53,6 +53,17 @@ public: // メンバ関数
     void PreDrawForRenderTexture();
     void DrawRenderTextureToSwapChain();
 
+    D3D12_CPU_DESCRIPTOR_HANDLE GetRenderTextureSrvHandleCPU() const {
+        return renderTextureSrvHandleCPU_;
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE GetRenderTextureSrvHandleGPU() const {
+        return renderTextureSrvHandleGPU_;
+    }
+
+    void CopyRenderTextureSrvTo(D3D12_CPU_DESCRIPTOR_HANDLE destinationHandle);
+
+
     void SetGrayScale(bool enable) {
         enableGrayScale_ = enable;
     }

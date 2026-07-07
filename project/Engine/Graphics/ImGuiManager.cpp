@@ -18,6 +18,8 @@ void ImGuiManager::Initialize(
     dxCommon_ = dxCommon;
     srvManager_ = srvManager;
 
+    gameViewSrvIndex_ = srvManager_->Allocate();
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -119,4 +121,19 @@ void ImGuiManager::Draw()
         commandList);
 
 #endif
+}
+
+void ImGuiManager::UpdateGameViewTexture()
+{
+
+#ifdef USE_IMGUI
+    if (!dxCommon_ || !srvManager_) {
+        return;
+    }
+
+    dxCommon_->CopyRenderTextureSrvTo(
+        srvManager_->GetCPUDescriptorHandle(gameViewSrvIndex_)
+    );
+#endif
+
 }

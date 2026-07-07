@@ -602,6 +602,8 @@ void SceneDebugPanel::Draw(
 
     DrawProjectWindow();
 
+    DrawGameViewWindow(context);
+
     DrawConsoleWindow();
 
     DrawDebugToolsWindow(
@@ -2184,6 +2186,53 @@ void SceneDebugPanel::DrawEnvironmentTab(
 
 #endif
 } // DrawEnvironmentTab
+
+void SceneDebugPanel::DrawGameViewWindow(EngineContext* context)
+{
+
+#ifdef USE_IMGUI
+    ImGui::Begin("Game View");
+
+    if (!context || !context->GetImGuiManager()) {
+        ImGui::TextDisabled("Game View unavailable.");
+        ImGui::End();
+        return;
+    }
+
+    ImGuiManager* imguiManager =
+        context->GetImGuiManager();
+
+    imguiManager->UpdateGameViewTexture();
+
+    ImVec2 availableSize =
+        ImGui::GetContentRegionAvail();
+
+    if (availableSize.x <= 1.0f || availableSize.y <= 1.0f) {
+        ImGui::TextDisabled("No space for Game View.");
+        ImGui::End();
+        return;
+    }
+
+    const uint32_t srvIndex =
+        imguiManager->GetGameViewSrvIndex();
+
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
+        context->GetSrvManager()->GetGPUDescriptorHandle(srvIndex);
+
+    ImTextureID textureId =
+        static_cast<ImTextureID>(gpuHandle.ptr);
+
+    ImGui::Image(
+        textureId,
+        availableSize,
+        ImVec2(0.0f, 0.0f),
+        ImVec2(1.0f, 1.0f)
+    );
+
+    ImGui::End();
+#endif
+
+}
 
 void SceneDebugPanel::DrawSceneControl(GameSceneDrawMode& drawMode, HitEffectController& hitEffect, AnimationDebugController& animationDebug)
 {
