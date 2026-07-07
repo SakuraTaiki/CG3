@@ -226,6 +226,8 @@ public: // メンバ関数
         randomTime_ = 0.0f;
     }
 
+    void PrepareRenderTextureForImgui();
+
 private: // メンバ関数(内部処理)
     void InitializeDevice();
     void InitializeCommand();

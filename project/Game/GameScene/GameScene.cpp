@@ -284,7 +284,7 @@ void GameScene::Draw2D()
 
     // enabled、色、強度、太さなどは
     // ImGuiで変更した値をそのまま使用する
-    dxCommon->DrawRenderTextureToSwapChain();
+    dxCommon->PrepareRenderTextureForImgui();
 
     context_->GetSrvManager()->PreDraw();
     context_->GetSpriteCommon()->PreDraw();
