@@ -61,6 +61,9 @@ public:
     void SetRotation(const Vector3& rotation) { transform_.rotate = rotation; }
     void SetScale(const Vector3& scale) { transform_.scale = scale; }
 
+    Transform& GetTransform() { return transform_; }
+    const Transform& GetTransform() const { return transform_; }
+
     void SetCamera(Camera* camera) { camera_ = camera; }
 
     void SetColor(const Vector4& color) {
@@ -93,6 +96,14 @@ public:
         }
 
         return materialData_->environmentCoefficient;
+    }
+
+    Material* GetMaterial() {
+        return materialData_;
+    }
+
+    const Material* GetMaterial() const {
+        return materialData_;
     }
 
 private:

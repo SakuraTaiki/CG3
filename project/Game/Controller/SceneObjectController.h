@@ -10,6 +10,14 @@ class Object3dCommon;
 
 class SceneObjectController {
 public:
+
+    enum class EditorObjectType {
+        Terrain,
+        AxisPositive,
+        AxisNegative
+    };
+
+
     void Initialize(
         Object3dCommon* object3dCommon,
         uint32_t environmentTextureHandle,
@@ -22,6 +30,9 @@ public:
     void Draw();
 
     void SetEnvironmentCoefficient(float environmentCoefficient);
+
+    Object3d* GetEditorObject(EditorObjectType type);
+    const Object3d* GetEditorObject(EditorObjectType type) const;
 
     bool& ShowTerrain() { return showTerrain_; }
     bool& ShowAxis() { return showAxis_; }

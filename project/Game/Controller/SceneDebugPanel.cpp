@@ -21,10 +21,281 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <vector>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #endif
+
+
+namespace {
+
+    enum class EditorLogType {
+        Info,
+        Warning,
+        Error
+    };
+
+    struct EditorConsoleLog {
+        EditorLogType type;
+        std::string message;
+    };
+
+    std::vector<EditorConsoleLog>& GetEditorLogs() {
+        static std::vector<EditorConsoleLog> logs;
+        return logs;
+    }
+
+    void AddEditorLog(EditorLogType type, const std::string& message) {
+        GetEditorLogs().push_back({ type, message });
+    }
+
+    void InitializeEditorConsoleOnce() {
+        static bool initialized = false;
+
+        if (initialized) {
+            return;
+        }
+
+        initialized = true;
+
+        AddEditorLog(EditorLogType::Info, "Editor console initialized.");
+        AddEditorLog(EditorLogType::Info, "Hierarchy / Inspector / Project panels are active.");
+        AddEditorLog(EditorLogType::Warning, "Scene View is not separated yet. Rendering uses main back buffer.");
+    }
+
+    const char* GetEditorLogPrefix(EditorLogType type) {
+        switch (type) {
+        case EditorLogType::Info:
+            return "[Info]";
+
+        case EditorLogType::Warning:
+            return "[Warning]";
+
+        case EditorLogType::Error:
+            return "[Error]";
+
+        default:
+            return "[Log]";
+        }
+    }
+
+    ImVec4 GetEditorLogColor(EditorLogType type) {
+        switch (type) {
+        case EditorLogType::Info:
+            return ImVec4(0.55f, 0.85f, 0.55f, 1.0f);
+
+        case EditorLogType::Warning:
+            return ImVec4(1.0f, 0.75f, 0.25f, 1.0f);
+
+        case EditorLogType::Error:
+            return ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+
+        default:
+            return ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        }
+    }
+
+    std::string& GetSelectedAssetPath() {
+        static std::string selectedAssetPath = "";
+        return selectedAssetPath;
+    }
+
+    bool EndsWith(const std::string& text, const char* suffix) {
+        const std::string suffixText = suffix;
+
+        if (text.size() < suffixText.size()) {
+            return false;
+        }
+
+        return text.compare(
+            text.size() - suffixText.size(),
+            suffixText.size(),
+            suffixText
+        ) == 0;
+    }
+
+    const char* GetAssetTypeFromPath(const std::string& path) {
+        if (EndsWith(path, ".obj")) {
+            return "Model";
+        }
+
+        if (EndsWith(path, ".gltf")) {
+            return "glTF Model";
+        }
+
+        if (EndsWith(path, ".fbx")) {
+            return "FBX Model";
+        }
+
+        if (EndsWith(path, ".png")) {
+            return "Texture";
+        }
+
+        if (EndsWith(path, ".hlsl") || EndsWith(path, ".hlsli")) {
+            return "Shader";
+        }
+
+        if (EndsWith(path, ".txt")) {
+            return "Text";
+        }
+
+        if (EndsWith(path, ".mtl")) {
+            return "Material";
+        }
+
+        return "Unknown";
+    }
+
+    void SelectAsset(const std::string& path) {
+        GetSelectedAssetPath() = path;
+        AddEditorLog(EditorLogType::Info, "Selected asset: " + path);
+    }
+
+    bool DrawAssetItem(const char* label, const char* path) {
+#ifdef USE_IMGUI
+        const bool selected =
+            GetSelectedAssetPath() == path;
+
+        if (ImGui::Selectable(label, selected)) {
+            SelectAsset(path);
+            return true;
+        }
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted(path);
+            ImGui::EndTooltip();
+        }
+#endif
+
+        return false;
+    }
+
+    void DrawTransformInspector(Object3d* object) {
+#ifdef USE_IMGUI
+        if (!object) {
+            ImGui::TextDisabled("Object is null.");
+            return;
+        }
+
+        Transform& transform = object->GetTransform();
+
+        if (!ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+            return;
+        }
+
+        ImGui::DragFloat3(
+            "Position",
+            &transform.translate.x,
+            0.05f
+        );
+
+        ImGui::DragFloat3(
+            "Rotation",
+            &transform.rotate.x,
+            0.01f
+        );
+
+        ImGui::DragFloat3(
+            "Scale",
+            &transform.scale.x,
+            0.01f,
+            0.001f,
+            100.0f
+        );
+#endif
+    }
+
+    void DrawMaterialInspector(Object3d* object) {
+#ifdef USE_IMGUI
+        if (!object) {
+            ImGui::TextDisabled("Object is null.");
+            return;
+        }
+
+        Material* material = object->GetMaterial();
+
+        if (!material) {
+            ImGui::TextDisabled("Material is null.");
+            return;
+        }
+
+        if (ImGui::CollapsingHeader("Renderer", ImGuiTreeNodeFlags_DefaultOpen)) {
+            bool enableLighting = material->enableLighting != 0;
+
+            if (ImGui::Checkbox("Enable Lighting", &enableLighting)) {
+                material->enableLighting = enableLighting ? 1 : 0;
+            }
+
+            ImGui::ColorEdit4(
+                "Color",
+                &material->color.x
+            );
+
+            ImGui::SliderFloat(
+                "Environment",
+                &material->environmentCoefficient,
+                0.0f,
+                2.0f,
+                "%.2f"
+            );
+        }
+#endif
+    }
+
+    void DrawAssetInspector() {
+#ifdef USE_IMGUI
+        const std::string& path =
+            GetSelectedAssetPath();
+
+        ImGui::Text("Asset Project Asset");
+        ImGui::Separator();
+
+        if (path.empty()) {
+            ImGui::TextDisabled("No asset selected.");
+            return;
+        }
+
+        ImGui::SeparatorText("Asset Info");
+
+        ImGui::Text("Path");
+        ImGui::TextWrapped("%s", path.c_str());
+
+        ImGui::Spacing();
+
+        ImGui::Text("Type");
+        ImGui::TextDisabled("%s", GetAssetTypeFromPath(path));
+
+        ImGui::Spacing();
+
+        if (ImGui::Button("Copy Path")) {
+            ImGui::SetClipboardText(path.c_str());
+            AddEditorLog(EditorLogType::Info, "Copied asset path to clipboard.");
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Ping")) {
+            AddEditorLog(EditorLogType::Info, "Ping asset: " + path);
+        }
+
+        ImGui::SeparatorText("Preview");
+
+        if (EndsWith(path, ".png")) {
+            ImGui::TextDisabled("Texture preview will be added in a later step.");
+        } else if (EndsWith(path, ".obj") || EndsWith(path, ".gltf") || EndsWith(path, ".fbx")) {
+            ImGui::TextDisabled("Model preview will be added in a later step.");
+        } else if (EndsWith(path, ".hlsl") || EndsWith(path, ".hlsli")) {
+            ImGui::TextDisabled("Shader source preview will be added in a later step.");
+        } else {
+            ImGui::TextDisabled("No preview available.");
+        }
+#endif
+    }
+
+}
 
 void SceneDebugPanel::Draw(
     EngineContext* context,
@@ -50,34 +321,576 @@ void SceneDebugPanel::Draw(
         context->GetCamera()
     );
 
-    ImGui::SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(420.0f, 520.0f), ImGuiCond_FirstUseEver);
+    DrawMainMenuBar(
+        drawMode,
+        hitEffect,
+        animationDebug
+    );
 
+
+    DrawHierarchyWindow(
+        sceneObjects
+    );
+
+    DrawInspectorWindow(
+        context,
+        environment,
+        sceneObjects,
+        animationDebug
+    );
+
+    DrawProjectWindow();
+
+    DrawConsoleWindow();
+
+    DrawDebugToolsWindow(
+        context,
+        drawMode,
+        hitEffect,
+        animationDebug,
+        soundController,
+        environment,
+        sceneObjects,
+        ring,
+        cylinder,
+        primitive
+    );
+
+    context->GetImGuiManager()->End();
+#endif
+}
+
+void SceneDebugPanel::DrawMainMenuBar(
+    GameSceneDrawMode& drawMode,
+    HitEffectController& hitEffect,
+    AnimationDebugController& animationDebug
+) {
+#ifdef USE_IMGUI
+    //==================================
+    //Docking対応版Imgui
+    //=================================
+
+    if (ImGui::BeginMainMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            ImGui::MenuItem("New Scene", nullptr, false, false);
+            ImGui::MenuItem("Open Scene", nullptr, false, false);
+            ImGui::Separator();
+            ImGui::MenuItem("Save", "Ctrl+S", false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit")) {
+            ImGui::MenuItem("Undo", "Ctrl+Z", false, false);
+            ImGui::MenuItem("Redo", "Ctrl+Y", false, false);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("GameObject")) {
+            if (ImGui::MenuItem("Terrain")) {
+                selected_ = EditorSelection::Terrain;
+            }
+
+            if (ImGui::MenuItem("Axis +")) {
+                selected_ = EditorSelection::AxisPositive;
+            }
+
+            if (ImGui::MenuItem("Axis -")) {
+                selected_ = EditorSelection::AxisNegative;
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Window")) {
+            ImGui::MenuItem("Hierarchy");
+            ImGui::MenuItem("Inspector");
+            ImGui::MenuItem("Project");
+            ImGui::MenuItem("Console");
+            ImGui::MenuItem("Debug Tools");
+            ImGui::EndMenu();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::Button("Play")) {
+            drawMode = GameSceneDrawMode::NormalObj;
+            AddEditorLog(EditorLogType::Info, "Play Button pressed.");
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Emit")) {
+            hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
+            AddEditorLog(EditorLogType::Info, "Effect emitted from menu bar.");
+        }
+
+        ImGui::SameLine();
+        ImGui::TextDisabled(
+            "Joints:%d  Anim:%.2f",
+            animationDebug.GetJointCount(),
+            animationDebug.GetAnimationTime()
+        );
+
+        ImGui::EndMainMenuBar();
+    }
+
+#endif
+}
+
+void SceneDebugPanel::DrawHierarchyWindow(
+    SceneObjectController& sceneObjects
+) {
+#ifdef USE_IMGUI
+    ImGui::Begin("Hierarchy");
+
+    ImGui::TextDisabled("Sample Scene");
+    ImGui::Separator();
+
+    ImGuiTreeNodeFlags rootFlags =
+        ImGuiTreeNodeFlags_DefaultOpen |
+        ImGuiTreeNodeFlags_OpenOnArrow |
+        ImGuiTreeNodeFlags_SpanAvailWidth;
+
+    if (ImGui::TreeNodeEx("Scene", rootFlags)) {
+        if (ImGui::Selectable(
+            "Terrain",
+            selected_ == EditorSelection::Terrain
+        )) {
+            selected_ = EditorSelection::Terrain;
+        }
+
+        if (ImGui::Selectable(
+            "Axis +X",
+            selected_ == EditorSelection::AxisPositive
+        )) {
+            selected_ = EditorSelection::AxisPositive;
+        }
+
+        if (ImGui::Selectable(
+            "Axis -X",
+            selected_ == EditorSelection::AxisNegative
+        )) {
+            selected_ = EditorSelection::AxisNegative;
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::Selectable(
+            "Main Camera",
+            selected_ == EditorSelection::Camera
+        )) {
+            selected_ = EditorSelection::Camera;
+        }
+
+        if (ImGui::Selectable(
+            "Environment",
+            selected_ == EditorSelection::Environment
+        )) {
+            selected_ = EditorSelection::Environment;
+        }
+
+        if (ImGui::Selectable(
+            "Effects",
+            selected_ == EditorSelection::Effects
+        )) {
+            selected_ = EditorSelection::Effects;
+        }
+
+        ImGui::TreePop();
+    }
+
+    ImGui::Spacing();
+    ImGui::SeparatorText("Visibility");
+
+    ImGui::Checkbox(
+        "Show Terrain",
+        &sceneObjects.ShowTerrain()
+    );
+
+    ImGui::Checkbox(
+        "Show Axis",
+        &sceneObjects.ShowAxis()
+    );
+
+    ImGui::End();
+#endif
+}
+
+
+void SceneDebugPanel::DrawInspectorWindow(
+    EngineContext* context,
+    EnvironmentController& environment,
+    SceneObjectController& sceneObjects,
+    AnimationDebugController& animationDebug
+) {
+#ifdef USE_IMGUI
+    ImGui::Begin("Inspector");
+
+    if (selected_ == EditorSelection::None) {
+        ImGui::TextDisabled("No object selected.");
+        ImGui::End();
+        return;
+    }
+
+    auto DrawHeader = [](const char* icon, const char* name) {
+        ImGui::Text("%s %s", icon, name);
+        ImGui::Separator();
+        };
+
+    switch (selected_) {
+    case EditorSelection::Terrain:
+
+    {
+        DrawHeader("Object", "Terrain");
+
+        ImGui::Checkbox(
+            "Active",
+            &sceneObjects.ShowTerrain()
+        );
+
+        Object3d* object =
+            sceneObjects.GetEditorObject(
+                SceneObjectController::EditorObjectType::Terrain
+            );
+
+        DrawTransformInspector(object);
+        DrawMaterialInspector(object);
+
+        if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("Resources/terrain/terrain.obj");
+        }
+
+        break;
+    }
+
+    case EditorSelection::AxisPositive:
+
+    {
+        DrawHeader("Axis", "Axis +X");
+
+        ImGui::Checkbox(
+            "Active",
+            &sceneObjects.ShowAxis()
+        );
+
+
+        Object3d* object =
+            sceneObjects.GetEditorObject(
+                SceneObjectController::EditorObjectType::AxisPositive
+            );
+
+        DrawTransformInspector(object);
+        DrawMaterialInspector(object);
+
+        if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("axis.obj");
+        }
+
+
+        break;
+    }
+
+    case EditorSelection::AxisNegative:
+
+    {
+        DrawHeader("Axis", "Axis -X");
+
+        ImGui::Checkbox(
+            "Active",
+            &sceneObjects.ShowAxis()
+        );
+
+        Object3d* object =
+            sceneObjects.GetEditorObject(
+                SceneObjectController::EditorObjectType::AxisNegative
+            );
+
+        DrawTransformInspector(object);
+        DrawMaterialInspector(object);
+
+        if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("axis.obj");
+        }
+
+        break;
+    }
+
+    case EditorSelection::Camera:
+        DrawHeader("▣", "Main Camera");
+
+        if (context && context->GetCamera()) {
+            ImGui::TextDisabled("Camera debug controller is active.");
+            ImGui::TextDisabled("Right drag : Orbit");
+            ImGui::TextDisabled("Wheel      : Zoom");
+        }
+        break;
+
+    case EditorSelection::Environment:
+        DrawHeader("☀", "Environment");
+
+        DrawEnvironmentTab(
+            context ? context->GetObject3dCommon() : nullptr,
+            environment,
+            sceneObjects,
+            animationDebug
+        );
+        break;
+
+    case EditorSelection::Effects:
+        DrawHeader("✦", "Effects");
+        ImGui::TextDisabled("Open Debug Tools > Effect for detailed controls.");
+        break;
+
+    case EditorSelection::PostEffect:
+        DrawHeader("▣", "Post Effect");
+        DrawPostEffectTab(context);
+        break;
+
+    case EditorSelection::Sound:
+        DrawHeader("♪", "Sound");
+        ImGui::TextDisabled("Open Debug Tools > Sound for detailed controls.");
+        break;
+
+    default:
+        ImGui::TextDisabled("No inspector available.");
+        break;
+
+    case EditorSelection::Asset:
+        DrawAssetInspector();
+        break;
+    }
+
+    ImGui::End();
+#endif
+}
+
+
+void SceneDebugPanel::DrawProjectWindow() {
+#ifdef USE_IMGUI
+    ImGui::Begin("Project");
+
+    ImGui::TextDisabled("Assets");
+    ImGui::Separator();
+
+    if (ImGui::BeginTable(
+        "ProjectBrowserTable",
+        2,
+        ImGuiTableFlags_Resizable |
+        ImGuiTableFlags_BordersInnerV |
+        ImGuiTableFlags_RowBg
+    )) {
+        ImGui::TableSetupColumn("Folders", ImGuiTableColumnFlags_WidthFixed, 180.0f);
+        ImGui::TableSetupColumn("Assets", ImGuiTableColumnFlags_WidthStretch);
+
+        ImGui::TableNextRow();
+
+        ImGui::TableSetColumnIndex(0);
+
+        ImGui::TextDisabled("Favorites");
+        ImGui::Separator();
+
+        ImGui::Selectable("Resources", true);
+        ImGui::Selectable("Models");
+        ImGui::Selectable("Textures");
+        ImGui::Selectable("Shaders");
+        ImGui::Selectable("Settings");
+
+        ImGui::TableSetColumnIndex(1);
+
+        if (ImGui::TreeNodeEx(
+            "Models",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth
+        )) {
+            DrawAssetItem("axis.obj", "Resources/axis.obj");
+            DrawAssetItem("plane.obj", "Resources/plane.obj");
+            DrawAssetItem("terrain.obj", "Resources/terrain/terrain.obj");
+            DrawAssetItem("bunny.obj", "Resources/bunny/bunny.obj");
+            DrawAssetItem("fence.obj", "Resources/fence/fence.obj");
+            DrawAssetItem("AnimatedCube.gltf", "Resources/AnimatedCube/AnimatedCube.gltf");
+            DrawAssetItem("human/walk.gltf", "Resources/human/walk.gltf");
+            DrawAssetItem("human/walk.fbx", "Resources/human/walk.fbx");
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNodeEx(
+            "Textures",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth
+        )) {
+            DrawAssetItem("monsterBall.png", "Resources/monsterBall.png");
+            DrawAssetItem("noise0.png", "Resources/noise0.png");
+            DrawAssetItem("uvChecker.png", "Resources/uvChecker.png");
+            DrawAssetItem("white.png", "Resources/white.png");
+            DrawAssetItem("fence.png", "Resources/fence/fence.png");
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNodeEx(
+            "Shaders",
+            ImGuiTreeNodeFlags_DefaultOpen |
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth
+        )) {
+            DrawAssetItem("Object3d.VS.hlsl", "Resources/shaders/hlsl/Object3d.VS.hlsl");
+            DrawAssetItem("Object3d.PS.hlsl", "Resources/shaders/hlsl/Object3d.PS.hlsl");
+            DrawAssetItem("Particle.VS.hlsl", "Resources/shaders/hlsl/Particle.VS.hlsl");
+            DrawAssetItem("Particle.PS.hlsl", "Resources/shaders/hlsl/Particle.PS.hlsl");
+            DrawAssetItem("CopyImage.PS.hlsl", "Resources/shaders/hlsl/CopyImage.PS.hlsl");
+            DrawAssetItem("GaussianFilter.PS.hlsl", "Resources/shaders/hlsl/GaussianFilter.PS.hlsl");
+
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNodeEx(
+            "Settings",
+            ImGuiTreeNodeFlags_OpenOnArrow |
+            ImGuiTreeNodeFlags_SpanAvailWidth
+        )) {
+            DrawAssetItem("Fire.txt", "Resources/Settings/HitEffects/Fire.txt");
+            DrawAssetItem("cherryBlossoms.txt", "Resources/Settings/HitEffects/cherryBlossoms.txt");
+
+            ImGui::TreePop();
+        }
+
+        ImGui::EndTable();
+    }
+
+    ImGui::End();
+#endif
+}
+
+
+void SceneDebugPanel::DrawConsoleWindow() {
+#ifdef USE_IMGUI
+    InitializeEditorConsoleOnce();
+
+    static bool showInfo = true;
+    static bool showWarning = true;
+    static bool showError = true;
+    static bool autoScroll = true;
+
+    ImGui::Begin("Console");
+
+    if (ImGui::Button("Clear")) {
+        GetEditorLogs().clear();
+    }
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Info", &showInfo);
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Warning", &showWarning);
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Error", &showError);
+
+    ImGui::SameLine();
+    ImGui::Checkbox("Auto Scroll", &autoScroll);
+
+    ImGui::Separator();
+
+    ImGui::BeginChild(
+        "ConsoleLogArea",
+        ImVec2(0.0f, 0.0f),
+        false,
+        ImGuiWindowFlags_HorizontalScrollbar
+    );
+
+    for (const EditorConsoleLog& log : GetEditorLogs()) {
+        if (log.type == EditorLogType::Info && !showInfo) {
+            continue;
+        }
+
+        if (log.type == EditorLogType::Warning && !showWarning) {
+            continue;
+        }
+
+        if (log.type == EditorLogType::Error && !showError) {
+            continue;
+        }
+
+        ImGui::TextColored(
+            GetEditorLogColor(log.type),
+            "%s %s",
+            GetEditorLogPrefix(log.type),
+            log.message.c_str()
+        );
+    }
+
+    if (autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) {
+        ImGui::SetScrollHereY(1.0f);
+    }
+
+    ImGui::EndChild();
+
+    ImGui::End();
+#endif
+}
+
+
+void SceneDebugPanel::DrawDebugToolsWindow(
+    EngineContext* context,
+    GameSceneDrawMode& drawMode,
+    HitEffectController& hitEffect,
+    AnimationDebugController& animationDebug,
+    SoundController& soundController,
+    EnvironmentController& environment,
+    SceneObjectController& sceneObjects,
+    Ring* ring,
+    Cylinder* cylinder,
+    Primitive* primitive
+) {
+#ifdef USE_IMGUI
     ImGui::Begin(
-        "CG2 Effect Debug Panel",
+        "Debug Tools",
         nullptr,
         ImGuiWindowFlags_AlwaysVerticalScrollbar
     );
 
-    DrawSceneControl(drawMode, hitEffect, animationDebug);
+    DrawSceneControl(
+        drawMode,
+        hitEffect,
+        animationDebug
+    );
 
-    if (ImGui::BeginTabBar("MainTabs")) {
+    if (ImGui::BeginTabBar("DebugToolTabs")) {
         if (ImGui::BeginTabItem("Animation")) {
             animationDebug.DrawImGui();
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Effect")) {
-            DrawEffectTab(context, hitEffect, ring, cylinder, primitive);
+            selected_ = EditorSelection::Effects;
+
+            DrawEffectTab(
+                context,
+                hitEffect,
+                ring,
+                cylinder,
+                primitive
+            );
+
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("PostEffect")) {
-            DrawPostEffectTab(context);
+            selected_ = EditorSelection::PostEffect;
+
+            DrawPostEffectTab(
+                context
+            );
+
             ImGui::EndTabItem();
         }
 
         if (ImGui::BeginTabItem("Environment")) {
+            selected_ = EditorSelection::Environment;
+
             DrawEnvironmentTab(
                 context->GetObject3dCommon(),
                 environment,
@@ -89,66 +902,19 @@ void SceneDebugPanel::Draw(
         }
 
         if (ImGui::BeginTabItem("Sound")) {
+            selected_ = EditorSelection::Sound;
+
             soundController.DrawImGui();
+
             ImGui::EndTabItem();
         }
 
         ImGui::EndTabBar();
     }
 
-    
-
     ImGui::End();
-
-    context->GetImGuiManager()->End();
 #endif
 }
-
-void SceneDebugPanel::DrawSceneControl(
-    GameSceneDrawMode& drawMode,
-    HitEffectController& hitEffect,
-    AnimationDebugController& animationDebug
-) {
-#ifdef USE_IMGUI
-    ImGui::Text("Scene Control");
-    ImGui::Separator();
-
-    if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
-        hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
-    }
-
-    ImGui::SameLine();
-    ImGui::TextDisabled("SPACE key also emits");
-
-    ImGui::Spacing();
-
-    ImGui::Text("Draw Mode");
-    ImGui::Separator();
-
-    int currentMode = static_cast<int>(drawMode);
-
-    if (ImGui::RadioButton("Normal OBJ / Terrain", currentMode == 0)) {
-        drawMode = GameSceneDrawMode::NormalObj;
-    }
-
-    if (ImGui::RadioButton("Animation glTF", currentMode == 1)) {
-        drawMode = GameSceneDrawMode::Animation;
-    }
-
-    ImGui::Spacing();
-
-    ImGui::Text("Skeleton");
-    ImGui::BulletText("Joint Count : %d", animationDebug.GetJointCount());
-    ImGui::BulletText("Animation Time : %.2f", animationDebug.GetAnimationTime());
-    ImGui::Spacing();
-
-    ImGui::Checkbox(
-        "Show Skeleton Debug",
-        &animationDebug.ShowSkeletonDebug()
-    );
-#endif
-}
-
 
 void SceneDebugPanel::DrawPostEffectTab(
     EngineContext* context
@@ -1148,6 +1914,52 @@ void SceneDebugPanel::DrawEnvironmentTab(
 
 #endif
 } // DrawEnvironmentTab
+
+void SceneDebugPanel::DrawSceneControl(GameSceneDrawMode& drawMode, HitEffectController& hitEffect, AnimationDebugController& animationDebug)
+{
+
+#ifdef USE_IMGUI
+    ImGui::Text("Scene Control");
+    ImGui::Separator();
+
+    if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
+        hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
+        AddEditorLog(EditorLogType::Info, "Effect emitted from Debug Tools.");
+    }
+
+    ImGui::SameLine();
+    ImGui::TextDisabled("SPACE key also emits");
+
+    ImGui::Spacing();
+
+    ImGui::Text("Draw Mode");
+    ImGui::Separator();
+
+    int currentMode = static_cast<int>(drawMode);
+
+    if (ImGui::RadioButton("Normal OBJ / Terrain", currentMode == 0)) {
+        drawMode = GameSceneDrawMode::NormalObj;
+    }
+
+    if (ImGui::RadioButton("Animation glTF", currentMode == 1)) {
+        drawMode = GameSceneDrawMode::Animation;
+    }
+
+    ImGui::Spacing();
+
+    ImGui::Text("Skeleton");
+    ImGui::BulletText("Joint Count : %d", animationDebug.GetJointCount());
+    ImGui::BulletText("Animation Time : %.2f", animationDebug.GetAnimationTime());
+
+    ImGui::Spacing();
+
+    ImGui::Checkbox(
+        "Show Skeleton Debug",
+        &animationDebug.ShowSkeletonDebug()
+    );
+#endif
+
+}
 
 void SceneDebugPanel::DrawEffectTab(
     EngineContext* context,

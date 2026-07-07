@@ -92,3 +92,57 @@ void SceneObjectController::SetEnvironmentCoefficient(
         object->SetEnvironmentCoefficient(environmentCoefficient);
     }
 }
+
+Object3d* SceneObjectController::GetEditorObject(EditorObjectType type)
+{
+    
+    size_t index = 0;
+
+    switch (type) {
+    case EditorObjectType::Terrain:
+        index = 0;
+        break;
+
+    case EditorObjectType::AxisPositive:
+        index = 1;
+        break;
+
+    case EditorObjectType::AxisNegative:
+        index = 2;
+        break;
+    }
+
+    if (index >= objects_.size()) {
+        return nullptr;
+    }
+
+    return objects_[index].get();
+
+}
+
+const Object3d* SceneObjectController::GetEditorObject(EditorObjectType type) const
+{
+    
+    size_t index = 0;
+
+    switch (type) {
+    case EditorObjectType::Terrain:
+        index = 0;
+        break;
+
+    case EditorObjectType::AxisPositive:
+        index = 1;
+        break;
+
+    case EditorObjectType::AxisNegative:
+        index = 2;
+        break;
+    }
+
+    if (index >= objects_.size()) {
+        return nullptr;
+    }
+
+    return objects_[index].get();
+
+}

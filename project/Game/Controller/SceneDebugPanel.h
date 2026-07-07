@@ -31,6 +31,57 @@ public:
     );
 
 private:
+
+    enum class EditorSelection
+    {
+
+        None,
+        Terrain,
+        AxisPositive,
+        AxisNegative,
+        Camera,
+        Environment,
+        Effects,
+        PostEffect,
+        Sound,
+        Asset
+    };
+
+private:
+
+    void DrawMainMenuBar(
+        GameSceneDrawMode& drawMode,
+        HitEffectController& hitEffect,
+        AnimationDebugController& animationDebug
+    );
+
+    void DrawHierarchyWindow(SceneObjectController& sceneObjects);
+
+    void DrawInspectorWindow(
+        EngineContext* context,
+        EnvironmentController& environment,
+        SceneObjectController& sceneObjects,
+        AnimationDebugController& animationDebug
+    );
+
+    void DrawProjectWindow();
+
+    void DrawConsoleWindow();
+
+    void DrawDebugToolsWindow(
+        EngineContext* context,
+        GameSceneDrawMode& drawMode,
+        HitEffectController& hitEffect,
+        AnimationDebugController& animationDebug,
+        SoundController& soundController,
+        EnvironmentController& environment,
+        SceneObjectController& sceneObjects,
+        Ring* ring,
+        Cylinder* cylinder,
+        Primitive* primitive
+    );
+
+
     void DrawSceneControl(
         GameSceneDrawMode& drawMode,
         HitEffectController& hitEffect,
@@ -53,4 +104,7 @@ private:
         SceneObjectController& sceneObjects,
         AnimationDebugController& animationDebug
     );
+
+private:
+    EditorSelection selected_ = EditorSelection::Terrain;
 };
