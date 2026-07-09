@@ -122,6 +122,15 @@
     <ClInclude Include="Game\Controller\SceneDebugPanel.h" />
     <ClInclude Include="Game\Controller\SceneObjectController.h" />
     <ClInclude Include="Game\Controller\SoundController.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelDetail.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelEffectTab.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelEnvironment.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelGameView.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelPostEffect.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelWindows.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelConsole.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelAssetInspector.h" />
+    <ClInclude Include="Game\Controller\SceneDebugPanelEffectEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
