@@ -1,5 +1,13 @@
 #pragma once
 
+//======================
+// ファイル: SceneDebugPanelAssetInspector.h
+// 内容: アセットインスペクタと関連ユーティリティ。
+//       - アセット選択管理
+//       - モデル/テクスチャの適用処理
+//       - ImGui を使ったエディタ描画補助
+//======================
+
 #include "SceneDebugPanelConsole.h"
 
 #include "EngineContext.h"
@@ -16,11 +24,25 @@
 #include "externals/imgui/imgui.h"
 #endif
 
+//======================
+// 名前空間: SceneDebugPanelDetail
+// 内容: ファイル内部で使用するヘルパー関数と ImGui 描画関数をまとめる
+//======================
 namespace SceneDebugPanelDetail {
+    //======================
+    // 内容: 選択中アセットのパス保持
+    //======================
     inline std::string& GetSelectedAssetPath() {
         static std::string selectedAssetPath = "";
         return selectedAssetPath;
     }
+
+    //======================
+    // 内容: 文字列ユーティリティ
+    // - EndsWith: サフィックスチェック
+    // - GetAssetTypeFromPath: パスからアセット種別を判定
+    // - SelectAsset: アセット選択処理（ログ出力含む）
+    //======================
 
     inline bool EndsWith(const std::string& text, const char* suffix) {
         const std::string suffixText = suffix;
@@ -79,6 +101,13 @@ namespace SceneDebugPanelDetail {
 
         return targetIndex;
     }
+
+    //======================
+    // 内容: モデル適用ターゲット管理
+    // - GetModelApplyTargetIndex: 現在のターゲットインデックス
+    // - GetModelApplyTargetName: インデックスから名前を取得
+    // - DrawModelApplyTargetCombo: ImGui でターゲット選択UIを描画
+    //======================
 
     inline std::string GetModelApplyTargetName(const SceneObjectController& sceneObjects) {
         const size_t targetIndex =
@@ -182,6 +211,10 @@ namespace SceneDebugPanelDetail {
         Object3d* object,
         const SceneObjectController& sceneObjects
     ) {
+        //======================
+        // 内容: 選択中の .obj モデルを指定オブジェクトに適用
+        // - パスチェック、ModelManager からロードして SetModel
+        //======================
 #ifdef USE_IMGUI
         if (!object) {
             AddEditorLog(EditorLogType::Error, "Apply failed: target object is null.");
@@ -239,6 +272,10 @@ namespace SceneDebugPanelDetail {
 
     inline size_t CreateObjectFromSelectedObjAsset(SceneObjectController& sceneObjects) {
 #ifdef USE_IMGUI
+        //======================
+        // 内容: 選択中の .obj アセットから新しいオブジェクトを作成
+        // - Model をロードして SceneObjectController に登録
+        //======================
         const std::string& assetPath =
             GetSelectedAssetPath();
 
@@ -311,6 +348,10 @@ namespace SceneDebugPanelDetail {
         SceneObjectController& sceneObjects
     ) {
 #ifdef USE_IMGUI
+        //======================
+        // 内容: 選択中の .png テクスチャを対象オブジェクトに適用
+        // - TextureManager 経由で読み込み、オブジェクトにハンドル設定
+        //======================
         if (!object) {
             AddEditorLog(EditorLogType::Error, "Texture apply failed: target object is null.");
             return false;
@@ -380,6 +421,9 @@ namespace SceneDebugPanelDetail {
 
     inline void DrawTransformInspector(Object3d* object) {
 #ifdef USE_IMGUI
+        //======================
+        // 内容: オブジェクトの Transform インスペクタ描画
+        //======================
         if (!object) {
             ImGui::TextDisabled("Object is null.");
             return;
@@ -418,6 +462,9 @@ namespace SceneDebugPanelDetail {
 
     inline void DrawMaterialInspector(Object3d* object) {
 #ifdef USE_IMGUI
+        //======================
+        // 内容: マテリアル / レンダラ設定のインスペクタ描画
+        //======================
         if (!object) {
             ImGui::TextDisabled("Object is null.");
             return;
@@ -471,6 +518,10 @@ namespace SceneDebugPanelDetail {
         size_t& outCreatedIndex
     ) {
 #ifdef USE_IMGUI
+        //======================
+        // 内容: 選択中アセットの詳細表示と操作 UI
+        // - パス/種別表示、適用ボタン、プレビュー案内等
+        //======================
         outCreatedIndex = static_cast<size_t>(-1);
 
         const std::string& path =
