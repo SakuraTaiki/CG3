@@ -366,7 +366,8 @@ namespace {
         const size_t objectIndex =
             sceneObjects.AddEditorObject(
                 model,
-                objectName
+                objectName,
+                assetPath
             );
 
         if (objectIndex == static_cast<size_t>(-1)) {
@@ -392,7 +393,7 @@ namespace {
     bool ApplySelectedPngTextureToObject(
         Object3d* object,
         TextureManager* textureManager,
-        const SceneObjectController& sceneObjects
+        SceneObjectController& sceneObjects
     ) {
 #ifdef USE_IMGUI
         if (!object) {
@@ -422,6 +423,11 @@ namespace {
             textureManager->LoadTexture(assetPath);
 
         object->SetOverrideTexture(textureHandle);
+
+        sceneObjects.SetObjectTexturePath(
+            GetModelApplyTargetIndex(),
+            assetPath
+        );
 
         AddEditorLog(
             EditorLogType::Info,
@@ -529,7 +535,6 @@ namespace {
                 "%.2f"
             );
 
-
             ImGui::SeparatorText("Override Texture");
 
             if (object->HasOverrideTexture()) {
@@ -587,7 +592,6 @@ namespace {
             AddEditorLog(EditorLogType::Info, "Ping asset: " + path);
         }
 
-       
         ImGui::SeparatorText("Apply Target");
 
         DrawModelApplyTargetCombo(sceneObjects);
@@ -608,9 +612,6 @@ namespace {
         const bool canApplyTexture =
             EndsWith(path, ".png");
 
-        // ==============================
-        // Model Apply
-        // ==============================
         ImGui::SeparatorText("Model");
 
         ImGui::BeginDisabled(!canApplyModel);
@@ -646,10 +647,6 @@ namespace {
             return true;
         }
 
-        // ==============================
-        // Texture Apply
-        // ==============================
-       
         ImGui::Spacing();
         ImGui::SeparatorText("Texture");
 
@@ -676,13 +673,17 @@ namespace {
 
         ImGui::EndDisabled();
 
+
         ImGui::SameLine();
 
         ImGui::BeginDisabled(!targetObject || !targetObject->HasOverrideTexture());
 
         if (ImGui::Button("Clear Texture")) {
             targetObject->ClearOverrideTexture();
-
+            sceneObjects.SetObjectTexturePath(
+                GetModelApplyTargetIndex(),
+                ""
+            );
             AddEditorLog(
                 EditorLogType::Info,
                 "Cleared override texture: " + GetModelApplyTargetName(sceneObjects)
@@ -695,8 +696,6 @@ namespace {
         if (!canApplyModel && !canApplyTexture) {
             ImGui::TextDisabled("Only .obj models and .png textures can be applied now.");
         }
-
-
 
         ImGui::SeparatorText("Preview");
 
@@ -745,7 +744,8 @@ void SceneDebugPanel::Draw(
     DrawMainMenuBar(
         drawMode,
         hitEffect,
-        animationDebug
+        animationDebug,
+        sceneObjects
     );
 
 
@@ -762,7 +762,7 @@ void SceneDebugPanel::Draw(
 
     DrawProjectWindow();
 
-    DrawGameViewWindow(context,sceneObjects);
+    DrawGameViewWindow(context, sceneObjects);
 
     DrawConsoleWindow();
 
@@ -786,7 +786,8 @@ void SceneDebugPanel::Draw(
 void SceneDebugPanel::DrawMainMenuBar(
     GameSceneDrawMode& drawMode,
     HitEffectController& hitEffect,
-    AnimationDebugController& animationDebug
+    AnimationDebugController& animationDebug,
+    SceneObjectController& sceneObjects
 ) {
 #ifdef USE_IMGUI
     //==================================
@@ -796,9 +797,40 @@ void SceneDebugPanel::DrawMainMenuBar(
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             ImGui::MenuItem("New Scene", nullptr, false, false);
-            ImGui::MenuItem("Open Scene", nullptr, false, false);
             ImGui::Separator();
-            ImGui::MenuItem("Save", "Ctrl+S", false, false);
+
+            if (ImGui::MenuItem("Save Scene Json", "Ctrl+S")) {
+                if (sceneObjects.SaveEditorSceneToJson("Resources/EditorScene.json")) {
+                    AddEditorLog(
+                        EditorLogType::Info,
+                        "Saved scene json: Resources/EditorScene.json"
+                    );
+                } else {
+                    AddEditorLog(
+                        EditorLogType::Error,
+                        "Save scene json failed."
+                    );
+                }
+            }
+
+            if (ImGui::MenuItem("Load Scene Json", "Ctrl+O")) {
+                if (sceneObjects.LoadEditorSceneFromJson("Resources/EditorScene.json")) {
+                    selected_ = EditorSelection::None;
+                    selectedObjectIndex_ = 0;
+                    GetModelApplyTargetIndex() = 0;
+
+                    AddEditorLog(
+                        EditorLogType::Info,
+                        "Loaded scene json: Resources/EditorScene.json"
+                    );
+                } else {
+                    AddEditorLog(
+                        EditorLogType::Error,
+                        "Load scene json failed."
+                    );
+                }
+            }
+
             ImGui::EndMenu();
         }
 
@@ -2582,9 +2614,8 @@ void SceneDebugPanel::DrawTransformGizmo(
     }
 
     ImGuizmo::SetOrthographic(false);
-    ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+    ImGuizmo::SetDrawlist();
 
-    
     ImGuizmo::SetRect(
         rectX,
         rectY,
@@ -2592,11 +2623,8 @@ void SceneDebugPanel::DrawTransformGizmo(
         rectHeight
     );
 
-    ImGui::PushID(static_cast<int>(selectedObjectIndex_));
-
     ImGuizmo::OPERATION operation =
         ImGuizmo::TRANSLATE;
-
 
     if (gizmoOperation_ == 1) {
         operation = ImGuizmo::ROTATE;
@@ -2609,16 +2637,15 @@ void SceneDebugPanel::DrawTransformGizmo(
         ? ImGuizmo::LOCAL
         : ImGuizmo::WORLD;
 
-    const bool manipulated =
-        ImGuizmo::Manipulate(
-            view,
-            projection,
-            operation,
-            mode,
-            world
-        );
+    ImGuizmo::Manipulate(
+        view,
+        projection,
+        operation,
+        mode,
+        world
+    );
 
-    if (manipulated || ImGuizmo::IsUsing()) {
+    if (ImGuizmo::IsUsing()) {
         float translate[3]{};
         float rotateDegrees[3]{};
         float scale[3]{};
@@ -2642,11 +2669,9 @@ void SceneDebugPanel::DrawTransformGizmo(
         transform.scale.y = scale[1];
         transform.scale.z = scale[2];
     }
-
-    ImGui::PopID();
-
 #endif
 }
+
 
 void SceneDebugPanel::DrawSceneControl(GameSceneDrawMode& drawMode, HitEffectController& hitEffect, AnimationDebugController& animationDebug)
 {
