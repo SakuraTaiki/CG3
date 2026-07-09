@@ -109,9 +109,22 @@ private:
     );
 
 
-    void DrawGameViewWindow(EngineContext* context);
+    void DrawGameViewWindow(EngineContext* context, SceneObjectController& sceneObjects);
+
+    void DrawTransformGizmo(
+        EngineContext* context,
+        SceneObjectController& sceneObjects,
+        float rectX,
+        float rectY,
+        float rectWidth,
+        float rectHeight
+    );
 
 private:
     EditorSelection selected_ = EditorSelection::Terrain;
     size_t selectedObjectIndex_ = 0;
+
+    bool showTransformGizmo_ = true;
+    int gizmoOperation_ = 0; // 0: Move, 1: Rotate, 2: Scale
+    int gizmoMode_ = 0;      // 0: Local, 1: World
 };

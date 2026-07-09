@@ -6,6 +6,8 @@
 #include "externals/imgui/imgui_impl_win32.h"
 #include "externals/imgui/imgui_impl_dx12.h"
 
+#include "externals/imgui/ImGuizmo.h"
+
 #endif
 
 void ImGuiManager::Initialize(
@@ -85,6 +87,8 @@ void ImGuiManager::Begin()
     ImGui_ImplDX12_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+
+    ImGuizmo::BeginFrame();
 
     ImGui::DockSpaceOverViewport(
         0,
