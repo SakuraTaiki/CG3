@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #include "GameSceneDrawMode.h"
 
 class EngineContext;
@@ -44,7 +46,8 @@ private:
         Effects,
         PostEffect,
         Sound,
-        Asset
+        Asset,
+        DynamicObject
     };
 
 private:
@@ -110,4 +113,5 @@ private:
 
 private:
     EditorSelection selected_ = EditorSelection::Terrain;
+    size_t selectedObjectIndex_ = 0;
 };
