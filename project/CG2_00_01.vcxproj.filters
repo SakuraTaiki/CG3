@@ -137,6 +137,19 @@
     <ClInclude Include="Engine\Graphics\DirectXCommonPipeline.h" />
     <ClInclude Include="Engine\Graphics\DirectXCommonRenderTexture.h" />
     <ClInclude Include="Engine\Graphics\DirectXCommonUtility.h" />
+    <ClInclude Include="Engine\Graphics\Effects\ParticleManagerDraw.h" />
+    <ClInclude Include="Engine\Graphics\Effects\ParticleManagerEmit.h" />
+    <ClInclude Include="Engine\Graphics\Effects\ParticleManagerLifecycle.h" />
+    <ClInclude Include="Engine\Graphics\Effects\ParticleManagerPipeline.h" />
+    <ClInclude Include="Engine\Graphics\Effects\ParticleManagerUpdate.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerComputePipeline.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerDraw.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerEmit.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerGraphicsPipeline.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerLifecycle.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerResources.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerUpdate.h" />
+    <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerUtility.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />
