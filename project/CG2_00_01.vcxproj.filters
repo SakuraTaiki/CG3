@@ -60,6 +60,7 @@
     <ClCompile Include="Game\Controller\SceneObjectController.cpp" />
     <ClCompile Include="Game\Controller\SoundController.cpp" />
     <ClCompile Include="Engine\SceneSystem\SceneManager.cpp" />
+    <ClCompile Include="externals\imgui\ImGuizmo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h" />
