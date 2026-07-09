@@ -55,7 +55,8 @@ private:
     void DrawMainMenuBar(
         GameSceneDrawMode& drawMode,
         HitEffectController& hitEffect,
-        AnimationDebugController& animationDebug
+        AnimationDebugController& animationDebug,
+        SceneObjectController& sceneObjects
     );
 
     void DrawHierarchyWindow(SceneObjectController& sceneObjects);

@@ -38,6 +38,13 @@ public:
     const Object3d* GetEditorObject(EditorObjectType type) const;
 
     size_t AddEditorObject(Model* model, const std::string& name);
+    size_t AddEditorObject(
+        Model* model,
+        const std::string& name,
+        const std::string& modelPath
+    );
+
+    void ClearEditorObjects();
 
     size_t GetObjectCount() const;
     Object3d* GetObject(size_t index);
@@ -45,6 +52,15 @@ public:
     const std::string& GetObjectName(size_t index) const;
     bool IsObjectVisible(size_t index) const;
     void SetObjectVisible(size_t index, bool visible);
+
+    void SetObjectModelPath(size_t index, const std::string& path);
+    const std::string& GetObjectModelPath(size_t index) const;
+
+    void SetObjectTexturePath(size_t index, const std::string& path);
+    const std::string& GetObjectTexturePath(size_t index) const;
+
+    bool SaveEditorSceneToJson(const std::string& filePath) const;
+    bool LoadEditorSceneFromJson(const std::string& filePath);
 
     static size_t GetEditorObjectIndex(EditorObjectType type);
 
@@ -59,6 +75,8 @@ private:
     std::vector<std::unique_ptr<Object3d>> objects_;
     std::vector<std::string> objectNames_;
     std::vector<uint8_t> objectVisible_;
+    std::vector<std::string> objectModelPaths_;
+    std::vector<std::string> objectTexturePaths_;
 
     bool showTerrain_ = true;
     bool showAxis_ = true;
