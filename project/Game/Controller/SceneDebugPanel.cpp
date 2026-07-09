@@ -158,58 +158,71 @@ namespace {
     }
 
 
-    SceneObjectController::EditorObjectType& GetModelApplyTarget() {
-        static SceneObjectController::EditorObjectType target =
-            SceneObjectController::EditorObjectType::Terrain;
+    size_t& GetModelApplyTargetIndex() {
+        static size_t targetIndex = 0;
 
-        return target;
+        return targetIndex;
     }
 
-    const char* GetModelApplyTargetName() {
-        switch (GetModelApplyTarget()) {
-        case SceneObjectController::EditorObjectType::Terrain:
-            return "Terrain";
+    std::string GetModelApplyTargetName(const SceneObjectController& sceneObjects) {
+        const size_t targetIndex =
+            GetModelApplyTargetIndex();
 
-        case SceneObjectController::EditorObjectType::AxisPositive:
-            return "Axis +X";
-
-        case SceneObjectController::EditorObjectType::AxisNegative:
-            return "Axis -X";
-
-        default:
+        if (targetIndex >= sceneObjects.GetObjectCount()) {
             return "Unknown";
         }
+
+        return sceneObjects.GetObjectName(targetIndex);
     }
 
 
-    void DrawModelApplyTargetCombo() {
+    void DrawModelApplyTargetCombo(SceneObjectController& sceneObjects) {
 #ifdef USE_IMGUI
-        SceneObjectController::EditorObjectType& target =
-            GetModelApplyTarget();
+        if (sceneObjects.GetObjectCount() == 0) {
+            ImGui::TextDisabled("Target : None");
+            return;
+        }
+
+        size_t& targetIndex =
+            GetModelApplyTargetIndex();
 
         int currentTarget =
-            static_cast<int>(target);
+            static_cast<int>(targetIndex);
 
-        const char* targetNames[] = {
-            "Terrain",
-            "Axis +X",
-            "Axis -X"
-        };
+        if (currentTarget < 0 ||
+            currentTarget >= static_cast<int>(sceneObjects.GetObjectCount())) {
+            currentTarget = 0;
+            targetIndex = 0;
+        }
 
-        if (ImGui::Combo(
-            "Target",
-            &currentTarget,
-            targetNames,
-            IM_ARRAYSIZE(targetNames)
-        )) {
-            target =
-                static_cast<SceneObjectController::EditorObjectType>(
-                    currentTarget
-                    );
+        const std::string preview =
+            sceneObjects.GetObjectName(static_cast<size_t>(currentTarget));
+
+        if (ImGui::BeginCombo("Target", preview.c_str())) {
+            for (size_t index = 0; index < sceneObjects.GetObjectCount(); ++index) {
+                const bool selected =
+                    index == targetIndex;
+
+                if (ImGui::Selectable(
+                    sceneObjects.GetObjectName(index).c_str(),
+                    selected
+                )) {
+                    targetIndex = index;
+                }
+
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+
+            ImGui::EndCombo();
+        }
+
+        if (targetIndex != static_cast<size_t>(currentTarget)) {
 
             AddEditorLog(
                 EditorLogType::Info,
-                std::string("Model apply target changed: ") + GetModelApplyTargetName()
+                "Apply target changed: " + GetModelApplyTargetName(sceneObjects)
             );
         }
 #endif
@@ -217,8 +230,8 @@ namespace {
 
 
     Object3d* GetModelApplyTargetObject(SceneObjectController& sceneObjects) {
-        return sceneObjects.GetEditorObject(
-            GetModelApplyTarget()
+        return sceneObjects.GetObject(
+            GetModelApplyTargetIndex()
         );
     }
 
@@ -249,7 +262,10 @@ namespace {
         return true;
     }
 
-    bool ApplySelectedObjModelToObject(Object3d* object) {
+    bool ApplySelectedObjModelToObject(
+        Object3d* object,
+        const SceneObjectController& sceneObjects
+    ) {
 #ifdef USE_IMGUI
         if (!object) {
             AddEditorLog(EditorLogType::Error, "Apply failed: target object is null.");
@@ -296,7 +312,7 @@ namespace {
 
         AddEditorLog(
             EditorLogType::Info,
-            "Applied model: " + assetPath + " -> " + GetModelApplyTargetName()
+            "Applied model: " + assetPath + " -> " + GetModelApplyTargetName(sceneObjects)
         );
 
         return true;
@@ -305,10 +321,77 @@ namespace {
 #endif
     }
 
+    size_t CreateObjectFromSelectedObjAsset(SceneObjectController& sceneObjects) {
+#ifdef USE_IMGUI
+        const std::string& assetPath =
+            GetSelectedAssetPath();
+
+        if (assetPath.empty()) {
+            AddEditorLog(EditorLogType::Warning, "Create object failed: no asset selected.");
+            return static_cast<size_t>(-1);
+        }
+
+        if (!EndsWith(assetPath, ".obj")) {
+            AddEditorLog(EditorLogType::Warning, "Create object failed: only .obj assets can create objects now.");
+            return static_cast<size_t>(-1);
+        }
+
+        std::string directoryPath;
+        std::string modelName;
+
+        if (!SplitResourceModelPath(
+            assetPath,
+            directoryPath,
+            modelName
+        )) {
+            AddEditorLog(EditorLogType::Error, "Create object failed: invalid model path.");
+            return static_cast<size_t>(-1);
+        }
+
+        Model* model =
+            ModelManager::Load(
+                directoryPath,
+                modelName
+            );
+
+        if (!model) {
+            AddEditorLog(EditorLogType::Error, "Create object failed: model load returned null.");
+            return static_cast<size_t>(-1);
+        }
+
+        const std::string objectName =
+            "New " + modelName;
+
+        const size_t objectIndex =
+            sceneObjects.AddEditorObject(
+                model,
+                objectName
+            );
+
+        if (objectIndex == static_cast<size_t>(-1)) {
+            AddEditorLog(EditorLogType::Error, "Create object failed: SceneObjectController rejected object.");
+            return objectIndex;
+        }
+
+        GetModelApplyTargetIndex() =
+            objectIndex;
+
+        AddEditorLog(
+            EditorLogType::Info,
+            "Created object: " + objectName
+        );
+
+        return objectIndex;
+#else
+        return static_cast<size_t>(-1);
+#endif
+    }
+
 
     bool ApplySelectedPngTextureToObject(
         Object3d* object,
-        TextureManager* textureManager
+        TextureManager* textureManager,
+        const SceneObjectController& sceneObjects
     ) {
 #ifdef USE_IMGUI
         if (!object) {
@@ -341,7 +424,7 @@ namespace {
 
         AddEditorLog(
             EditorLogType::Info,
-            "Applied texture: " + assetPath + " -> " + GetModelApplyTargetName()
+            "Applied texture: " + assetPath + " -> " + GetModelApplyTargetName(sceneObjects)
         );
 
         return true;
@@ -444,8 +527,14 @@ namespace {
     }
 
 
-    void DrawAssetInspector(EngineContext* context, SceneObjectController& sceneObjects) {
+    bool DrawAssetInspector(
+        EngineContext* context,
+        SceneObjectController& sceneObjects,
+        size_t& outCreatedIndex
+    ) {
 #ifdef USE_IMGUI
+        outCreatedIndex = static_cast<size_t>(-1);
+
         const std::string& path =
             GetSelectedAssetPath();
 
@@ -454,7 +543,7 @@ namespace {
 
         if (path.empty()) {
             ImGui::TextDisabled("No asset selected.");
-            return;
+            return false;
         }
 
         ImGui::SeparatorText("Asset Info");
@@ -482,7 +571,7 @@ namespace {
 
         ImGui::SeparatorText("Apply");
 
-        DrawModelApplyTargetCombo();
+        DrawModelApplyTargetCombo(sceneObjects);
 
         Object3d* targetObject =
             GetModelApplyTargetObject(sceneObjects);
@@ -503,10 +592,35 @@ namespace {
         ImGui::BeginDisabled(!canApplyModel);
 
         if (ImGui::Button("Apply Model To Target")) {
-            ApplySelectedObjModelToObject(targetObject);
+            ApplySelectedObjModelToObject(
+                targetObject,
+                sceneObjects
+            );
         }
 
         ImGui::EndDisabled();
+
+        ImGui::SameLine();
+
+        ImGui::BeginDisabled(!canApplyModel);
+
+        bool createdObjectFromAsset = false;
+
+        if (ImGui::Button("Create Object From Asset")) {
+            const size_t createdIndex =
+                CreateObjectFromSelectedObjAsset(sceneObjects);
+
+            if (createdIndex != static_cast<size_t>(-1)) {
+                outCreatedIndex = createdIndex;
+                createdObjectFromAsset = true;
+            }
+        }
+
+        ImGui::EndDisabled();
+
+        if (createdObjectFromAsset) {
+            return true;
+        }
 
         ImGui::SameLine();
 
@@ -515,7 +629,8 @@ namespace {
         if (ImGui::Button("Apply Texture To Target")) {
             ApplySelectedPngTextureToObject(
                 targetObject,
-                textureManager
+                textureManager,
+                sceneObjects
             );
         }
 
@@ -530,7 +645,7 @@ namespace {
             targetObject->ClearOverrideTexture();
             AddEditorLog(
                 EditorLogType::Info,
-                std::string("Cleared override texture: ") + GetModelApplyTargetName()
+                "Cleared override texture: " + GetModelApplyTargetName(sceneObjects)
             );
         }
 
@@ -554,6 +669,9 @@ namespace {
         } else {
             ImGui::TextDisabled("No preview available.");
         }
+        return false;
+#else
+        return false;
 #endif
     }
 }
@@ -720,7 +838,8 @@ void SceneDebugPanel::DrawHierarchyWindow(
             selected_ == EditorSelection::Terrain
         )) {
             selected_ = EditorSelection::Terrain;
-            GetModelApplyTarget() = SceneObjectController::EditorObjectType::Terrain;
+            selectedObjectIndex_ = 0;
+            GetModelApplyTargetIndex() = 0;
         }
 
         if (ImGui::Selectable(
@@ -728,7 +847,8 @@ void SceneDebugPanel::DrawHierarchyWindow(
             selected_ == EditorSelection::AxisPositive
         )) {
             selected_ = EditorSelection::AxisPositive;
-            GetModelApplyTarget() = SceneObjectController::EditorObjectType::AxisPositive;
+            selectedObjectIndex_ = 1;
+            GetModelApplyTargetIndex() = 1;
         }
 
         if (ImGui::Selectable(
@@ -736,10 +856,29 @@ void SceneDebugPanel::DrawHierarchyWindow(
             selected_ == EditorSelection::AxisNegative
         )) {
             selected_ = EditorSelection::AxisNegative;
-            GetModelApplyTarget() = SceneObjectController::EditorObjectType::AxisNegative;
+            selectedObjectIndex_ = 2;
+            GetModelApplyTargetIndex() = 2;
         }
 
         ImGui::Separator();
+
+        if (sceneObjects.GetObjectCount() > 3) {
+            ImGui::TextDisabled("Created Objects");
+
+            for (size_t index = 3; index < sceneObjects.GetObjectCount(); ++index) {
+                if (ImGui::Selectable(
+                    sceneObjects.GetObjectName(index).c_str(),
+                    selected_ == EditorSelection::DynamicObject &&
+                    selectedObjectIndex_ == index
+                )) {
+                    selected_ = EditorSelection::DynamicObject;
+                    selectedObjectIndex_ = index;
+                    GetModelApplyTargetIndex() = index;
+                }
+            }
+
+            ImGui::Separator();
+        }
 
         if (ImGui::Selectable(
             "Main Camera",
@@ -777,6 +916,18 @@ void SceneDebugPanel::DrawHierarchyWindow(
         "Show Axis",
         &sceneObjects.ShowAxis()
     );
+
+    for (size_t index = 3; index < sceneObjects.GetObjectCount(); ++index) {
+        bool visible =
+            sceneObjects.IsObjectVisible(index);
+
+        const std::string label =
+            "Show " + sceneObjects.GetObjectName(index);
+
+        if (ImGui::Checkbox(label.c_str(), &visible)) {
+            sceneObjects.SetObjectVisible(index, visible);
+        }
+    }
 
     ImGui::End();
 #endif
@@ -917,13 +1068,52 @@ void SceneDebugPanel::DrawInspectorWindow(
         ImGui::TextDisabled("Open Debug Tools > Sound for detailed controls.");
         break;
 
+    case EditorSelection::DynamicObject:
+    {
+        const std::string& objectName =
+            sceneObjects.GetObjectName(selectedObjectIndex_);
+
+        DrawHeader("Object", objectName.empty() ? "Created Object" : objectName.c_str());
+
+        bool visible =
+            sceneObjects.IsObjectVisible(selectedObjectIndex_);
+
+        if (ImGui::Checkbox("Active", &visible)) {
+            sceneObjects.SetObjectVisible(selectedObjectIndex_, visible);
+        }
+
+        Object3d* object =
+            sceneObjects.GetObject(selectedObjectIndex_);
+
+        DrawTransformInspector(object);
+        DrawMaterialInspector(object);
+
+        if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("%s", objectName.c_str());
+        }
+
+        break;
+    }
+
     default:
         ImGui::TextDisabled("No inspector available.");
         break;
 
     case EditorSelection::Asset:
-        DrawAssetInspector(context,sceneObjects);
+    {
+        size_t createdIndex = static_cast<size_t>(-1);
+
+        if (DrawAssetInspector(
+            context,
+            sceneObjects,
+            createdIndex
+        )) {
+            selected_ = EditorSelection::DynamicObject;
+            selectedObjectIndex_ = createdIndex;
+        }
+
         break;
+    }
     }
 
     ImGui::End();
@@ -2412,7 +2602,7 @@ void SceneDebugPanel::DrawEffectTab(
             "Fire Count : %d",
             settings.fireCount
         );
-        
+
         if (ImGui::Button("Preview GPU Particle"))
         {
             // OFFだった場合もPreviewではONにする
