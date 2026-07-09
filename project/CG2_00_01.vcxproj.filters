@@ -131,6 +131,12 @@
     <ClInclude Include="Game\Controller\SceneDebugPanelConsole.h" />
     <ClInclude Include="Game\Controller\SceneDebugPanelAssetInspector.h" />
     <ClInclude Include="Game\Controller\SceneDebugPanelEffectEditor.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonDevice.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonFrame.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonInitialize.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonPipeline.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonRenderTexture.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonUtility.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

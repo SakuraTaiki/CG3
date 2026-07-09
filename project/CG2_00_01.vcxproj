@@ -249,6 +249,12 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Engine\Graphics\Animation\SkinCluster.h" />
     <ClInclude Include="Engine\Graphics\D3DResourceLeakChecker.h" />
     <ClInclude Include="Engine\Graphics\DirectXCommon.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonDevice.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonFrame.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonInitialize.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonPipeline.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonRenderTexture.h" />
+    <ClInclude Include="Engine\Graphics\DirectXCommonUtility.h" />
     <ClInclude Include="Engine\Graphics\DirectXShaderCompiler.h" />
     <ClInclude Include="Engine\Graphics\Effects\Cylinder.h" />
     <ClInclude Include="Engine\Graphics\Effects\CylinderParticleSystem.h" />

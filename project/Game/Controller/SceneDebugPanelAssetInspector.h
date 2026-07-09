@@ -45,12 +45,15 @@ namespace SceneDebugPanelDetail {
     //======================
 
     inline bool EndsWith(const std::string& text, const char* suffix) {
+        // コピーして std::string として扱う（安全のため）
         const std::string suffixText = suffix;
 
+        // テキストがサフィックスより短ければマッチしない
         if (text.size() < suffixText.size()) {
             return false;
         }
 
+        // 末尾比較: text の末尾 substring と suffixText を比較
         return text.compare(
             text.size() - suffixText.size(),
             suffixText.size(),
@@ -59,6 +62,7 @@ namespace SceneDebugPanelDetail {
     }
 
     inline const char* GetAssetTypeFromPath(const std::string& path) {
+        // 拡張子に基づいて、人間向けのアセット種別文字列を返す
         if (EndsWith(path, ".obj")) {
             return "Model";
         }
@@ -87,10 +91,12 @@ namespace SceneDebugPanelDetail {
             return "Material";
         }
 
+        // 上記に該当しない場合は Unknown を返す
         return "Unknown";
     }
 
     inline void SelectAsset(const std::string& path) {
+        // 選択状態を更新してログ出力
         GetSelectedAssetPath() = path;
         AddEditorLog(EditorLogType::Info, "Selected asset: " + path);
     }
@@ -123,31 +129,38 @@ namespace SceneDebugPanelDetail {
 
     inline void DrawModelApplyTargetCombo(SceneObjectController& sceneObjects) {
 #ifdef USE_IMGUI
+        // オブジェクトが無ければ選択肢なし
         if (sceneObjects.GetObjectCount() == 0) {
             ImGui::TextDisabled("Target : None");
             return;
         }
 
+        // UI の永続選択インデックス
         size_t& targetIndex =
             GetModelApplyTargetIndex();
 
+        // ImGui は int を使うための変換
         int currentTarget =
             static_cast<int>(targetIndex);
 
+        // 不正なインデックスを補正（シーン側のオブジェクト数が変わった場合に備える）
         if (currentTarget < 0 ||
             currentTarget >= static_cast<int>(sceneObjects.GetObjectCount())) {
             currentTarget = 0;
             targetIndex = 0;
         }
 
+        // プレビュー表示名を取得
         const std::string preview =
             sceneObjects.GetObjectName(static_cast<size_t>(currentTarget));
 
+        // コンボボックス描画と選択処理
         if (ImGui::BeginCombo("Target", preview.c_str())) {
             for (size_t index = 0; index < sceneObjects.GetObjectCount(); ++index) {
                 const bool selected =
                     index == targetIndex;
 
+                // 選択されたら targetIndex を更新
                 if (ImGui::Selectable(
                     sceneObjects.GetObjectName(index).c_str(),
                     selected
@@ -163,6 +176,7 @@ namespace SceneDebugPanelDetail {
             ImGui::EndCombo();
         }
 
+        // インデックスが変化していればログを残す
         if (targetIndex != static_cast<size_t>(currentTarget)) {
 
             AddEditorLog(
@@ -175,6 +189,7 @@ namespace SceneDebugPanelDetail {
 
 
     inline Object3d* GetModelApplyTargetObject(SceneObjectController& sceneObjects) {
+        // 保存しているインデックスから実際のオブジェクトポインタを返す
         return sceneObjects.GetObject(
             GetModelApplyTargetIndex()
         );
@@ -185,19 +200,23 @@ namespace SceneDebugPanelDetail {
         std::string& directoryPath,
         std::string& modelName
     ) {
+        // 現在は .obj のみサポート
         if (!EndsWith(path, ".obj")) {
             return false;
         }
 
+        // 最後のスラッシュまたはバックスラッシュを探す
         const size_t slashPos =
             path.find_last_of("/\\");
 
+        // スラッシュが見つからない場合は Resources フォルダ直下とみなす
         if (slashPos == std::string::npos) {
             directoryPath = "Resources";
             modelName = path;
             return true;
         }
 
+        // ディレクトリ部分とファイル名部分に分割
         directoryPath =
             path.substr(0, slashPos);
 
@@ -398,17 +417,20 @@ namespace SceneDebugPanelDetail {
 #endif
     }
 
-
     inline bool DrawAssetItem(const char* label, const char* path) {
 #ifdef USE_IMGUI
+
+        // 選択状態かどうかを判定
         const bool selected =
             GetSelectedAssetPath() == path;
 
+        // Selectable が押されたら選択状態を更新
         if (ImGui::Selectable(label, selected)) {
             SelectAsset(path);
             return true;
         }
 
+        // ホバー時にパスをトゥールチップ表示
         if (ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
             ImGui::TextUnformatted(path);
