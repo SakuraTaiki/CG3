@@ -33,10 +33,7 @@ public:
     );
 
 private:
-
-    enum class EditorSelection
-    {
-
+    enum class EditorSelection {
         None,
         Terrain,
         AxisPositive,
@@ -49,8 +46,6 @@ private:
         Asset,
         DynamicObject
     };
-
-private:
 
     void DrawMainMenuBar(
         GameSceneDrawMode& drawMode,
@@ -69,7 +64,6 @@ private:
     );
 
     void DrawProjectWindow();
-
     void DrawConsoleWindow();
 
     void DrawDebugToolsWindow(
@@ -84,7 +78,6 @@ private:
         Cylinder* cylinder,
         Primitive* primitive
     );
-
 
     void DrawSceneControl(
         GameSceneDrawMode& drawMode,
@@ -109,8 +102,10 @@ private:
         AnimationDebugController& animationDebug
     );
 
-
-    void DrawGameViewWindow(EngineContext* context, SceneObjectController& sceneObjects);
+    void DrawGameViewWindow(
+        EngineContext* context,
+        SceneObjectController& sceneObjects
+    );
 
     void DrawTransformGizmo(
         EngineContext* context,
@@ -121,11 +116,10 @@ private:
         float rectHeight
     );
 
-private:
     EditorSelection selected_ = EditorSelection::Terrain;
     size_t selectedObjectIndex_ = 0;
 
     bool showTransformGizmo_ = true;
-    int gizmoOperation_ = 0; // 0: Move, 1: Rotate, 2: Scale
-    int gizmoMode_ = 0;      // 0: Local, 1: World
+    int gizmoOperation_ = 0;
+    int gizmoMode_ = 0;
 };
