@@ -1,10 +1,10 @@
 void DirectXCommon::PreDraw()
 {
-    
+
     UINT backBufferIndex =
         swapChain_->GetCurrentBackBufferIndex();
 
-   
+
 
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type =
@@ -29,7 +29,7 @@ void DirectXCommon::PreDraw()
         &barrier
     );
 
-    
+
 
     D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle =
         rtvDescriptorHeap_
@@ -48,7 +48,7 @@ void DirectXCommon::PreDraw()
             rtvDescriptorSize
             );
 
-   
+
     commandList_->OMSetRenderTargets(
         1,
         &rtvHandle,
@@ -72,7 +72,7 @@ void DirectXCommon::PreDraw()
         nullptr
     );
 
-    
+
 
     D3D12_VIEWPORT viewport{};
     viewport.TopLeftX = 0.0f;
@@ -92,7 +92,7 @@ void DirectXCommon::PreDraw()
         &viewport
     );
 
-    
+
 
     D3D12_RECT scissorRect{};
     scissorRect.left = 0;
@@ -114,7 +114,7 @@ void DirectXCommon::PreDraw()
 void DirectXCommon::PostDraw() {
     UINT backBufferIndex = swapChain_->GetCurrentBackBufferIndex();
 
-   
+
     D3D12_RESOURCE_BARRIER barrier{};
     barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -124,17 +124,17 @@ void DirectXCommon::PostDraw() {
     barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
     commandList_->ResourceBarrier(1, &barrier);
 
-    
+
     HRESULT hr = commandList_->Close();
     assert(SUCCEEDED(hr));
 
     ID3D12CommandList* commandLists[] = { commandList_.Get() };
     commandQueue_->ExecuteCommandLists(1, commandLists);
 
-    
+
     swapChain_->Present(1, 0);
 
-   
+
     fenceValue_++;
     commandQueue_->Signal(fence_.Get(), fenceValue_);
 
@@ -143,7 +143,7 @@ void DirectXCommon::PostDraw() {
         WaitForSingleObject(fenceEvent_, INFINITE);
     }
 
-    
+
     hr = commandAllocator_->Reset();
     assert(SUCCEEDED(hr));
     hr = commandList_->Reset(commandAllocator_.Get(), nullptr);

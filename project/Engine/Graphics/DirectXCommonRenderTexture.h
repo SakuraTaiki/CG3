@@ -37,7 +37,7 @@ void DirectXCommon::PreDrawForRenderTexture()
 
 void DirectXCommon::DrawRenderTextureToSwapChain()
 {
-    
+
 
     TransitionResource(
         renderTextureResource_.Get(),
@@ -48,7 +48,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
     renderTextureState_ =
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-    // Outline縺梧怏蜉ｹ縺ｪ蝣ｴ蜷医・Depth繧１ixelShader縺九ｉ隱ｭ縺ｿ霎ｼ繧
+    // Outline邵ｺ譴ｧ諤剰怏・ｹ邵ｺ・ｪ陜｣・ｴ陷ｷ蛹ｻ繝ｻDepth郢ｧ・訴xelShader邵ｺ荵晢ｽ蛾坡・ｭ邵ｺ・ｿ髴趣ｽｼ郢ｧﾂ
     if (outlineSettings_.enabled) {
         TransitionResource(
             depthStencilResource_.Get(),
@@ -57,7 +57,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         );
     }
 
-   
+
 
     ID3D12DescriptorHeap* heaps[] = {
         renderTextureSrvHeap_.Get()
@@ -68,7 +68,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         heaps
     );
 
-    
+
 
     commandList_->SetGraphicsRootSignature(
         copyImageRootSignature_.Get()
@@ -108,7 +108,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST
     );
 
-    
+
     commandList_->SetGraphicsRootDescriptorTable(
         0,
         renderTextureSrvHandleGPU_
@@ -249,7 +249,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         );
     }
 
-   
+
 
     else if (dissolveSettings_.enabled) {
         struct DissolveConstants {
@@ -449,7 +449,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         );
     }
 
-    
+
 
     else {
         struct PostEffectConstants {
@@ -497,7 +497,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
     }
 
     //==================================================
-    // Fullscreen Triangle謠冗判
+    // Fullscreen Triangle隰蜀怜愛
     //==================================================
 
     commandList_->DrawInstanced(
@@ -507,7 +507,7 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
         0
     );
 
-    
+
 
     if (outlineSettings_.enabled) {
         TransitionResource(
@@ -532,6 +532,9 @@ void DirectXCommon::CopyRenderTextureSrvTo(D3D12_CPU_DESCRIPTOR_HANDLE destinati
 void DirectXCommon::SetDissolveMaskSrv(D3D12_CPU_DESCRIPTOR_HANDLE sourceHandle)
 {
 
+    dissolveMaskSourceHandle_ = sourceHandle;
+    hasDissolveMaskSource_ = true;
+
     device_->CopyDescriptorsSimple(
         1,
         dissolveMaskSrvHandleCPU_,
@@ -554,4 +557,5 @@ void DirectXCommon::PrepareRenderTextureForImgui()
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
 }
+
 

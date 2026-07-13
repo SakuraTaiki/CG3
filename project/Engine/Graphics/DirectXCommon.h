@@ -16,27 +16,27 @@
 class WinApp;
 
 class DirectXCommon {
-public: // サブクラス定義
+public: // 繧ｵ繝悶け繝ｩ繧ｹ螳夂ｾｩ
     template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-public: // メンバ関数
+public: // 繝｡繝ｳ繝宣未謨ｰ
     DirectXCommon() = default;
     ~DirectXCommon() = default;
 
-    // 初期化
+    // 蛻晄悄蛹・
     void Initialize(WinApp* winApp);
 
-    // 描画前処理
+    // 謠冗判蜑榊・逅・
     void PreDraw();
-    // 描画後処理
+    // 謠冗判蠕悟・逅・
     void PostDraw();
 
-    // シェーダーコンパイル
+    // 繧ｷ繧ｧ繝ｼ繝繝ｼ繧ｳ繝ｳ繝代う繝ｫ
     ComPtr<IDxcBlob> CompileShader(
         const std::wstring& filePath,
         const wchar_t* profile);
 
-    // ゲッター
+    // 繧ｲ繝・ち繝ｼ
     ID3D12Device* GetDevice() const { return device_.Get(); }
 
     ID3D12CommandQueue* GetCommandQueue() const { return commandQueue_.Get(); }
@@ -72,7 +72,7 @@ public: // メンバ関数
         return enableGrayScale_;
     }
 
-    
+
     struct VignetteSettings {
         bool enabled = false;
         float intensity = 0.75f;
@@ -125,15 +125,15 @@ public: // メンバ関数
             1.0f
         };
 
-        // 小さいほど弱い深度差も線になる
+        // 蟆上＆縺・⊇縺ｩ蠑ｱ縺・ｷｱ蠎ｦ蟾ｮ繧らｷ壹↓縺ｪ繧・
         float threshold = 0.05f;
 
         float strength = 1.0f;
 
-        // 1～4
+        // 1・・
         int thickness = 1;
 
-        // Cameraと同じ値にする
+        // Camera縺ｨ蜷後§蛟､縺ｫ縺吶ｋ
         float nearClip = 0.1f;
         float farClip = 100.0f;
     };
@@ -150,7 +150,7 @@ public: // メンバ関数
     struct RadialBlurSettings {
         bool enabled = false;
 
-        // UV座標。画面中央は(0.5, 0.5)
+        // UV蠎ｧ讓吶ら判髱｢荳ｭ螟ｮ縺ｯ(0.5, 0.5)
         float center[2] = {
             0.5f,
             0.5f
@@ -228,14 +228,14 @@ public: // メンバ関数
 
     void PrepareRenderTextureForImgui();
 
-private: // メンバ関数(内部処理)
+private: // 繝｡繝ｳ繝宣未謨ｰ(蜀・Κ蜃ｦ逅・
     void InitializeDevice();
     void InitializeCommand();
     void InitializeSwapChain();
     void InitializeRenderTargetView();
     void InitializeDepthStencilView();
     void InitializeFence();
-  
+
 
     void InitializeRenderTexture();
     void InitializeCopyImagePipeline();
@@ -244,10 +244,10 @@ private: // メンバ関数(内部処理)
     void ResizeIfNeeded();
     void WaitForGPU();
 
-private: // メンバ変数
+private: // 繝｡繝ｳ繝仙､画焚
     WinApp* winApp_ = nullptr;
 
-    // DirectX主要オブジェクト
+    // DirectX荳ｻ隕√が繝悶ず繧ｧ繧ｯ繝・
     ComPtr<IDXGIFactory7> dxgiFactory_;
     ComPtr<ID3D12Device> device_;
     ComPtr<ID3D12CommandQueue> commandQueue_;
@@ -255,23 +255,23 @@ private: // メンバ変数
     ComPtr<ID3D12GraphicsCommandList> commandList_;
     ComPtr<IDXGISwapChain4> swapChain_;
 
-    // RTV (レンダーターゲットビュー)
+    // RTV (繝ｬ繝ｳ繝繝ｼ繧ｿ繝ｼ繧ｲ繝・ヨ繝薙Η繝ｼ)
     ComPtr<ID3D12DescriptorHeap> rtvDescriptorHeap_;
     ComPtr<ID3D12Resource> swapChainResources_[2];
 
-    // DSV (深度ステンシルビュー)
+    // DSV (豺ｱ蠎ｦ繧ｹ繝・Φ繧ｷ繝ｫ繝薙Η繝ｼ)
     ComPtr<ID3D12DescriptorHeap> dsvDescriptorHeap_;
     ComPtr<ID3D12Resource> depthStencilResource_;
 
-    // フェンス (同期用)
+    // 繝輔ぉ繝ｳ繧ｹ (蜷梧悄逕ｨ)
     ComPtr<ID3D12Fence> fence_;
     uint64_t fenceValue_ = 0;
     HANDLE fenceEvent_ = nullptr;
 
-    // HLSL コンパイル担当。
+    // HLSL 繧ｳ繝ｳ繝代う繝ｫ諡・ｽ薙・
     DirectXShaderCompiler shaderCompiler_;
 
-    // 60FPS 固定担当。
+    // 60FPS 蝗ｺ螳壽球蠖薙・
     FpsLimiter fpsLimiter_;
 
     ComPtr<ID3D12Resource> renderTextureResource_;
@@ -289,6 +289,9 @@ private: // メンバ変数
     D3D12_CPU_DESCRIPTOR_HANDLE dissolveMaskSrvHandleCPU_{};
 
     D3D12_GPU_DESCRIPTOR_HANDLE dissolveMaskSrvHandleGPU_{};
+
+    D3D12_CPU_DESCRIPTOR_HANDLE dissolveMaskSourceHandle_{};
+    bool hasDissolveMaskSource_ = false;
 
 
     VignetteSettings vignetteSettings_{};
@@ -321,6 +324,6 @@ private: // メンバ変数
     uint32_t width_ = 1280;
 
     uint32_t height_ = 720;
-    
+
     float randomTime_ = 0.0f;
 };
