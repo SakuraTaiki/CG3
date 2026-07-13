@@ -150,6 +150,19 @@
     <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerResources.h" />
     <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerUpdate.h" />
     <ClInclude Include="Engine\Graphics\Effects\GPUParticleManagerUtility.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveDraw.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveEmit.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveLifecycle.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitivePipeline.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveUpdate.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerLoad.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerPresetList.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerRuntime.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerSave.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerJsonHelpers.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerLoad.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerRuntime.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerSave.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

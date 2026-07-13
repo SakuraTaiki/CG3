@@ -275,6 +275,11 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Engine\Graphics\Effects\ParticleManagerPipeline.h" />
     <ClInclude Include="Engine\Graphics\Effects\ParticleManagerUpdate.h" />
     <ClInclude Include="Engine\Graphics\Effects\Primitive.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveDraw.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveEmit.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveLifecycle.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitivePipeline.h" />
+    <ClInclude Include="Engine\Graphics\Effects\PrimitiveUpdate.h" />
     <ClInclude Include="Engine\Graphics\Effects\Ring.h" />
     <ClInclude Include="Engine\Graphics\ImGuiManager.h" />
     <ClInclude Include="Engine\Graphics\SrvManager.h" />
@@ -297,6 +302,10 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Game\Controller\CameraDebugController.h" />
     <ClInclude Include="Game\Controller\EnvironmentController.h" />
     <ClInclude Include="Game\Controller\HitEffectController.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerLoad.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerPresetList.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerRuntime.h" />
+    <ClInclude Include="Game\Controller\HitEffectControllerSave.h" />
     <ClInclude Include="Game\Controller\SceneDebugPanelConsole.h" />
     <ClInclude Include="Game\Controller\SceneDebugPanel.h" />
     <ClInclude Include="Game\Controller\SceneDebugPanelAssetInspector.h" />
@@ -308,6 +317,10 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Game\Controller\SceneDebugPanelPostEffect.h" />
     <ClInclude Include="Game\Controller\SceneDebugPanelWindows.h" />
     <ClInclude Include="Game\Controller\SceneObjectController.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerJsonHelpers.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerLoad.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerRuntime.h" />
+    <ClInclude Include="Game\Controller\SceneObjectControllerSave.h" />
     <ClInclude Include="Game\Controller\SoundController.h" />
     <ClInclude Include="Game\GameScene\GameScene.h" />
     <ClInclude Include="Game\GameScene\GameSceneDrawMode.h" />
