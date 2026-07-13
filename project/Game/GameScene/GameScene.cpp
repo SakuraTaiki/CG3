@@ -267,7 +267,7 @@ void GameScene::Draw2D()
 
     dxCommon->PreDraw();
 
-    // Near/FarだけはCameraと毎フレーム同期する
+   
     Camera* camera =
         context_->GetCamera();
 
@@ -282,9 +282,12 @@ void GameScene::Draw2D()
             camera->GetFarClip();
     }
 
-    // enabled、色、強度、太さなどは
-    // ImGuiで変更した値をそのまま使用する
+    
     dxCommon->PrepareRenderTextureForImgui();
+
+    if (context_->GetImGuiManager()) {
+        context_->GetImGuiManager()->UpdateGameViewTexture();
+    }
 
     context_->GetSrvManager()->PreDraw();
     context_->GetSpriteCommon()->PreDraw();

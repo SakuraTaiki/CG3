@@ -58,7 +58,7 @@ void DirectXCommon::ResizeIfNeeded()
     height_ =
         newHeight;
 
-   
+
     for (
         auto& resource :
         swapChainResources_
@@ -90,6 +90,10 @@ void DirectXCommon::ResizeIfNeeded()
     InitializeRenderTargetView();
     InitializeDepthStencilView();
     InitializeRenderTexture();
+
+    if (hasDissolveMaskSource_) {
+        SetDissolveMaskSrv(dissolveMaskSourceHandle_);
+    }
 
 }
 
@@ -132,3 +136,4 @@ void DirectXCommon::WaitForGPU()
     }
 
 }
+

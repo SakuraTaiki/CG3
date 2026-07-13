@@ -1,5 +1,5 @@
 void DirectXCommon::InitializeDevice() {
-    
+
 #ifdef _DEBUG
     ComPtr<ID3D12Debug1> debugController = nullptr;
     if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
@@ -11,7 +11,7 @@ void DirectXCommon::InitializeDevice() {
     HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory_));
     assert(SUCCEEDED(hr));
 
-    
+
     ComPtr<IDXGIAdapter4> useAdapter = nullptr;
     for (UINT i = 0; dxgiFactory_->EnumAdapterByGpuPreference(i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(&useAdapter)) != DXGI_ERROR_NOT_FOUND; ++i) {
         DXGI_ADAPTER_DESC3 adapterDesc{};
@@ -19,7 +19,7 @@ void DirectXCommon::InitializeDevice() {
         if (FAILED(hr)) continue;
 
         if (!(adapterDesc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
-           
+
             hr = D3D12CreateDevice(useAdapter.Get(), D3D_FEATURE_LEVEL_12_2, IID_PPV_ARGS(&device_));
             if (SUCCEEDED(hr)) {
                 break;
@@ -30,12 +30,12 @@ void DirectXCommon::InitializeDevice() {
     assert(device_ != nullptr);
 
 #ifdef _DEBUG
-    
+
     ComPtr<ID3D12InfoQueue> infoQueue = nullptr;
     if (SUCCEEDED(device_->QueryInterface(IID_PPV_ARGS(&infoQueue)))) {
         infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, true);
         infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, true);
-        
+
     }
 #endif
 }
@@ -91,7 +91,7 @@ void DirectXCommon::InitializeRenderTargetView() {
 }
 
 void DirectXCommon::InitializeDepthStencilView() {
-    
+
     D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc{};
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.NumDescriptors = 1;
@@ -99,7 +99,7 @@ void DirectXCommon::InitializeDepthStencilView() {
     HRESULT hr = device_->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&dsvDescriptorHeap_));
     assert(SUCCEEDED(hr));
 
-    
+
     D3D12_RESOURCE_DESC resourceDesc{};
     resourceDesc.Width = width_;
     resourceDesc.Height = height_;
@@ -119,7 +119,7 @@ void DirectXCommon::InitializeDepthStencilView() {
         &heapProps, D3D12_HEAP_FLAG_NONE, &resourceDesc, D3D12_RESOURCE_STATE_DEPTH_WRITE, &clearValue, IID_PPV_ARGS(&depthStencilResource_));
     assert(SUCCEEDED(hr));
 
-    
+
     D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
     dsvDesc.Format =
         DXGI_FORMAT_D24_UNORM_S8_UINT;

@@ -32,7 +32,6 @@ void SceneDebugPanel::DrawGameViewWindow(
     ImGuiManager* imguiManager =
         context->GetImGuiManager();
 
-    imguiManager->UpdateGameViewTexture();
 
     ImVec2 availableSize =
         ImGui::GetContentRegionAvail();
@@ -216,4 +215,5 @@ void SceneDebugPanel::DrawTransformGizmo(
     }
 #endif
 }
+
 
