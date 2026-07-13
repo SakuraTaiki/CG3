@@ -52,6 +52,8 @@ public:
     void Draw();
 
     void SetModel(Model* model);
+    Model* GetModel() { return model_; }
+    const Model* GetModel() const { return model_; }
 
     // Skinning 用。Object3dSkinning がある場合だけ反映する。
     void SetSkeleton(const Skeleton& skeleton);
@@ -63,6 +65,11 @@ public:
 
     Transform& GetTransform() { return transform_; }
     const Transform& GetTransform() const { return transform_; }
+
+    void SetParent(Object3d* parent) { parent_ = parent; }
+    Object3d* GetParent() { return parent_; }
+    const Object3d* GetParent() const { return parent_; }
+    const Matrix4x4& GetWorldMatrix() const { return worldMatrix_; }
 
     void SetCamera(Camera* camera) { camera_ = camera; }
 
@@ -136,6 +143,8 @@ private:
     Model* model_ = nullptr;
 
     Transform transform_ = { {1, 1, 1}, {0, 0, 0}, {0, 0, 0} };
+    Object3d* parent_ = nullptr;
+    Matrix4x4 worldMatrix_{};
 
     // Transform 用 GPU Buffer。
     Microsoft::WRL::ComPtr<ID3D12Resource> transformationResource_;

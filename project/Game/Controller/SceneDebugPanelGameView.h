@@ -15,6 +15,9 @@ void SceneDebugPanel::DrawGameViewWindow(
     ImGui::Checkbox("Gizmo", &showTransformGizmo_);
 
     ImGui::SameLine();
+    ImGui::Checkbox("Colliders", &showColliders_);
+
+    ImGui::SameLine();
     ImGui::RadioButton("Move", &gizmoOperation_, 0);
 
     ImGui::SameLine();
@@ -61,6 +64,15 @@ void SceneDebugPanel::DrawGameViewWindow(
     const ImVec2 imageMin = ImGui::GetItemRectMin();
     const ImVec2 imageMax = ImGui::GetItemRectMax();
 
+    DrawColliderOverlay(
+        context,
+        sceneObjects,
+        imageMin.x,
+        imageMin.y,
+        imageMax.x - imageMin.x,
+        imageMax.y - imageMin.y
+    );
+
     DrawTransformGizmo(
         context,
         sceneObjects,
@@ -71,6 +83,84 @@ void SceneDebugPanel::DrawGameViewWindow(
     );
 
     ImGui::End();
+#endif
+}
+
+void SceneDebugPanel::DrawColliderOverlay(
+    EngineContext* context,
+    SceneObjectController& sceneObjects,
+    float rectX,
+    float rectY,
+    float rectWidth,
+    float rectHeight
+)
+{
+#ifdef USE_IMGUI
+    if (!showColliders_ || !context || !context->GetCamera()) {
+        return;
+    }
+
+    const Matrix4x4& viewProjection = context->GetCamera()->GetViewProjectionMatrix();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    constexpr int edges[12][2] = {
+        {0,1}, {1,3}, {3,2}, {2,0},
+        {4,5}, {5,7}, {7,6}, {6,4},
+        {0,4}, {1,5}, {2,6}, {3,7}
+    };
+
+    auto transformPoint = [](const Vector3& p, const Matrix4x4& m) {
+        return Vector4{
+            p.x * m.m[0][0] + p.y * m.m[1][0] + p.z * m.m[2][0] + m.m[3][0],
+            p.x * m.m[0][1] + p.y * m.m[1][1] + p.z * m.m[2][1] + m.m[3][1],
+            p.x * m.m[0][2] + p.y * m.m[1][2] + p.z * m.m[2][2] + m.m[3][2],
+            p.x * m.m[0][3] + p.y * m.m[1][3] + p.z * m.m[2][3] + m.m[3][3]
+        };
+    };
+
+    for (size_t index = 0; index < sceneObjects.GetObjectCount(); ++index) {
+        const SceneObjectController::BoxCollider* collider = sceneObjects.GetBoxCollider(index);
+        const Object3d* object = sceneObjects.GetObject(index);
+        if (!collider || !object || !sceneObjects.IsObjectVisible(index)) {
+            continue;
+        }
+
+        const Matrix4x4& world = object->GetWorldMatrix();
+        const Matrix4x4 worldViewProjection = Math::Multiply(world, viewProjection);
+        ImVec2 screen[8]{};
+        bool visible[8]{};
+
+        for (int corner = 0; corner < 8; ++corner) {
+            const Vector3 local = {
+                collider->center.x + ((corner & 1) ? collider->size.x : -collider->size.x),
+                collider->center.y + ((corner & 2) ? collider->size.y : -collider->size.y),
+                collider->center.z + ((corner & 4) ? collider->size.z : -collider->size.z)
+            };
+            const Vector4 clip = transformPoint(local, worldViewProjection);
+            if (clip.w > 0.001f) {
+                const float ndcX = clip.x / clip.w;
+                const float ndcY = clip.y / clip.w;
+                screen[corner] = {
+                    rectX + (ndcX * 0.5f + 0.5f) * rectWidth,
+                    rectY + (-ndcY * 0.5f + 0.5f) * rectHeight
+                };
+                visible[corner] = true;
+            }
+        }
+
+        for (const auto& edge : edges) {
+            if (visible[edge[0]] && visible[edge[1]]) {
+                const ImU32 colliderColor = sceneObjects.IsObjectColliding(index)
+                    ? IM_COL32(255, 51, 38, 240)
+                    : IM_COL32(26, 255, 51, 230);
+                drawList->AddLine(
+                    screen[edge[0]],
+                    screen[edge[1]],
+                    colliderColor,
+                    2.0f
+                );
+            }
+        }
+    }
 #endif
 }
 
@@ -131,12 +221,7 @@ void SceneDebugPanel::DrawTransformGizmo(
     Transform& transform =
         object->GetTransform();
 
-    Matrix4x4 worldMatrix =
-        Math::MakeAffineMatrix(
-            transform.scale,
-            transform.rotate,
-            transform.translate
-        );
+    Matrix4x4 worldMatrix = object->GetWorldMatrix();
 
     float world[16]{};
     float view[16]{};
@@ -190,6 +275,25 @@ void SceneDebugPanel::DrawTransformGizmo(
     );
 
     if (ImGuizmo::IsUsing()) {
+        for (int row = 0; row < 4; ++row) {
+            for (int column = 0; column < 4; ++column) {
+                worldMatrix.m[row][column] = world[row * 4 + column];
+            }
+        }
+
+        if (const Object3d* parent = object->GetParent()) {
+            worldMatrix = Math::Multiply(
+                worldMatrix,
+                Math::Inverse(parent->GetWorldMatrix())
+            );
+        }
+
+        for (int row = 0; row < 4; ++row) {
+            for (int column = 0; column < 4; ++column) {
+                world[row * 4 + column] = worldMatrix.m[row][column];
+            }
+        }
+
         float translate[3]{};
         float rotateDegrees[3]{};
         float scale[3]{};

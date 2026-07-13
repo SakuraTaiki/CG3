@@ -6,6 +6,10 @@
 #include "externals/json/json.hpp"
 
 #include <fstream>
+#include <functional>
+#include <algorithm>
+#include <cmath>
+#include <filesystem>
 #include <regex>
 #include <sstream>
 

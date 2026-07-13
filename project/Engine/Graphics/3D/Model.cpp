@@ -173,8 +173,8 @@ void Model::LoadObjFile(const std::string& directoryPath,
         }
 
         //--------------------------------
-// SkinCluster用 Bone解析
-//--------------------------------
+        // SkinCluster用 Bone解析
+        //--------------------------------
         for (uint32_t boneIndex = 0;
             boneIndex < mesh->mNumBones;
             ++boneIndex)
@@ -378,4 +378,27 @@ void Model::Draw(
         0,
         0
     );
+}
+
+bool Model::StretchVertexX(size_t vertexIndex, float amount) {
+    if (vertexIndex >= vertices_.size() || !vertexBuffer_) {
+        return false;
+    }
+
+    vertices_[vertexIndex].position.x += amount;
+
+    ModelVertexData* vertexMap = nullptr;
+    const HRESULT hr = vertexBuffer_->Map(
+        0,
+        nullptr,
+        reinterpret_cast<void**>(&vertexMap)
+    );
+
+    if (FAILED(hr) || !vertexMap) {
+        return false;
+    }
+
+    std::copy(vertices_.begin(), vertices_.end(), vertexMap);
+    vertexBuffer_->Unmap(0, nullptr);
+    return true;
 }

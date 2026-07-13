@@ -35,6 +35,7 @@ void Object3d::Initialize(Object3dCommon* object3dCommon) {
     transformationData_->WVP = Math::MakeIdentity4x4();
     transformationData_->World = Math::MakeIdentity4x4();
     transformationData_->WorldInverseTranspose = Math::MakeIdentity4x4();
+    worldMatrix_ = Math::MakeIdentity4x4();
 
     materialResource_ =
         D3DResourceHelper::CreateUploadBuffer(
@@ -97,17 +98,24 @@ void Object3d::SetAnimation(const Animation& animation) {
 }
 
 void Object3d::Update() {
-    Matrix4x4 worldMatrix = Math::MakeAffineMatrix(
+    worldMatrix_ = Math::MakeAffineMatrix(
         transform_.scale,
         transform_.rotate,
         transform_.translate
     );
 
-    Matrix4x4 worldViewProjectionmatrix = worldMatrix;
+    if (parent_) {
+        worldMatrix_ = Math::Multiply(
+            worldMatrix_,
+            parent_->GetWorldMatrix()
+        );
+    }
+
+    Matrix4x4 worldViewProjectionmatrix = worldMatrix_;
 
     if (camera_) {
         worldViewProjectionmatrix =
-            Math::Multiply(worldMatrix, camera_->GetViewProjectionMatrix());
+            Math::Multiply(worldMatrix_, camera_->GetViewProjectionMatrix());
 
         if (cameraData_) {
             cameraData_->worldPosition = camera_->GetTranslate();
@@ -125,7 +133,7 @@ void Object3d::Update() {
             localMatrix = skinning_->GetRootLocalMatrix();
         }
 
-        Matrix4x4 worldWithRoot = Math::Multiply(localMatrix, worldMatrix);
+        Matrix4x4 worldWithRoot = Math::Multiply(localMatrix, worldMatrix_);
         Matrix4x4 wvpWithRoot = worldWithRoot;
 
         if (camera_) {
@@ -137,7 +145,7 @@ void Object3d::Update() {
         transformationData_->World = worldWithRoot;
     } else {
         transformationData_->WVP = worldViewProjectionmatrix;
-        transformationData_->World = worldMatrix;
+        transformationData_->World = worldMatrix_;
     }
 
     transformationData_->WorldInverseTranspose =

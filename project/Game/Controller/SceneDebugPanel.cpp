@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <cstring>
+#include <functional>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"

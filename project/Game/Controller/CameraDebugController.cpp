@@ -191,11 +191,11 @@ void CameraDebugController::Update(
             ) * panSensitivity_;
 
         const float horizontal =
-            -io.MouseDelta.x *
+            io.MouseDelta.x *
             panSpeed;
 
         const float vertical =
-            io.MouseDelta.y *
+            -io.MouseDelta.y *
             panSpeed;
 
         focusPoint_.x +=
