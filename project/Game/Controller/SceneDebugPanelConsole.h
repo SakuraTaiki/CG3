@@ -39,7 +39,6 @@ namespace SceneDebugPanelDetail {
 
         AddEditorLog(EditorLogType::Info, "Editor console initialized.");
         AddEditorLog(EditorLogType::Info, "Hierarchy / Inspector / Project panels are active.");
-        AddEditorLog(EditorLogType::Warning, "Scene View is not separated yet. Rendering uses main back buffer.");
     }
 
     inline const char* GetEditorLogPrefix(EditorLogType type) {
