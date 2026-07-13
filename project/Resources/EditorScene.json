@@ -1,6 +1,8 @@
 {
+    "name": "EditorScene",
     "objects": [
         {
+            "file_name": "axis.obj",
             "model": "Resources/axis.obj",
             "name": "New axis.obj",
             "position": [
@@ -19,8 +21,66 @@
                 1.0
             ],
             "texture": "",
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "MESH",
+            "visible": true
+        },
+        {
+            "file_name": "ico_sphere.obj",
+            "model": "Resources/Editor/ico_sphere.obj",
+            "name": "IcoSphere",
+            "position": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "MESH",
             "visible": true
         }
     ],
-    "version": 1
+    "version": 2
 }

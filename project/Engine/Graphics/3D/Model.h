@@ -62,6 +62,7 @@ public:
     }
 
     size_t GetVertexCount() const { return vertices_.size(); }
+    bool StretchVertexX(size_t vertexIndex, float amount);
 
 private:
     void LoadObjFile(const std::string& directoryPath, const std::string& filename);

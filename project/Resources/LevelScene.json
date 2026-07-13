@@ -1,0 +1,53 @@
+{
+    "name": "EditorScene",
+    "objects": [
+        {
+            "file_name": "ico_sphere.obj",
+            "level": 0,
+            "model": "Resources/Editor/ico_sphere.obj",
+            "name": "IcoSphere",
+            "transform": {
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    -3.050750732421875,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "MESH"
+        },
+        {
+            "file_name": "ico_sphere.obj",
+            "level": 0,
+            "model": "Resources/Editor/ico_sphere.obj",
+            "name": "IcoSphere.1",
+            "transform": {
+                "rotation": [
+                    0.0,
+                    -0.0,
+                    0.0
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    0.0,
+                    2.5802416801452637,
+                    0.0
+                ]
+            },
+            "type": "MESH"
+        }
+    ]
+}

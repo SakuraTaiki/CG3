@@ -116,10 +116,20 @@ private:
         float rectHeight
     );
 
+    void DrawColliderOverlay(
+        EngineContext* context,
+        SceneObjectController& sceneObjects,
+        float rectX,
+        float rectY,
+        float rectWidth,
+        float rectHeight
+    );
+
     EditorSelection selected_ = EditorSelection::Terrain;
     size_t selectedObjectIndex_ = 0;
 
     bool showTransformGizmo_ = true;
+    bool showColliders_ = true;
     int gizmoOperation_ = 0;
     int gizmoMode_ = 0;
 };

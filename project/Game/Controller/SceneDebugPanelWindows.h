@@ -79,7 +79,7 @@ void SceneDebugPanel::DrawMainMenuBar(
             ImGui::MenuItem("New Scene", nullptr, false, false);
             ImGui::Separator();
 
-            if (ImGui::MenuItem("Save Scene Json", "Ctrl+S")) {
+            if (ImGui::MenuItem("Save Engine Scene Json", "Ctrl+S")) {
                 if (sceneObjects.SaveEditorSceneToJson("Resources/EditorScene.json")) {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Info,
@@ -88,12 +88,12 @@ void SceneDebugPanel::DrawMainMenuBar(
                 } else {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Save scene json failed."
+                        "Save engine scene json failed."
                     );
                 }
             }
 
-            if (ImGui::MenuItem("Load Scene Json", "Ctrl+O")) {
+            if (ImGui::MenuItem("Load Engine Scene Json", "Ctrl+O")) {
                 if (sceneObjects.LoadEditorSceneFromJson("Resources/EditorScene.json")) {
                     selected_ = EditorSelection::None;
                     selectedObjectIndex_ = 0;
@@ -106,7 +106,41 @@ void SceneDebugPanel::DrawMainMenuBar(
                 } else {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Load scene json failed."
+                        "Load engine scene json failed."
+                    );
+                }
+            }
+
+            ImGui::Separator();
+
+            if (ImGui::MenuItem("Export Blender Scene Json")) {
+                if (sceneObjects.ExportLevelSceneToJson("Resources/LevelScene.json")) {
+                    Detail::AddEditorLog(
+                        Detail::EditorLogType::Info,
+                        "Exported Blender-compatible json: Resources/LevelScene.json"
+                    );
+                } else {
+                    Detail::AddEditorLog(
+                        Detail::EditorLogType::Error,
+                        "Blender scene export failed."
+                    );
+                }
+            }
+
+            if (ImGui::MenuItem("Import Blender Scene Json")) {
+                if (sceneObjects.LoadEditorSceneFromJson("Resources/LevelScene.json")) {
+                    selected_ = EditorSelection::None;
+                    selectedObjectIndex_ = 0;
+                    Detail::GetModelApplyTargetIndex() = 0;
+
+                    Detail::AddEditorLog(
+                        Detail::EditorLogType::Info,
+                        "Imported Blender-compatible json: Resources/LevelScene.json"
+                    );
+                } else {
+                    Detail::AddEditorLog(
+                        Detail::EditorLogType::Error,
+                        "Blender scene import failed."
                     );
                 }
             }
@@ -132,6 +166,51 @@ void SceneDebugPanel::DrawMainMenuBar(
             if (ImGui::MenuItem("Axis -")) {
                 selected_ = EditorSelection::AxisNegative;
             }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("MyMenu")) {
+            const bool hasSelectedObject =
+                selected_ == EditorSelection::DynamicObject &&
+                selectedObjectIndex_ < sceneObjects.GetObjectCount();
+
+            if (ImGui::MenuItem("Stretch Vertex 0 (+X)", nullptr, false, hasSelectedObject)) {
+                if (sceneObjects.StretchObjectVertexX(selectedObjectIndex_, 0, 1.0f)) {
+                    Detail::AddEditorLog(Detail::EditorLogType::Info, "Stretched vertex 0 by +1.0 on X.");
+                } else {
+                    Detail::AddEditorLog(Detail::EditorLogType::Error, "Vertex stretch failed.");
+                }
+            }
+
+            if (ImGui::MenuItem("Create Ico Sphere")) {
+                if (sceneObjects.CreateIcoSphere()) {
+                    selectedObjectIndex_ = sceneObjects.GetObjectCount() - 1;
+                    selected_ = EditorSelection::DynamicObject;
+                    Detail::GetModelApplyTargetIndex() = selectedObjectIndex_;
+                    Detail::AddEditorLog(Detail::EditorLogType::Info, "Created IcoSphere.");
+                } else {
+                    Detail::AddEditorLog(Detail::EditorLogType::Error, "IcoSphere creation failed.");
+                }
+            }
+
+            if (ImGui::MenuItem("Add Model File Name", nullptr, false, hasSelectedObject)) {
+                if (sceneObjects.GetObjectExportFileName(selectedObjectIndex_).empty()) {
+                    const std::string& path = sceneObjects.GetObjectModelPath(selectedObjectIndex_);
+                    const size_t slash = path.find_last_of("/\\");
+                    sceneObjects.SetObjectExportFileName(
+                        selectedObjectIndex_,
+                        slash == std::string::npos ? path : path.substr(slash + 1)
+                    );
+                }
+            }
+
+            if (ImGui::MenuItem("Add Box Collider", nullptr, false, hasSelectedObject)) {
+                sceneObjects.AddBoxCollider(selectedObjectIndex_);
+            }
+
+            ImGui::Separator();
+            ImGui::MenuItem("Show Colliders", nullptr, &showColliders_);
 
             ImGui::EndMenu();
         }
@@ -219,15 +298,53 @@ void SceneDebugPanel::DrawHierarchyWindow(
         if (sceneObjects.GetObjectCount() > 3) {
             ImGui::TextDisabled("Created Objects");
 
-            for (size_t index = 3; index < sceneObjects.GetObjectCount(); ++index) {
-                if (ImGui::Selectable(
+            std::function<void(size_t)> drawObjectNode;
+            drawObjectNode = [&](size_t index) {
+                bool hasChildren = false;
+                for (size_t child = 3; child < sceneObjects.GetObjectCount(); ++child) {
+                    if (sceneObjects.GetObjectParent(child) == index) {
+                        hasChildren = true;
+                        break;
+                    }
+                }
+
+                ImGuiTreeNodeFlags flags =
+                    ImGuiTreeNodeFlags_OpenOnArrow |
+                    ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (!hasChildren) {
+                    flags |= ImGuiTreeNodeFlags_Leaf |
+                        ImGuiTreeNodeFlags_NoTreePushOnOpen;
+                }
+                if (selected_ == EditorSelection::DynamicObject &&
+                    selectedObjectIndex_ == index) {
+                    flags |= ImGuiTreeNodeFlags_Selected;
+                }
+
+                ImGui::PushID(static_cast<int>(index));
+                const bool open = ImGui::TreeNodeEx(
                     sceneObjects.GetObjectName(index).c_str(),
-                    selected_ == EditorSelection::DynamicObject &&
-                    selectedObjectIndex_ == index
-                )) {
+                    flags
+                );
+                if (ImGui::IsItemClicked()) {
                     selected_ = EditorSelection::DynamicObject;
                     selectedObjectIndex_ = index;
                     Detail::GetModelApplyTargetIndex() = index;
+                }
+                if (open && hasChildren) {
+                    for (size_t child = 3; child < sceneObjects.GetObjectCount(); ++child) {
+                        if (sceneObjects.GetObjectParent(child) == index) {
+                            drawObjectNode(child);
+                        }
+                    }
+                    ImGui::TreePop();
+                }
+                ImGui::PopID();
+            };
+
+            for (size_t index = 3; index < sceneObjects.GetObjectCount(); ++index) {
+                const size_t parent = sceneObjects.GetObjectParent(index);
+                if (parent == SceneObjectController::kNoParent || parent < 3) {
+                    drawObjectNode(index);
                 }
             }
 
@@ -440,7 +557,44 @@ void SceneDebugPanel::DrawInspectorWindow(
         Detail::DrawMaterialInspector(object);
 
         if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::TextDisabled("%s", objectName.c_str());
+            ImGui::TextDisabled("Source: %s", sceneObjects.GetObjectModelPath(selectedObjectIndex_).c_str());
+
+            char fileName[260]{};
+            strncpy_s(
+                fileName,
+                sizeof(fileName),
+                sceneObjects.GetObjectExportFileName(selectedObjectIndex_).c_str(),
+                _TRUNCATE
+            );
+            if (ImGui::InputText("Export File Name", fileName, sizeof(fileName))) {
+                sceneObjects.SetObjectExportFileName(selectedObjectIndex_, fileName);
+            }
+        }
+
+        if (ImGui::CollapsingHeader("Collider", ImGuiTreeNodeFlags_DefaultOpen)) {
+            if (SceneObjectController::BoxCollider* collider =
+                sceneObjects.GetBoxCollider(selectedObjectIndex_)) {
+                ImGui::TextDisabled("Type: BOX");
+                if (sceneObjects.IsObjectColliding(selectedObjectIndex_)) {
+                    ImGui::TextColored(
+                        ImVec4(1.0f, 0.25f, 0.2f, 1.0f),
+                        "Collision: HIT"
+                    );
+                } else {
+                    ImGui::TextDisabled("Collision: None");
+                }
+                ImGui::DragFloat3("Center", &collider->center.x, 0.05f);
+                if (ImGui::DragFloat3("Size", &collider->size.x, 0.05f, 0.01f, 1000.0f)) {
+                    collider->size.x = (std::max)(collider->size.x, 0.01f);
+                    collider->size.y = (std::max)(collider->size.y, 0.01f);
+                    collider->size.z = (std::max)(collider->size.z, 0.01f);
+                }
+                if (ImGui::Button("Remove Box Collider")) {
+                    sceneObjects.RemoveBoxCollider(selectedObjectIndex_);
+                }
+            } else if (ImGui::Button("Add Box Collider")) {
+                sceneObjects.AddBoxCollider(selectedObjectIndex_);
+            }
         }
 
         break;
