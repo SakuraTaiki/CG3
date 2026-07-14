@@ -103,10 +103,10 @@ bool CreateSkinCluster(
         sizeof(VertexInfluence) * vertexCount
     );
 
-    for (size_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex) {
+   /* for (size_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex) {
         skinCluster.mappedInfluence[vertexIndex].weights[0] = 1.0f;
         skinCluster.mappedInfluence[vertexIndex].jointIndices[0] = 0;
-    }
+    }*/
 
     skinCluster.influenceBufferView.BufferLocation =
         skinCluster.influenceResource->GetGPUVirtualAddress();
@@ -138,6 +138,29 @@ bool CreateSkinCluster(
                     break;
                 }
             }
+        }
+    }
+
+    // ボーンウェイトがない頂点だけ、ルートボーンに割り当てる
+    for (size_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex) {
+        VertexInfluence& influence =
+            skinCluster.mappedInfluence[vertexIndex];
+
+        float totalWeight = 0.0f;
+
+        for (uint32_t i = 0; i < kNumMaxInfluence; ++i) {
+            totalWeight += influence.weights[i];
+        }
+
+        if (totalWeight == 0.0f) {
+            influence.weights[0] = 1.0f;
+            influence.jointIndices[0] = 0;
+            continue;
+        }
+
+        // 読み込んだウェイトを合計1.0へ正規化
+        for (uint32_t i = 0; i < kNumMaxInfluence; ++i) {
+            influence.weights[i] /= totalWeight;
         }
     }
 
