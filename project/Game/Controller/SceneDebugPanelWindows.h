@@ -79,68 +79,34 @@ void SceneDebugPanel::DrawMainMenuBar(
             ImGui::MenuItem("New Scene", nullptr, false, false);
             ImGui::Separator();
 
-            if (ImGui::MenuItem("Save Engine Scene Json", "Ctrl+S")) {
-                if (sceneObjects.SaveEditorSceneToJson("Resources/EditorScene.json")) {
+            if (ImGui::MenuItem("Save Level Scene Json", "Ctrl+S")) {
+                if (sceneObjects.SaveLevelSceneToJson("Resources/LevelScene.json")) {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Info,
-                        "Saved scene json: Resources/EditorScene.json"
+                        "Saved level scene: Resources/LevelScene.json"
                     );
                 } else {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Save engine scene json failed."
+                        "Save level scene failed."
                     );
                 }
             }
 
-            if (ImGui::MenuItem("Load Engine Scene Json", "Ctrl+O")) {
-                if (sceneObjects.LoadEditorSceneFromJson("Resources/EditorScene.json")) {
+            if (ImGui::MenuItem("Reload Level Scene Json", "Ctrl+O")) {
+                if (sceneObjects.LoadLevelSceneFromJson("Resources/LevelScene.json")) {
                     selected_ = EditorSelection::None;
                     selectedObjectIndex_ = 0;
                     Detail::GetModelApplyTargetIndex() = 0;
 
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Info,
-                        "Loaded scene json: Resources/EditorScene.json"
+                        "Reloaded level scene: Resources/LevelScene.json"
                     );
                 } else {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Load engine scene json failed."
-                    );
-                }
-            }
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Export Blender Scene Json")) {
-                if (sceneObjects.ExportLevelSceneToJson("Resources/LevelScene.json")) {
-                    Detail::AddEditorLog(
-                        Detail::EditorLogType::Info,
-                        "Exported Blender-compatible json: Resources/LevelScene.json"
-                    );
-                } else {
-                    Detail::AddEditorLog(
-                        Detail::EditorLogType::Error,
-                        "Blender scene export failed."
-                    );
-                }
-            }
-
-            if (ImGui::MenuItem("Import Blender Scene Json")) {
-                if (sceneObjects.LoadEditorSceneFromJson("Resources/LevelScene.json")) {
-                    selected_ = EditorSelection::None;
-                    selectedObjectIndex_ = 0;
-                    Detail::GetModelApplyTargetIndex() = 0;
-
-                    Detail::AddEditorLog(
-                        Detail::EditorLogType::Info,
-                        "Imported Blender-compatible json: Resources/LevelScene.json"
-                    );
-                } else {
-                    Detail::AddEditorLog(
-                        Detail::EditorLogType::Error,
-                        "Blender scene import failed."
+                        "Reload level scene failed."
                     );
                 }
             }

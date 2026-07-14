@@ -88,9 +88,8 @@ public:
         return collisionPairs_;
     }
 
-    bool SaveEditorSceneToJson(const std::string& filePath) const;
-    bool LoadEditorSceneFromJson(const std::string& filePath);
-    bool ExportLevelSceneToJson(const std::string& filePath) const;
+    bool SaveLevelSceneToJson(const std::string& filePath) const;
+    bool LoadLevelSceneFromJson(const std::string& filePath);
 
     static size_t GetEditorObjectIndex(EditorObjectType type);
 
