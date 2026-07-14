@@ -41,6 +41,20 @@ void GameScene::Initialize(EngineContext* context) {
         environment_.GetEnvironmentCoefficient()
     );
 
+    const bool levelLoaded =
+        sceneObjects_.LoadLevelSceneFromJson(
+            "Resources/LevelScene.json"
+        );
+
+    sceneObjects_.ShowTerrain() = false;
+    sceneObjects_.ShowAxis() = false;
+
+    if (!levelLoaded) {
+        OutputDebugStringA(
+            "Failed to load Resources/LevelScene.json\n"
+        );
+    }
+
     animationDebug_.Initialize(
         object3dCommon,
         environment_.GetEnvironmentTextureHandle(),
