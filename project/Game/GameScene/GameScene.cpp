@@ -226,7 +226,7 @@ void GameScene::UpdateObjects() {
     }
 
     if (drawMode_ == GameSceneDrawMode::Animation) {
-        animationDebug_.Update();
+        animationDebug_.Update(context_->GetInput());
     }
 }
 

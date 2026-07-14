@@ -248,7 +248,4 @@ void Object3d::Draw() {
     } else {
         model_->Draw(commandList);
     }
-
-   
-
 }

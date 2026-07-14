@@ -2,6 +2,7 @@
 #include "AnimationLoader.h"
 #include "ModelManager.h"
 #include "Object3dCommon.h"
+#include "Input.h"
 
 #include <algorithm>
 #include <cmath>
@@ -19,8 +20,25 @@ void AnimationDebugController::Initialize(
     Model* modelAnimated =
         ModelManager::Load("Resources/human", "walk.gltf");
 
-    animation_ =
-        AnimationLoader::Load("Resources/human", "walk.gltf");
+    
+    // 2種類のアニメーションを読み込む
+    walkAnimation_ =
+        AnimationLoader::Load(
+            "Resources/human",
+            "walk.gltf"
+        );
+
+    sneakAnimation_ =
+        AnimationLoader::Load(
+            "Resources/human",
+            "sneakWalk.gltf"
+        );
+
+
+    // 初期状態はWalk
+    animation_ = walkAnimation_;
+    animationTime_ = 0.0f;
+    animationPlaying_ = true;
 
     skeleton_ =
         CreateSkeleton(modelAnimated->GetRootNode());
@@ -35,10 +53,11 @@ void AnimationDebugController::Initialize(
     animatedObject_->Initialize(object3dCommon);
     animatedObject_->SetModel(modelAnimated);
     animatedObject_->SetSkeleton(skeleton_);
+   
 
     animatedObject_->SetPosition({ 0.0f, 0.0f, 0.0f });
-    animatedObject_->SetRotation({ 0.0f, 0.0f, 0.0f });
-    animatedObject_->SetScale({ 1.0f, 1.0f, 1.0f });
+    animatedObject_->SetRotation({ -90.0f, 0.0f, 0.0f });
+    animatedObject_->SetScale({ 200.0f, 200.0f, 200.0f });
 
     animatedObject_->SetEnvironmentTexture(environmentTextureHandle);
     animatedObject_->SetEnvironmentCoefficient(environmentCoefficient);
@@ -65,7 +84,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
         auto jointObj = std::make_unique<Object3d>();
         jointObj->Initialize(object3dCommon);
         jointObj->SetModel(jointModel);
-        jointObj->SetScale({ 0.3f, 0.3f, 0.3f });
+        jointObj->SetScale({ 0.01f, 0.01f, 0.01f });
         jointObj->SetRotation({ 0.0f, 0.0f, 0.0f });
         jointObj->SetPosition({ 0.0f, 0.0f, 0.0f });
         jointObj->SetEnvironmentTexture(environmentTextureHandle);
@@ -82,7 +101,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
         auto boneObj = std::make_unique<Object3d>();
         boneObj->Initialize(object3dCommon);
         boneObj->SetModel(jointModel);
-        boneObj->SetScale({ 0.1f, 0.1f, 0.1f });
+        boneObj->SetScale({ 0.005f, 0.005f, 0.005f });
         boneObj->SetRotation({ 0.0f, 0.0f, 0.0f });
         boneObj->SetPosition({ 0.0f, 0.0f, 0.0f });
         boneObj->SetEnvironmentTexture(environmentTextureHandle);
@@ -92,7 +111,9 @@ void AnimationDebugController::InitializeSkeletonDebug(
     }
 }
 
-void AnimationDebugController::Update() {
+void AnimationDebugController::Update(Input* input)
+{
+    UpdateAnimationInput(input);
     UpdateAnimation();
 
     if (showSkeletonDebug_) {
@@ -106,10 +127,42 @@ void AnimationDebugController::Update() {
     }
 }
 
-void AnimationDebugController::UpdateAnimation() {
+
+
+void AnimationDebugController::UpdateAnimationInput(Input* input)
+{
+
+    if (!input) {
+        return;
+    }
+
+    // 1キー：Walk
+    if (input->TriggerKey(DIK_1)) {
+        StartAnimationTransition(
+            walkAnimation_,
+            0.25f
+        );
+    }
+
+    // 2キー：Sneak
+    if (input->TriggerKey(DIK_2)) {
+        StartAnimationTransition(
+            sneakAnimation_,
+            0.25f
+        );
+    }
+}
+
+
+void AnimationDebugController::UpdateAnimation()
+{
+    constexpr float deltaTime =
+        1.0f / 60.0f;
+
+    // アニメーション時間を進める
     if (animationPlaying_) {
         animationTime_ +=
-            (1.0f / 60.0f) * animationSpeed_;
+            deltaTime * animationSpeed_;
 
         if (animation_.duration > 0.0f) {
             if (animationLoop_) {
@@ -118,12 +171,106 @@ void AnimationDebugController::UpdateAnimation() {
                         animationTime_,
                         animation_.duration
                     );
-            } else if (animationTime_ > animation_.duration) {
-                animationTime_ = animation_.duration;
+            } else if (
+                animationTime_ >=
+                animation_.duration
+                ) {
+                animationTime_ =
+                    animation_.duration;
+
                 animationPlaying_ = false;
             }
         }
+    }
 
+    if (isBlending_) {
+        // 新しいアニメーション側の姿勢を計算
+        Skeleton targetSkeleton =
+            skeleton_;
+
+        ApplyAnimation(
+            targetSkeleton,
+            animation_,
+            animationTime_
+        );
+
+        blendTime_ += deltaTime;
+
+        float blend =
+            std::clamp(
+                blendTime_ /
+                blendDuration_,
+                0.0f,
+                1.0f
+            );
+
+        // Smoothstep
+        // 開始と終了の速度を滑らかにする
+        blend =
+            blend *
+            blend *
+            (3.0f - 2.0f * blend);
+
+        const size_t jointCount =
+            (std::min)(
+                skeleton_.joints.size(),
+                blendStartPose_.size()
+            );
+
+        for (size_t i = 0;
+            i < jointCount;
+            ++i) {
+
+            const QuaternionTransform& start =
+                blendStartPose_[i];
+
+            const QuaternionTransform& target =
+                targetSkeleton
+                .joints[i]
+                .transform;
+
+            skeleton_
+                .joints[i]
+                .transform
+                .translate =
+                Math::Lerp(
+                    start.translate,
+                    target.translate,
+                    blend
+                );
+
+            skeleton_
+                .joints[i]
+                .transform
+                .rotate =
+                Math::Slerp(
+                    start.rotate,
+                    target.rotate,
+                    blend
+                );
+
+            skeleton_
+                .joints[i]
+                .transform
+                .scale =
+                Math::Lerp(
+                    start.scale,
+                    target.scale,
+                    blend
+                );
+        }
+
+        if (blendTime_ >= blendDuration_) {
+            isBlending_ = false;
+
+            // 最後にターゲット姿勢を正確に反映
+            ApplyAnimation(
+                skeleton_,
+                animation_,
+                animationTime_
+            );
+        }
+    } else if (animationPlaying_) {
         ApplyAnimation(
             skeleton_,
             animation_,
@@ -134,12 +281,47 @@ void AnimationDebugController::UpdateAnimation() {
     UpdateSkelton(skeleton_);
 }
 
+
 void AnimationDebugController::SyncSkeletonToObject() {
     if (!animatedObject_) {
         return;
     }
 
     animatedObject_->SetSkeleton(skeleton_);
+}
+
+void AnimationDebugController::StartAnimationTransition(const Animation& nextAnimation, float blendDuration)
+{
+
+    // 現在画面に出ている姿勢を保存
+    blendStartPose_.resize(
+        skeleton_.joints.size()
+    );
+
+    for (size_t i = 0;
+        i < skeleton_.joints.size();
+        ++i) {
+
+        blendStartPose_[i] =
+            skeleton_.joints[i].transform;
+    }
+
+    // 次のアニメーションへ変更
+    animation_ = nextAnimation;
+    animationTime_ = 0.0f;
+
+    blendTime_ = 0.0f;
+
+    blendDuration_ =
+        (std::max)(
+            blendDuration,
+            0.001f
+        );
+
+    isBlending_ = true;
+    animationPlaying_ = true;
+    animationLoop_ = true;
+
 }
 
 void AnimationDebugController::UpdateSkeletonDebug() {
