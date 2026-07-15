@@ -47,6 +47,11 @@ void AnimationDebugController::Initialize(
             "slide.gltf"
         );
 
+    jumpAnimation_ =
+        AnimationLoader::Load(
+            "Resources/human",
+            "jump.gltf"
+        );
 
     // 初期状態はIdle
     animation_ = idleAnimation_;
@@ -173,16 +178,32 @@ void AnimationDebugController::UpdateAnimationInput(Input* input)
         input->PushKey(DIK_S) ||
         input->PushKey(DIK_D);
 
+    const bool jumpTriggered =
+        input->TriggerKey(DIK_RETURN);
+
     const bool slideTriggered =
         input->TriggerKey(DIK_LCONTROL) ||
         input->TriggerKey(DIK_RCONTROL);
 
 
-    // Slide再生中は入力による切り替えを行わない
+    // Jump・Slideは単発再生が終わるまで切り替えない
     if (
+        playerAnimationState_ ==
+        PlayerAnimationState::Jump ||
         playerAnimationState_ ==
         PlayerAnimationState::Slide
         ) {
+        return;
+    }
+
+    // SpaceでJump
+    if (jumpTriggered) {
+        movementHoldTime_ = 0.0f;
+
+        ChangePlayerAnimation(
+            PlayerAnimationState::Jump
+        );
+
         return;
     }
 
@@ -268,14 +289,20 @@ void AnimationDebugController::UpdateAnimation()
         }
     }
 
-    // Slideの再生終了後、Idleへ戻す
+    
     if (
-        playerAnimationState_ ==
-        PlayerAnimationState::Slide &&
+        (
+            playerAnimationState_ ==
+            PlayerAnimationState::Jump ||
+            playerAnimationState_ ==
+            PlayerAnimationState::Slide
+            ) &&
         !animationPlaying_
         ) {
         playerAnimationState_ =
             PlayerAnimationState::Idle;
+
+        movementHoldTime_ = 0.0f;
 
         StartAnimationTransition(
             idleAnimation_,
@@ -283,6 +310,7 @@ void AnimationDebugController::UpdateAnimation()
             true
         );
     }
+
 
     // クロスフェード中
     if (isBlending_) {
@@ -421,6 +449,14 @@ void AnimationDebugController::ChangePlayerAnimation(
     case PlayerAnimationState::Run:
         StartAnimationTransition(
             runAnimation_, 0.20f, true
+        );
+        break;
+
+    case PlayerAnimationState::Jump:
+        StartAnimationTransition(
+            jumpAnimation_,
+            0.10f,
+            false
         );
         break;
 
@@ -628,6 +664,13 @@ void AnimationDebugController::ForceSlideAnimation()
     );
 }
 
+
+void AnimationDebugController::ForceJumpAnimation()
+{
+    ChangePlayerAnimation(
+        PlayerAnimationState::Jump
+    );
+}
 
 void AnimationDebugController::UpdateSkeletonDebug() {
     if (skeletonDebugObjects_.size() != skeleton_.joints.size()) {

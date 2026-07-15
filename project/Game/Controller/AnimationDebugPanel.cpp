@@ -97,6 +97,12 @@ void AnimationDebugPanel::Draw(
         if (ImGui::Button("Force Slide")) {
             animation.ForceSlideAnimation();
         }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Force Jump")) {
+            animation.ForceJumpAnimation();
+        }
     }
 #else
     (void)animation;
