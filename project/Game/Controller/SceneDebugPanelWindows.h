@@ -789,8 +789,18 @@ void SceneDebugPanel::DrawDebugToolsWindow(
     );
 
     if (ImGui::BeginTabBar("DebugToolTabs")) {
+        
+
         if (ImGui::BeginTabItem("Animation")) {
+            animationDebugPanel_.Draw(
+                animationDebug
+            );
+
+            ImGui::Separator();
+
+            // 既存のJoint・再生速度などの編集画面
             animationDebug.DrawImGui();
+
             ImGui::EndTabItem();
         }
 

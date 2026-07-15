@@ -61,6 +61,7 @@
     <ClCompile Include="Game\Controller\SoundController.cpp" />
     <ClCompile Include="Engine\SceneSystem\SceneManager.cpp" />
     <ClCompile Include="externals\imgui\ImGuizmo.cpp" />
+    <ClCompile Include="Game\Controller\AnimationDebugPanel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h" />
@@ -163,6 +164,7 @@
     <ClInclude Include="Game\Controller\SceneObjectControllerLoad.h" />
     <ClInclude Include="Game\Controller\SceneObjectControllerRuntime.h" />
     <ClInclude Include="Game\Controller\SceneObjectControllerSave.h" />
+    <ClInclude Include="Game\Controller\AnimationDebugPanel.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

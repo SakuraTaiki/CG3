@@ -18,27 +18,47 @@ void AnimationDebugController::Initialize(
     float environmentCoefficient
 ) {
     Model* modelAnimated =
-        ModelManager::Load("Resources/human", "walk.gltf");
+        ModelManager::Load("Resources/human", "idle.gltf");
+
+
+    idleAnimation_ =
+        AnimationLoader::Load(
+            "Resources/human",
+            "idle.gltf"
+        );
 
     
-    // 2種類のアニメーションを読み込む
+    
     walkAnimation_ =
         AnimationLoader::Load(
             "Resources/human",
             "walk.gltf"
         );
 
-    sneakAnimation_ =
+    runAnimation_ =
         AnimationLoader::Load(
             "Resources/human",
-            "sneakWalk.gltf"
+            "run.gltf"
+        );
+
+    slideAnimation_ =
+        AnimationLoader::Load(
+            "Resources/human",
+            "slide.gltf"
         );
 
 
-    // 初期状態はWalk
-    animation_ = walkAnimation_;
+    // 初期状態はIdle
+    animation_ = idleAnimation_;
     animationTime_ = 0.0f;
     animationPlaying_ = true;
+    animationLoop_ = true;
+
+    playerAnimationState_ =
+        PlayerAnimationState::Idle;
+
+    movementHoldTime_ = 0.0f;
+    requireMovementRelease_ = false;
 
     skeleton_ =
         CreateSkeleton(modelAnimated->GetRootNode());
@@ -114,6 +134,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
 void AnimationDebugController::Update(Input* input)
 {
     UpdateAnimationInput(input);
+    UpdatePlayerMovement(input);
     UpdateAnimation();
 
     if (showSkeletonDebug_) {
@@ -136,28 +157,92 @@ void AnimationDebugController::UpdateAnimationInput(Input* input)
         return;
     }
 
-    // 1キー：Walk
-    if (input->TriggerKey(DIK_1)) {
-        StartAnimationTransition(
-            walkAnimation_,
-            0.25f
+    // ImGuiで手動確認中はWASDによる切り替えを停止
+    if (debugManualAnimation_) {
+        return;
+    }
+
+
+    constexpr float deltaTime = 1.0f / 60.0f;
+    constexpr float runStartSeconds = 2.0f;
+
+
+    const bool movementPressed =
+        input->PushKey(DIK_W) ||
+        input->PushKey(DIK_A) ||
+        input->PushKey(DIK_S) ||
+        input->PushKey(DIK_D);
+
+    const bool slideTriggered =
+        input->TriggerKey(DIK_LCONTROL) ||
+        input->TriggerKey(DIK_RCONTROL);
+
+
+    // Slide再生中は入力による切り替えを行わない
+    if (
+        playerAnimationState_ ==
+        PlayerAnimationState::Slide
+        ) {
+        return;
+    }
+
+    // Slide後はWASDを一度離すまでIdle
+    if (requireMovementRelease_) {
+        if (movementPressed) {
+            ChangePlayerAnimation(
+                PlayerAnimationState::Idle
+            );
+            return;
+        }
+
+        requireMovementRelease_ = false;
+    }
+
+
+    // 移動中にCtrlでSlide
+    if (slideTriggered && movementPressed) {
+        movementHoldTime_ = 0.0f;
+        requireMovementRelease_ = true;
+
+        ChangePlayerAnimation(
+            PlayerAnimationState::Slide
+        );
+
+        return;
+    }
+
+    // 移動入力がなければIdle
+    if (!movementPressed) {
+        movementHoldTime_ = 0.0f;
+
+        ChangePlayerAnimation(
+            PlayerAnimationState::Idle
+        );
+
+        return;
+    }
+
+    movementHoldTime_ += deltaTime;
+
+    // 最初の2秒はWalk
+    if (movementHoldTime_ < runStartSeconds) {
+        ChangePlayerAnimation(
+            PlayerAnimationState::Walk
+        );
+    }
+    // 2秒以上ならRun
+    else {
+        ChangePlayerAnimation(
+            PlayerAnimationState::Run
         );
     }
 
-    // 2キー：Sneak
-    if (input->TriggerKey(DIK_2)) {
-        StartAnimationTransition(
-            sneakAnimation_,
-            0.25f
-        );
-    }
 }
 
 
 void AnimationDebugController::UpdateAnimation()
 {
-    constexpr float deltaTime =
-        1.0f / 60.0f;
+    constexpr float deltaTime = 1.0f / 60.0f;
 
     // アニメーション時間を進める
     if (animationPlaying_) {
@@ -183,10 +268,26 @@ void AnimationDebugController::UpdateAnimation()
         }
     }
 
+    // Slideの再生終了後、Idleへ戻す
+    if (
+        playerAnimationState_ ==
+        PlayerAnimationState::Slide &&
+        !animationPlaying_
+        ) {
+        playerAnimationState_ =
+            PlayerAnimationState::Idle;
+
+        StartAnimationTransition(
+            idleAnimation_,
+            0.18f,
+            true
+        );
+    }
+
+    // クロスフェード中
     if (isBlending_) {
-        // 新しいアニメーション側の姿勢を計算
-        Skeleton targetSkeleton =
-            skeleton_;
+        // 切り替え先アニメーションの姿勢を計算
+        Skeleton targetSkeleton = skeleton_;
 
         ApplyAnimation(
             targetSkeleton,
@@ -198,14 +299,12 @@ void AnimationDebugController::UpdateAnimation()
 
         float blend =
             std::clamp(
-                blendTime_ /
-                blendDuration_,
+                blendTime_ / blendDuration_,
                 0.0f,
                 1.0f
             );
 
-        // Smoothstep
-        // 開始と終了の速度を滑らかにする
+        // Smoothstepで開始と終了を滑らかにする
         blend =
             blend *
             blend *
@@ -215,12 +314,13 @@ void AnimationDebugController::UpdateAnimation()
             (std::min)(
                 skeleton_.joints.size(),
                 blendStartPose_.size()
-            );
+                );
 
-        for (size_t i = 0;
+        for (
+            size_t i = 0;
             i < jointCount;
-            ++i) {
-
+            ++i
+            ) {
             const QuaternionTransform& start =
                 blendStartPose_[i];
 
@@ -229,6 +329,7 @@ void AnimationDebugController::UpdateAnimation()
                 .joints[i]
                 .transform;
 
+            // 平行移動
             skeleton_
                 .joints[i]
                 .transform
@@ -239,6 +340,7 @@ void AnimationDebugController::UpdateAnimation()
                     blend
                 );
 
+            // 回転
             skeleton_
                 .joints[i]
                 .transform
@@ -249,6 +351,7 @@ void AnimationDebugController::UpdateAnimation()
                     blend
                 );
 
+            // スケール
             skeleton_
                 .joints[i]
                 .transform
@@ -260,10 +363,10 @@ void AnimationDebugController::UpdateAnimation()
                 );
         }
 
+        // クロスフェード完了
         if (blendTime_ >= blendDuration_) {
             isBlending_ = false;
 
-            // 最後にターゲット姿勢を正確に反映
             ApplyAnimation(
                 skeleton_,
                 animation_,
@@ -271,6 +374,7 @@ void AnimationDebugController::UpdateAnimation()
             );
         }
     } else if (animationPlaying_) {
+        // 通常再生
         ApplyAnimation(
             skeleton_,
             animation_,
@@ -278,6 +382,7 @@ void AnimationDebugController::UpdateAnimation()
         );
     }
 
+    // 各Jointの行列を更新
     UpdateSkelton(skeleton_);
 }
 
@@ -290,23 +395,61 @@ void AnimationDebugController::SyncSkeletonToObject() {
     animatedObject_->SetSkeleton(skeleton_);
 }
 
-void AnimationDebugController::StartAnimationTransition(const Animation& nextAnimation, float blendDuration)
+void AnimationDebugController::ChangePlayerAnimation(
+    PlayerAnimationState nextState
+) {
+    // 同じ状態ならanimationTime_をリセットしない
+    if (playerAnimationState_ == nextState) {
+        return;
+    }
+
+    playerAnimationState_ = nextState;
+
+    switch (nextState) {
+    case PlayerAnimationState::Idle:
+        StartAnimationTransition(
+            idleAnimation_, 0.20f, true
+        );
+        break;
+
+    case PlayerAnimationState::Walk:
+        StartAnimationTransition(
+            walkAnimation_, 0.20f, true
+        );
+        break;
+
+    case PlayerAnimationState::Run:
+        StartAnimationTransition(
+            runAnimation_, 0.20f, true
+        );
+        break;
+
+    case PlayerAnimationState::Slide:
+        StartAnimationTransition(
+            slideAnimation_, 0.12f, false
+        );
+        break;
+    }
+}
+
+void AnimationDebugController::StartAnimationTransition(const Animation& nextAnimation, float blendDuration, bool loop)
 {
 
-    // 現在画面に出ている姿勢を保存
+
+    // 現在表示中の姿勢を保存
     blendStartPose_.resize(
         skeleton_.joints.size()
     );
 
-    for (size_t i = 0;
+    for (
+        size_t i = 0;
         i < skeleton_.joints.size();
-        ++i) {
-
+        ++i
+        ) {
         blendStartPose_[i] =
             skeleton_.joints[i].transform;
     }
 
-    // 次のアニメーションへ変更
     animation_ = nextAnimation;
     animationTime_ = 0.0f;
 
@@ -316,13 +459,175 @@ void AnimationDebugController::StartAnimationTransition(const Animation& nextAni
         (std::max)(
             blendDuration,
             0.001f
-        );
+            );
 
     isBlending_ = true;
     animationPlaying_ = true;
-    animationLoop_ = true;
+    animationLoop_ = loop;
+
 
 }
+
+void AnimationDebugController::UpdatePlayerMovement(Input* input)
+{
+
+
+    if (!input || !animatedObject_) {
+        return;
+    }
+
+    constexpr float deltaTime = 1.0f / 60.0f;
+    constexpr float pi = 3.14159265358979323846f;
+    constexpr float twoPi = pi * 2.0f;
+
+    // Slide中はWASD移動を受け付けない
+    if (
+        playerAnimationState_ ==
+        PlayerAnimationState::Slide
+        ) {
+        return;
+    }
+
+    Vector3 moveDirection = {
+        0.0f,
+        0.0f,
+        0.0f
+    };
+
+    if (input->PushKey(DIK_W)) {
+        moveDirection.z += 1.0f;
+    }
+
+    if (input->PushKey(DIK_S)) {
+        moveDirection.z -= 1.0f;
+    }
+
+    if (input->PushKey(DIK_A)) {
+        moveDirection.x -= 1.0f;
+    }
+
+    if (input->PushKey(DIK_D)) {
+        moveDirection.x += 1.0f;
+    }
+
+    const float length =
+        std::sqrt(
+            moveDirection.x * moveDirection.x +
+            moveDirection.z * moveDirection.z
+        );
+
+    // 入力がなければ移動・回転しない
+    if (length <= 0.0001f) {
+        return;
+    }
+
+    // 斜め移動時も速度を一定にする
+    moveDirection.x /= length;
+    moveDirection.z /= length;
+
+    // 座標を移動
+    playerPosition_.x +=
+        moveDirection.x *
+        playerMoveSpeed_ *
+        deltaTime;
+
+    playerPosition_.z +=
+        moveDirection.z *
+        playerMoveSpeed_ *
+        deltaTime;
+
+    // 移動方向から目標Y回転を計算
+    const float targetYaw =
+        std::atan2(
+            moveDirection.x,
+            moveDirection.z
+        );
+
+    // -π～πの範囲で最短回転量を求める
+    float yawDifference =
+        targetYaw -
+        playerFacingYaw_;
+
+    yawDifference =
+        std::remainder(
+            yawDifference,
+            twoPi
+        );
+
+    // 回転を滑らかに補間
+    const float rotationBlend =
+        (std::min)(
+            playerTurnSpeed_ * deltaTime,
+            1.0f
+            );
+
+    playerFacingYaw_ +=
+        yawDifference *
+        rotationBlend;
+
+    animatedObject_->SetPosition(
+        playerPosition_
+    );
+
+    // X回転は現在のモデル補正値を維持
+    animatedObject_->SetRotation({
+        -90.0f,
+        playerFacingYaw_,
+        0.0f
+        });
+
+
+}
+
+const char*
+AnimationDebugController::GetPlayerAnimationStateName() const
+{
+    switch (playerAnimationState_) {
+    case PlayerAnimationState::Idle:
+        return "Idle";
+
+    case PlayerAnimationState::Walk:
+        return "Walk";
+
+    case PlayerAnimationState::Run:
+        return "Run";
+
+    case PlayerAnimationState::Slide:
+        return "Slide";
+    }
+
+    return "Unknown";
+}
+
+
+void AnimationDebugController::ForceIdleAnimation()
+{
+    ChangePlayerAnimation(
+        PlayerAnimationState::Idle
+    );
+}
+
+void AnimationDebugController::ForceWalkAnimation()
+{
+    ChangePlayerAnimation(
+        PlayerAnimationState::Walk
+    );
+}
+
+void AnimationDebugController::ForceRunAnimation()
+{
+    ChangePlayerAnimation(
+        PlayerAnimationState::Run
+    );
+}
+
+void AnimationDebugController::ForceSlideAnimation()
+{
+    ChangePlayerAnimation(
+        PlayerAnimationState::Slide
+    );
+}
+
 
 void AnimationDebugController::UpdateSkeletonDebug() {
     if (skeletonDebugObjects_.size() != skeleton_.joints.size()) {
