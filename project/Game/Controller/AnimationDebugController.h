@@ -12,17 +12,15 @@ class Input;
 
 class AnimationDebugController
 {
-public:
-
-
     enum class PlayerAnimationState {
         Idle,
         Walk,
         Run,
-        Jump,
-        Slide
+        Slide,
+        Jump
     };
 
+public:
     void Initialize(
         Object3dCommon* object3dCommon,
         uint32_t environmentTextureHandle,
@@ -40,6 +38,21 @@ public:
         return animationTime_;
     }
 
+    const char* GetPlayerAnimationStateName() const;
+    float GetMovementHoldTime() const { return movementHoldTime_; }
+    float GetCurrentAnimationDuration() const { return animation_.duration; }
+    bool IsAnimationPlaying() const { return animationPlaying_; }
+    bool IsAnimationLoop() const { return animationLoop_; }
+    bool IsAnimationBlending() const { return isBlending_; }
+    bool IsManualAnimationTest() const { return manualAnimationTest_; }
+    void SetManualAnimationTest(bool enabled) { manualAnimationTest_ = enabled; }
+
+    void ForceIdleAnimation();
+    void ForceWalkAnimation();
+    void ForceRunAnimation();
+    void ForceSlideAnimation();
+    void ForceJumpAnimation();
+
     bool& ShowSkeletonDebug() {
         return showSkeletonDebug_;
     }
@@ -47,43 +60,6 @@ public:
     void SetEnvironmentCoefficient(
         float environmentCoefficient
     );
-
-
-    const char* GetPlayerAnimationStateName() const;
-
-    float GetMovementHoldTime() const {
-        return movementHoldTime_;
-    }
-
-    float GetCurrentAnimationDuration() const {
-        return animation_.duration;
-    }
-
-    bool IsAnimationPlaying() const {
-        return animationPlaying_;
-    }
-
-    bool IsAnimationLoop() const {
-        return animationLoop_;
-    }
-
-    bool IsAnimationBlending() const {
-        return isBlending_;
-    }
-
-    bool IsManualAnimationTest() const {
-        return debugManualAnimation_;
-    }
-
-    void SetManualAnimationTest(bool enabled) {
-        debugManualAnimation_ = enabled;
-    }
-
-    void ForceIdleAnimation();
-    void ForceWalkAnimation();
-    void ForceRunAnimation();
-    void ForceSlideAnimation();
-    void ForceJumpAnimation();
 
 private:
     void InitializeSkeletonDebug(
@@ -97,18 +73,13 @@ private:
     void UpdateSkeletonDebug();
     void SyncSkeletonToObject();
 
-    void ChangePlayerAnimation(
-        PlayerAnimationState nextState
-    );
-
     void StartAnimationTransition(
         const Animation& nextAnimation,
         float blendDuration,
-		bool loop
+        bool loop
     );
 
-    void UpdatePlayerMovement(Input* input);
-
+    void ChangePlayerAnimation(PlayerAnimationState nextState);
 
 private:
     std::unique_ptr<Object3d> animatedObject_;
@@ -119,26 +90,15 @@ private:
     std::vector<std::unique_ptr<Object3d>>
         skeletonBoneObjects_;
 
-
     // 読み込んだアニメーション
-    Animation walkAnimation_;
     Animation idleAnimation_;
+    Animation walkAnimation_;
     Animation runAnimation_;
     Animation slideAnimation_;
     Animation jumpAnimation_;
 
     // 現在再生中のアニメーション
     Animation animation_;
-
-    PlayerAnimationState playerAnimationState_ =
-        PlayerAnimationState::Idle;
-
-    float movementHoldTime_ = 0.0f;
-
-    // Slide後、WASDを一度離すまでIdleを維持
-    bool requireMovementRelease_ = false;
-
-
 
     Skeleton skeleton_;
 
@@ -156,21 +116,19 @@ private:
     float blendTime_ = 0.0f;
     float blendDuration_ = 0.25f;
 
+    PlayerAnimationState playerAnimationState_ =
+        PlayerAnimationState::Idle;
+    float movementHoldTime_ = 0.0f;
+    bool requireMovementRelease_ = false;
+    bool manualAnimationTest_ = false;
+
+    // Jump is moved in world space. The glTF only controls the body pose.
+    bool isJumping_ = false;
+    float jumpVelocity_ = 0.0f;
+    float groundHeight_ = 0.0f;
+    float jumpInitialVelocity_ = 15.0f;
+    float jumpGravity_ = 30.0f;
+
     int selectedJointIndex_ = 0;
     bool autoPauseOnJointEdit_ = true;
-
-
-    Vector3 playerPosition_ = {
-       0.0f,
-       0.0f,
-       0.0f
-    };
-
-    float playerFacingYaw_ = 0.0f;
-
-    float playerMoveSpeed_ = 4.0f;
-    float playerTurnSpeed_ = 12.0f;
-
-    bool debugManualAnimation_ = false;
-
 };
