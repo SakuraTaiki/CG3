@@ -19,6 +19,7 @@ public:
         Idle,
         Walk,
         Run,
+        Jump,
         Slide
     };
 
@@ -82,6 +83,7 @@ public:
     void ForceWalkAnimation();
     void ForceRunAnimation();
     void ForceSlideAnimation();
+    void ForceJumpAnimation();
 
 private:
     void InitializeSkeletonDebug(
@@ -123,6 +125,7 @@ private:
     Animation idleAnimation_;
     Animation runAnimation_;
     Animation slideAnimation_;
+    Animation jumpAnimation_;
 
     // 現在再生中のアニメーション
     Animation animation_;
