@@ -13,6 +13,15 @@ class Input;
 class AnimationDebugController
 {
 public:
+
+
+    enum class PlayerAnimationState {
+        Idle,
+        Walk,
+        Run,
+        Slide
+    };
+
     void Initialize(
         Object3dCommon* object3dCommon,
         uint32_t environmentTextureHandle,
@@ -38,6 +47,42 @@ public:
         float environmentCoefficient
     );
 
+
+    const char* GetPlayerAnimationStateName() const;
+
+    float GetMovementHoldTime() const {
+        return movementHoldTime_;
+    }
+
+    float GetCurrentAnimationDuration() const {
+        return animation_.duration;
+    }
+
+    bool IsAnimationPlaying() const {
+        return animationPlaying_;
+    }
+
+    bool IsAnimationLoop() const {
+        return animationLoop_;
+    }
+
+    bool IsAnimationBlending() const {
+        return isBlending_;
+    }
+
+    bool IsManualAnimationTest() const {
+        return debugManualAnimation_;
+    }
+
+    void SetManualAnimationTest(bool enabled) {
+        debugManualAnimation_ = enabled;
+    }
+
+    void ForceIdleAnimation();
+    void ForceWalkAnimation();
+    void ForceRunAnimation();
+    void ForceSlideAnimation();
+
 private:
     void InitializeSkeletonDebug(
         Object3dCommon* object3dCommon,
@@ -50,10 +95,18 @@ private:
     void UpdateSkeletonDebug();
     void SyncSkeletonToObject();
 
+    void ChangePlayerAnimation(
+        PlayerAnimationState nextState
+    );
+
     void StartAnimationTransition(
         const Animation& nextAnimation,
-        float blendDuration
+        float blendDuration,
+		bool loop
     );
+
+    void UpdatePlayerMovement(Input* input);
+
 
 private:
     std::unique_ptr<Object3d> animatedObject_;
@@ -64,12 +117,25 @@ private:
     std::vector<std::unique_ptr<Object3d>>
         skeletonBoneObjects_;
 
+
     // 読み込んだアニメーション
     Animation walkAnimation_;
-    Animation sneakAnimation_;
+    Animation idleAnimation_;
+    Animation runAnimation_;
+    Animation slideAnimation_;
 
     // 現在再生中のアニメーション
     Animation animation_;
+
+    PlayerAnimationState playerAnimationState_ =
+        PlayerAnimationState::Idle;
+
+    float movementHoldTime_ = 0.0f;
+
+    // Slide後、WASDを一度離すまでIdleを維持
+    bool requireMovementRelease_ = false;
+
+
 
     Skeleton skeleton_;
 
@@ -89,4 +155,19 @@ private:
 
     int selectedJointIndex_ = 0;
     bool autoPauseOnJointEdit_ = true;
+
+
+    Vector3 playerPosition_ = {
+       0.0f,
+       0.0f,
+       0.0f
+    };
+
+    float playerFacingYaw_ = 0.0f;
+
+    float playerMoveSpeed_ = 4.0f;
+    float playerTurnSpeed_ = 12.0f;
+
+    bool debugManualAnimation_ = false;
+
 };

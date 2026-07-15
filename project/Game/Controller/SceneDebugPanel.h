@@ -3,6 +3,7 @@
 #include <cstddef>
 
 #include "GameSceneDrawMode.h"
+#include "AnimationDebugPanel.h"
 
 class EngineContext;
 class HitEffectController;
@@ -127,6 +128,8 @@ private:
 
     EditorSelection selected_ = EditorSelection::Terrain;
     size_t selectedObjectIndex_ = 0;
+
+    AnimationDebugPanel animationDebugPanel_;
 
     bool showTransformGizmo_ = true;
     bool showColliders_ = true;

@@ -215,6 +215,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Game\Controller\AnimationDebugController.cpp" />
+    <ClCompile Include="Game\Controller\AnimationDebugPanel.cpp" />
     <ClCompile Include="Game\Controller\CameraDebugController.cpp" />
     <ClCompile Include="Game\Controller\EnvironmentController.cpp" />
     <ClCompile Include="Game\Controller\HitEffectController.cpp" />
@@ -299,6 +300,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="externals\imgui\imstb_textedit.h" />
     <ClInclude Include="externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Game\Controller\AnimationDebugController.h" />
+    <ClInclude Include="Game\Controller\AnimationDebugPanel.h" />
     <ClInclude Include="Game\Controller\CameraDebugController.h" />
     <ClInclude Include="Game\Controller\EnvironmentController.h" />
     <ClInclude Include="Game\Controller\HitEffectController.h" />
