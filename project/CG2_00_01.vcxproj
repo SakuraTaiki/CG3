@@ -222,6 +222,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClCompile Include="Game\Controller\SceneDebugPanel.cpp" />
     <ClCompile Include="Game\Controller\SceneObjectController.cpp" />
     <ClCompile Include="Game\Controller\SoundController.cpp" />
+    <ClCompile Include="Game\Controller\StageEditor.cpp" />
     <ClCompile Include="Game\GameScene\GameScene.cpp" />
     <ClCompile Include="Game\MyGame.cpp" />
     <ClCompile Include="Game\SceneFactory.cpp" />
@@ -326,6 +327,7 @@ copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxil.dll" "$(TargetDir)dx
     <ClInclude Include="Game\Controller\SceneObjectControllerRuntime.h" />
     <ClInclude Include="Game\Controller\SceneObjectControllerSave.h" />
     <ClInclude Include="Game\Controller\SoundController.h" />
+    <ClInclude Include="Game\Controller\StageEditor.h" />
     <ClInclude Include="Game\GameScene\GameScene.h" />
     <ClInclude Include="Game\GameScene\GameSceneDrawMode.h" />
     <ClInclude Include="Game\MyGame.h" />

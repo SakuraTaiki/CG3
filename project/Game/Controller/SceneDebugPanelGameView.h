@@ -1,6 +1,7 @@
 void SceneDebugPanel::DrawGameViewWindow(
     EngineContext* context,
-    SceneObjectController& sceneObjects
+    SceneObjectController& sceneObjects,
+    StageEditor& stageEditor
 )
 {
 #ifdef USE_IMGUI
@@ -64,23 +65,32 @@ void SceneDebugPanel::DrawGameViewWindow(
     const ImVec2 imageMin = ImGui::GetItemRectMin();
     const ImVec2 imageMax = ImGui::GetItemRectMax();
 
-    DrawColliderOverlay(
-        context,
-        sceneObjects,
+    stageEditor.DrawGameView(
         imageMin.x,
         imageMin.y,
         imageMax.x - imageMin.x,
         imageMax.y - imageMin.y
     );
 
-    DrawTransformGizmo(
-        context,
-        sceneObjects,
-        imageMin.x,
-        imageMin.y,
-        imageMax.x - imageMin.x,
-        imageMax.y - imageMin.y
-    );
+    if (!stageEditor.IsEditingGameView()) {
+        DrawColliderOverlay(
+            context,
+            sceneObjects,
+            imageMin.x,
+            imageMin.y,
+            imageMax.x - imageMin.x,
+            imageMax.y - imageMin.y
+        );
+
+        DrawTransformGizmo(
+            context,
+            sceneObjects,
+            imageMin.x,
+            imageMin.y,
+            imageMax.x - imageMin.x,
+            imageMax.y - imageMin.y
+        );
+    }
 
     ImGui::End();
 #endif

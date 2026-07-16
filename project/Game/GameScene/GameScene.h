@@ -19,6 +19,7 @@
 #include "SceneObjectController.h"
 #include "GameSceneDrawMode.h"
 #include "SceneDebugPanel.h"
+#include "StageEditor.h"
 
 
 // 実際のゲーム・デモ内容を持つ Scene。
@@ -74,4 +75,5 @@ private:
     EnvironmentController environment_;
     SceneObjectController sceneObjects_;
     SceneDebugPanel sceneDebugPanel_;
+    StageEditor stageEditor_;
 };

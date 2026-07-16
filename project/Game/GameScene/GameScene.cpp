@@ -79,6 +79,7 @@ void GameScene::Initialize(EngineContext* context) {
     hitEffect_.RefreshPresetList();
 
     soundController_.Initialize();
+    stageEditor_.Initialize();
 }
 
 void GameScene::Finalize() {
@@ -214,6 +215,7 @@ void GameScene::Update() {
         cameraDebug_,
         environment_,
         sceneObjects_,
+        stageEditor_,
         ring_.get(),
         cylinder_.get(),
         primitive_.get()

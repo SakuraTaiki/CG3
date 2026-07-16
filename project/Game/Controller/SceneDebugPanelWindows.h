@@ -7,6 +7,7 @@ void SceneDebugPanel::Draw(
     CameraDebugController& cameraDebug,
     EnvironmentController& environment,
     SceneObjectController& sceneObjects,
+    StageEditor& stageEditor,
     Ring* ring,
     Cylinder* cylinder,
     Primitive* primitive
@@ -42,7 +43,7 @@ void SceneDebugPanel::Draw(
 
     DrawProjectWindow();
 
-    DrawGameViewWindow(context, sceneObjects);
+    DrawGameViewWindow(context, sceneObjects, stageEditor);
 
     DrawConsoleWindow();
 
@@ -58,6 +59,8 @@ void SceneDebugPanel::Draw(
         cylinder,
         primitive
     );
+
+    stageEditor.Draw();
 
     context->GetImGuiManager()->End();
 #endif
