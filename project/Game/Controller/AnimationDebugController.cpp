@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <string>
 
 #ifdef USE_IMGUI
@@ -68,6 +69,11 @@ void AnimationDebugController::Initialize(
     skeleton_ =
         CreateSkeleton(modelAnimated->GetRootNode());
 
+    initialPose_.resize(skeleton_.joints.size());
+    for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
+        initialPose_[i] = skeleton_.joints[i].transform;
+    }
+
     InitializeSkeletonDebug(
         object3dCommon,
         environmentTextureHandle,
@@ -103,17 +109,21 @@ void AnimationDebugController::InitializeSkeletonDebug(
     skeletonBoneObjects_.clear();
 
     Model* jointModel =
-        ModelManager::Load("axis.obj");
+        ModelManager::Load("Resources/Editor", "joint_box.obj");
+    Model* boneModel =
+        ModelManager::Load("Resources/Editor", "bone_line.obj");
 
     for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
         auto jointObj = std::make_unique<Object3d>();
         jointObj->Initialize(object3dCommon);
         jointObj->SetModel(jointModel);
-        jointObj->SetScale({ 0.01f, 0.01f, 0.01f });
+        jointObj->SetScale({ jointDisplaySize_, jointDisplaySize_, jointDisplaySize_ });
         jointObj->SetRotation({ 0.0f, 0.0f, 0.0f });
         jointObj->SetPosition({ 0.0f, 0.0f, 0.0f });
         jointObj->SetEnvironmentTexture(environmentTextureHandle);
         jointObj->SetEnvironmentCoefficient(environmentCoefficient);
+        jointObj->SetEnableLighting(false);
+        jointObj->SetColor({ 1.0f, 0.55f, 0.10f, 1.0f });
 
         skeletonDebugObjects_.push_back(std::move(jointObj));
     }
@@ -125,12 +135,14 @@ void AnimationDebugController::InitializeSkeletonDebug(
 
         auto boneObj = std::make_unique<Object3d>();
         boneObj->Initialize(object3dCommon);
-        boneObj->SetModel(jointModel);
-        boneObj->SetScale({ 0.005f, 0.005f, 0.005f });
+        boneObj->SetModel(boneModel);
+        boneObj->SetScale({ 1.0f, boneDisplayThickness_, boneDisplayThickness_ });
         boneObj->SetRotation({ 0.0f, 0.0f, 0.0f });
         boneObj->SetPosition({ 0.0f, 0.0f, 0.0f });
         boneObj->SetEnvironmentTexture(environmentTextureHandle);
         boneObj->SetEnvironmentCoefficient(environmentCoefficient);
+        boneObj->SetEnableLighting(false);
+        boneObj->SetColor({ 0.88f, 0.88f, 0.88f, 1.0f });
 
         skeletonBoneObjects_.push_back(std::move(boneObj));
     }
@@ -138,8 +150,15 @@ void AnimationDebugController::InitializeSkeletonDebug(
 
 void AnimationDebugController::Update(Input* input)
 {
-    UpdateAnimationInput(input);
-    UpdateAnimation();
+    if (editorMode_ == EditorMode::Play) {
+        UpdateAnimationInput(input);
+        UpdateAnimation();
+    } else if (editorMode_ == EditorMode::Preview) {
+        UpdateAnimation();
+    } else {
+        // Animation Edit mode keeps the pose edited by ImGui.
+        UpdateSkelton(skeleton_);
+    }
 
     if (showSkeletonDebug_) {
         UpdateSkeletonDebug();
@@ -451,6 +470,70 @@ void AnimationDebugController::ForceJumpAnimation()
     ChangePlayerAnimation(PlayerAnimationState::Jump);
 }
 
+const char* AnimationDebugController::GetEditorModeName() const
+{
+    switch (editorMode_) {
+    case EditorMode::Play:          return "Play";
+    case EditorMode::AnimationEdit: return "Animation Edit";
+    case EditorMode::Preview:       return "Preview";
+    }
+    return "Unknown";
+}
+
+void AnimationDebugController::SetEditorMode(EditorMode mode)
+{
+    if (editorMode_ == mode) {
+        return;
+    }
+
+    editorMode_ = mode;
+    isBlending_ = false;
+    isJumping_ = false;
+    jumpVelocity_ = 0.0f;
+
+    if (animatedObject_) {
+        Vector3 position = animatedObject_->GetTransform().translate;
+        position.y = groundHeight_;
+        animatedObject_->SetPosition(position);
+    }
+
+    if (editorMode_ == EditorMode::AnimationEdit) {
+        animationPlaying_ = false;
+        manualAnimationTest_ = true;
+        showSkeletonDebug_ = true;
+    } else if (editorMode_ == EditorMode::Preview) {
+        animationTime_ = 0.0f;
+        animationPlaying_ = true;
+        manualAnimationTest_ = true;
+    } else {
+        manualAnimationTest_ = false;
+        playerAnimationState_ = PlayerAnimationState::Idle;
+        StartAnimationTransition(idleAnimation_, 0.15f, true);
+    }
+}
+
+void AnimationDebugController::ResetSelectedJointPose()
+{
+    if (selectedJointIndex_ < 0 ||
+        static_cast<size_t>(selectedJointIndex_) >= skeleton_.joints.size() ||
+        static_cast<size_t>(selectedJointIndex_) >= initialPose_.size()) {
+        return;
+    }
+
+    skeleton_.joints[selectedJointIndex_].transform =
+        initialPose_[selectedJointIndex_];
+    UpdateSkelton(skeleton_);
+}
+
+void AnimationDebugController::ResetAllJointPoses()
+{
+    const size_t count = (std::min)(skeleton_.joints.size(), initialPose_.size());
+    for (size_t i = 0; i < count; ++i) {
+        skeleton_.joints[i].transform = initialPose_[i];
+    }
+    UpdateSkelton(skeleton_);
+}
+
 
 void AnimationDebugController::StartAnimationTransition(
     const Animation& nextAnimation,
@@ -495,9 +578,21 @@ void AnimationDebugController::UpdateSkeletonDebug() {
         return;
     }
 
+    Matrix4x4 objectWorld = Math::MakeIdentity4x4();
+    if (animatedObject_) {
+        const Transform& objectTransform = animatedObject_->GetTransform();
+        objectWorld = Math::MakeAffineMatrix(
+            objectTransform.scale,
+            objectTransform.rotate,
+            objectTransform.translate
+        );
+    }
+
     for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
-        const Matrix4x4& mat =
-            skeleton_.joints[i].skeletonSpaceMatrix;
+        const Matrix4x4 mat = Math::Multiply(
+            skeleton_.joints[i].skeletonSpaceMatrix,
+            objectWorld
+        );
 
         Vector3 jointPosition = {
             mat.m[3][0],
@@ -506,6 +601,17 @@ void AnimationDebugController::UpdateSkeletonDebug() {
         };
 
         skeletonDebugObjects_[i]->SetPosition(jointPosition);
+        skeletonDebugObjects_[i]->SetRotation({ 0.0f, 0.0f, 0.0f });
+        skeletonDebugObjects_[i]->SetScale({
+            jointDisplaySize_,
+            jointDisplaySize_,
+            jointDisplaySize_
+        });
+        if (static_cast<int>(i) == selectedJointIndex_) {
+            skeletonDebugObjects_[i]->SetColor({ 1.0f, 0.95f, 0.15f, 1.0f });
+        } else {
+            skeletonDebugObjects_[i]->SetColor({ 1.0f, 0.55f, 0.10f, 1.0f });
+        }
         skeletonDebugObjects_[i]->Update();
     }
 
@@ -520,11 +626,15 @@ void AnimationDebugController::UpdateSkeletonDebug() {
             break;
         }
 
-        const Matrix4x4& childMat =
-            joint.skeletonSpaceMatrix;
+        const Matrix4x4 childMat = Math::Multiply(
+            joint.skeletonSpaceMatrix,
+            objectWorld
+        );
 
-        const Matrix4x4& parentMat =
-            skeleton_.joints[*joint.parent].skeletonSpaceMatrix;
+        const Matrix4x4 parentMat = Math::Multiply(
+            skeleton_.joints[*joint.parent].skeletonSpaceMatrix,
+            objectWorld
+        );
 
         Vector3 childPos = {
             childMat.m[3][0],
@@ -544,8 +654,33 @@ void AnimationDebugController::UpdateSkeletonDebug() {
             (childPos.z + parentPos.z) * 0.5f
         };
 
+        Vector3 direction = {
+            childPos.x - parentPos.x,
+            childPos.y - parentPos.y,
+            childPos.z - parentPos.z
+        };
+        const float length = std::sqrt(
+            direction.x * direction.x +
+            direction.y * direction.y +
+            direction.z * direction.z
+        );
+
+        Vector3 rotation = { 0.0f, 0.0f, 0.0f };
+        if (length > 0.00001f) {
+            direction.x /= length;
+            direction.y /= length;
+            direction.z /= length;
+            rotation.y = -std::asin(std::clamp(direction.z, -1.0f, 1.0f));
+            rotation.z = std::atan2(direction.y, direction.x);
+        }
+
         skeletonBoneObjects_[boneIndex]->SetPosition(center);
-        skeletonBoneObjects_[boneIndex]->SetScale({ 0.15f, 0.15f, 0.15f });
+        skeletonBoneObjects_[boneIndex]->SetRotation(rotation);
+        skeletonBoneObjects_[boneIndex]->SetScale({
+            length,
+            boneDisplayThickness_,
+            boneDisplayThickness_
+        });
         skeletonBoneObjects_[boneIndex]->Update();
 
         ++boneIndex;
@@ -592,8 +727,19 @@ void AnimationDebugController::SetEnvironmentCoefficient(
 
 void AnimationDebugController::DrawImGui() {
 #ifdef USE_IMGUI
+    ImGui::Text("Mode");
+    const char* modes[] = { "Play", "Animation Edit", "Preview" };
+    int modeIndex = static_cast<int>(editorMode_);
+    if (ImGui::Combo("##AnimationEditorMode", &modeIndex, modes, 3)) {
+        SetEditorMode(static_cast<EditorMode>(modeIndex));
+    }
+    ImGui::Text("Current Mode : %s", GetEditorModeName());
+    ImGui::Separator();
+
     ImGui::Text("Animation Control");
     ImGui::Separator();
+
+    if (editorMode_ != EditorMode::AnimationEdit) {
 
     if (ImGui::Button(
         animationPlaying_ ? "Pause" : "Play",
@@ -646,10 +792,31 @@ void AnimationDebugController::DrawImGui() {
             UpdateSkelton(skeleton_);
         }
     }
+    } else {
+        ImGui::TextWrapped(
+            "Playback is locked while editing. Select a joint below and edit its local transform."
+        );
+        ImGui::Checkbox("Show Skeleton Debug", &showSkeletonDebug_);
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
     ImGui::Text("Skeleton");
+
+    ImGui::DragFloat(
+        "Joint Box Size",
+        &jointDisplaySize_,
+        0.002f,
+        0.005f,
+        0.5f
+    );
+    ImGui::DragFloat(
+        "Bone Line Thickness",
+        &boneDisplayThickness_,
+        0.001f,
+        0.002f,
+        0.2f
+    );
 
     const int jointCount =
         static_cast<int>(skeleton_.joints.size());
@@ -692,6 +859,43 @@ void AnimationDebugController::DrawImGui() {
         ImGui::EndCombo();
     }
 
+    if (ImGui::TreeNode("Bone Hierarchy")) {
+        std::function<void(int32_t)> drawJointTree;
+        drawJointTree = [&](int32_t jointIndex) {
+            if (jointIndex < 0 || jointIndex >= jointCount) {
+                return;
+            }
+
+            const Joint& treeJoint = skeleton_.joints[jointIndex];
+            ImGui::PushID(jointIndex);
+            const bool hasChildren = !treeJoint.children.empty();
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow |
+                ImGuiTreeNodeFlags_SpanAvailWidth;
+            if (!hasChildren) {
+                flags |= ImGuiTreeNodeFlags_Leaf |
+                    ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            }
+            if (selectedJointIndex_ == jointIndex) {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+
+            const bool open = ImGui::TreeNodeEx("##joint", flags, "%s", treeJoint.name.c_str());
+            if (ImGui::IsItemClicked()) {
+                selectedJointIndex_ = jointIndex;
+            }
+            if (hasChildren && open) {
+                for (int32_t childIndex : treeJoint.children) {
+                    drawJointTree(childIndex);
+                }
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        };
+
+        drawJointTree(skeleton_.root);
+        ImGui::TreePop();
+    }
+
     Joint& joint =
         skeleton_.joints[selectedJointIndex_];
 
@@ -713,6 +917,8 @@ void AnimationDebugController::DrawImGui() {
     Quaternion rotate = joint.transform.rotate;
 
     bool edited = false;
+
+    if (editorMode_ == EditorMode::AnimationEdit) {
 
     edited |= ImGui::DragFloat3(
         "Local Translate",
@@ -738,6 +944,21 @@ void AnimationDebugController::DrawImGui() {
         1.0f
     );
 
+    if (ImGui::Button("Reset Selected Joint")) {
+        ResetSelectedJointPose();
+        translate = joint.transform.translate;
+        scale = joint.transform.scale;
+        rotate = joint.transform.rotate;
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Reset All Joints")) {
+        ResetAllJointPoses();
+        translate = joint.transform.translate;
+        scale = joint.transform.scale;
+        rotate = joint.transform.rotate;
+    }
+
     if (ImGui::Button(
         "Normalize Quaternion",
         ImVec2(180.0f, 28.0f)
@@ -756,6 +977,21 @@ void AnimationDebugController::DrawImGui() {
         joint.transform.rotate = Math::Normalize(rotate);
 
         UpdateSkelton(skeleton_);
+    }
+    } else {
+        ImGui::TextDisabled("Switch to Animation Edit mode to modify this joint.");
+        ImGui::Text(
+            "Local Translate : %.3f, %.3f, %.3f",
+            translate.x, translate.y, translate.z
+        );
+        ImGui::Text(
+            "Local Scale : %.3f, %.3f, %.3f",
+            scale.x, scale.y, scale.z
+        );
+        ImGui::Text(
+            "Local Rotate : %.3f, %.3f, %.3f, %.3f",
+            rotate.x, rotate.y, rotate.z, rotate.w
+        );
     }
 
     const Matrix4x4& skeletonMatrix =

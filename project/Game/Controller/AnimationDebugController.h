@@ -12,6 +12,14 @@ class Input;
 
 class AnimationDebugController
 {
+public:
+    enum class EditorMode {
+        Play,
+        AnimationEdit,
+        Preview
+    };
+
+private:
     enum class PlayerAnimationState {
         Idle,
         Walk,
@@ -52,6 +60,12 @@ public:
     void ForceRunAnimation();
     void ForceSlideAnimation();
     void ForceJumpAnimation();
+
+    EditorMode GetEditorMode() const { return editorMode_; }
+    const char* GetEditorModeName() const;
+    void SetEditorMode(EditorMode mode);
+    void ResetSelectedJointPose();
+    void ResetAllJointPoses();
 
     bool& ShowSkeletonDebug() {
         return showSkeletonDebug_;
@@ -101,6 +115,7 @@ private:
     Animation animation_;
 
     Skeleton skeleton_;
+    std::vector<QuaternionTransform> initialPose_;
 
     float animationTime_ = 0.0f;
 
@@ -121,6 +136,7 @@ private:
     float movementHoldTime_ = 0.0f;
     bool requireMovementRelease_ = false;
     bool manualAnimationTest_ = false;
+    EditorMode editorMode_ = EditorMode::Play;
 
     // Jump is moved in world space. The glTF only controls the body pose.
     bool isJumping_ = false;
@@ -128,6 +144,9 @@ private:
     float groundHeight_ = 0.0f;
     float jumpInitialVelocity_ = 15.0f;
     float jumpGravity_ = 30.0f;
+
+    float jointDisplaySize_ = 0.06f;
+    float boneDisplayThickness_ = 0.018f;
 
     int selectedJointIndex_ = 0;
     bool autoPauseOnJointEdit_ = true;
