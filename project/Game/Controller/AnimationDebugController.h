@@ -83,6 +83,7 @@ private:
     );
 
     void UpdateAnimationInput(Input* input);
+    void UpdateMovement(Input* input);
     void UpdateAnimation();
     void UpdateSkeletonDebug();
     void SyncSkeletonToObject();
@@ -145,6 +146,9 @@ private:
     float groundHeight_ = 0.0f;
     float jumpInitialVelocity_ = 15.0f;
     float jumpGravity_ = 30.0f;
+    float movementSpeed_ = 3.0f;
+    float modelPitch_ = -1.57079632679f;
+    float modelYaw_ = 0.0f;
 
     float jointDisplaySize_ = 0.06f;
     float boneDisplayThickness_ = 0.018f;

@@ -89,8 +89,7 @@ void AnimationDebugController::Initialize(
    
 
     animatedObject_->SetPosition({ 0.0f, 0.0f, 0.0f });
-    constexpr float halfPi = 1.57079632679f;
-    animatedObject_->SetRotation({ -halfPi, 0.0f, 0.0f });
+    animatedObject_->SetRotation({ modelPitch_, modelYaw_, 0.0f });
     animatedObject_->SetScale({ 200.0f, 200.0f, 200.0f });
 
     animatedObject_->SetEnvironmentTexture(environmentTextureHandle);
@@ -164,6 +163,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
 void AnimationDebugController::Update(Input* input)
 {
     if (editorMode_ == EditorMode::Play) {
+        UpdateMovement(input);
         UpdateAnimationInput(input);
         UpdateAnimation();
     } else if (editorMode_ == EditorMode::Preview) {
@@ -211,7 +211,7 @@ void AnimationDebugController::UpdateAnimationInput(Input* input)
         input->TriggerKey(DIK_LCONTROL) ||
         input->TriggerKey(DIK_RCONTROL);
 
-    const bool jumpTriggered = input->TriggerKey(DIK_SPACE);
+    const bool jumpTriggered = input->TriggerKey(DIK_RETURN);
 
     if (jumpTriggered && !isJumping_) {
         isJumping_ = true;
@@ -482,6 +482,49 @@ void AnimationDebugController::ForceJumpAnimation()
         jumpVelocity_ = jumpInitialVelocity_;
     }
     ChangePlayerAnimation(PlayerAnimationState::Jump);
+}
+
+void AnimationDebugController::UpdateMovement(Input* input)
+{
+    if (!input || !animatedObject_ || manualAnimationTest_) {
+        return;
+    }
+
+    constexpr float deltaTime = 1.0f / 60.0f;
+
+    Vector3 direction = { 0.0f, 0.0f, 0.0f };
+    if (input->PushKey(DIK_W)) {
+        direction.z += 1.0f;
+    }
+    if (input->PushKey(DIK_S)) {
+        direction.z -= 1.0f;
+    }
+    if (input->PushKey(DIK_A)) {
+        direction.x -= 1.0f;
+    }
+    if (input->PushKey(DIK_D)) {
+        direction.x += 1.0f;
+    }
+
+    const float length = std::sqrt(
+        direction.x * direction.x +
+        direction.z * direction.z
+    );
+    if (length <= 0.00001f) {
+        return;
+    }
+
+    direction.x /= length;
+    direction.z /= length;
+
+    Vector3 position = animatedObject_->GetTransform().translate;
+    position.x += direction.x * movementSpeed_ * deltaTime;
+    position.z += direction.z * movementSpeed_ * deltaTime;
+    animatedObject_->SetPosition(position);
+
+    // +Z is the character's forward direction in this left-handed world.
+    modelYaw_ = std::atan2(direction.x, direction.z);
+    animatedObject_->SetRotation({ modelPitch_, modelYaw_, 0.0f });
 }
 
 const char* AnimationDebugController::GetEditorModeName() const
