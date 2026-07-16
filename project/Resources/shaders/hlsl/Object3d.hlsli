@@ -44,7 +44,8 @@ struct Material
     int32_t enableLighting;
     
     float environmentCoefficient;
-    float2 padding;
+    float shininess;
+    float padding;
     
     float32_t4x4 uvTransform;
     

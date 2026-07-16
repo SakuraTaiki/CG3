@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Engine.h"
+#include "SceneFactory.h"
 #include "SceneManager.h"
 
 // MyGame はゲーム全体の進行役。
@@ -16,5 +17,6 @@ public:
 
 private:
     Engine engine_;
+    SceneFactory sceneFactory_;
     SceneManager sceneManager_;
 };

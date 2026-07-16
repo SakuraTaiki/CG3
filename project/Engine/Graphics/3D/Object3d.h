@@ -31,7 +31,8 @@ struct Material {
     int32_t enableLighting;
 
     float environmentCoefficient;
-    float padding[2];
+    float shininess;
+    float padding;
 
     Matrix4x4 uvTransform;
 };
@@ -82,6 +83,12 @@ public:
     void SetEnableLighting(bool enable) {
         if (materialData_) {
             materialData_->enableLighting = enable ? 1 : 0;
+        }
+    }
+
+    void SetShininess(float shininess) {
+        if (materialData_) {
+            materialData_->shininess = shininess;
         }
     }
 

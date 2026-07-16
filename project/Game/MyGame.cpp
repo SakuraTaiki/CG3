@@ -1,14 +1,12 @@
 #include "MyGame.h"
 
-#include "GameScene.h"
-
 void MyGame::Initialize() {
     // エンジン基盤を先に初期化する。
     engine_.Initialize();
 
     // Scene は EngineContext 経由で各システムへアクセスする。
-    sceneManager_.Initialize(engine_.GetContext());
-    sceneManager_.ChangeScene<GameScene>();
+    sceneManager_.Initialize(engine_.GetContext(), &sceneFactory_);
+    sceneManager_.ChangeScene("GAME");
 }
 
 void MyGame::Update() {

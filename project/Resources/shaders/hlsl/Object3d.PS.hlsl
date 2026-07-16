@@ -75,6 +75,17 @@ PixelShaderOutput main(VertexShaderOutput input)
         float32_t3 normal =
             normalize(input.normal);
 
+        // 表面からカメラへ向かう視線ベクトル。
+        float32_t3 toEye =
+            normalize(
+                gCamera.worldPosition -
+                input.worldPosition
+            );
+
+        // 0 や負値による pow の不定な結果を防ぐ。
+        float32_t shininess =
+            max(gMaterial.shininess, 1.0f);
+
         // OBJが完全な黒になることを防ぐ簡易環境光
         float32_t3 ambientColor =
             float32_t3(
@@ -112,6 +123,26 @@ PixelShaderOutput main(VertexShaderOutput input)
             gDirectionalLight.color.rgb *
             gDirectionalLight.intensity *
             directionalDiffuse;
+
+        // Blinn-Phong: 法線とライト・視線のハーフベクトルから鏡面反射を求める。
+        float32_t3 directionalHalfVector =
+            normalize(
+                directionalLightDirection +
+                toEye
+            );
+
+        float32_t directionalSpecular =
+            pow(
+                saturate(
+                    dot(normal, directionalHalfVector)
+                ),
+                shininess
+            ) * step(0.0001f, directionalNdotL);
+
+        float32_t3 directionalSpecularColor =
+            gDirectionalLight.color.rgb *
+            gDirectionalLight.intensity *
+            directionalSpecular;
 
         // =====================================
         // SpotLight
@@ -200,6 +231,27 @@ PixelShaderOutput main(VertexShaderOutput input)
             spotDistanceAttenuation *
             spotConeAttenuation;
 
+        float32_t3 spotHalfVector =
+            normalize(
+                spotSurfaceToLightDirection +
+                toEye
+            );
+
+        float32_t spotSpecular =
+            pow(
+                saturate(
+                    dot(normal, spotHalfVector)
+                ),
+                shininess
+            ) * step(0.0001f, spotNdotL);
+
+        float32_t3 spotSpecularColor =
+            gSpotLight.color.rgb *
+            gSpotLight.intensity *
+            spotSpecular *
+            spotDistanceAttenuation *
+            spotConeAttenuation;
+
         // =====================================
         // PointLight
         // =====================================
@@ -263,6 +315,26 @@ PixelShaderOutput main(VertexShaderOutput input)
             pointDiffuse *
             pointAttenuation;
 
+        float32_t3 pointHalfVector =
+            normalize(
+                pointLightDirection +
+                toEye
+            );
+
+        float32_t pointSpecular =
+            pow(
+                saturate(
+                    dot(normal, pointHalfVector)
+                ),
+                shininess
+            ) * step(0.0001f, pointNdotL);
+
+        float32_t3 pointSpecularColor =
+            gPointLight.color.rgb *
+            gPointLight.intensity *
+            pointSpecular *
+            pointAttenuation;
+
         // =====================================
         // Combine Lights
         // =====================================
@@ -273,9 +345,15 @@ PixelShaderOutput main(VertexShaderOutput input)
             spotColor +
             pointColor;
 
+        float32_t3 specularColor =
+            directionalSpecularColor +
+            spotSpecularColor +
+            pointSpecularColor;
+
         output.color.rgb =
             baseColor.rgb *
-            lightingColor;
+            lightingColor +
+            specularColor;
     }
 
     // =========================================
