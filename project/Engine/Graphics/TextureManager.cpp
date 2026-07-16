@@ -3,6 +3,7 @@
 #include <cassert>
 #include <format>
 #include "externals/DirectXTex/DirectXTex.h"
+#include "externals/DirectXTex/d3dx12.h"
 
 using namespace Microsoft::WRL;
 
@@ -17,10 +18,12 @@ static std::wstring ConvertString(const std::string& str) {
     return wstrTo;
 }
 
-// データ転送関数
+// GPUが使用するDEFAULTヒープ上にテクスチャリソースを作成する。
 [[nodiscard]]
-ComPtr<ID3D12Resource> UploadTextureData(ID3D12Device* device, const DirectX::ScratchImage& mipImages) {
-    const DirectX::TexMetadata& metadata = mipImages.GetMetadata();
+ComPtr<ID3D12Resource> CreateTextureResource(
+    ID3D12Device* device,
+    const DirectX::TexMetadata& metadata) {
+
     D3D12_RESOURCE_DESC textureDesc{};
     textureDesc.Width = UINT(metadata.width);
     textureDesc.Height = UINT(metadata.height);
@@ -30,31 +33,87 @@ ComPtr<ID3D12Resource> UploadTextureData(ID3D12Device* device, const DirectX::Sc
     textureDesc.SampleDesc.Count = 1;
     textureDesc.Dimension = D3D12_RESOURCE_DIMENSION(metadata.dimension);
 
-    D3D12_HEAP_PROPERTIES heapProps{ D3D12_HEAP_TYPE_CUSTOM, D3D12_CPU_PAGE_PROPERTY_WRITE_BACK, D3D12_MEMORY_POOL_L0, 1, 1 };
+    D3D12_HEAP_PROPERTIES heapProps{};
+    heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
     ComPtr<ID3D12Resource> resource;
     HRESULT hr = device->CreateCommittedResource(
         &heapProps, D3D12_HEAP_FLAG_NONE, &textureDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&resource));
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&resource));
     assert(SUCCEEDED(hr));
 
-    const DirectX::Image* intermediateImages = mipImages.GetImages();
-    for (size_t i = 0; i < metadata.mipLevels; ++i) {
-        const DirectX::Image& img = intermediateImages[i];
-        void* pData = nullptr;
-        hr = resource->Map(UINT(i), nullptr, &pData);
-        if (SUCCEEDED(hr)) {
-            const uint8_t* src = img.pixels;
-            uint8_t* dst = static_cast<uint8_t*>(pData);
-            for (size_t y = 0; y < img.height; ++y) {
-                memcpy(dst, src, img.rowPitch);
-                src += img.rowPitch;
-                dst += img.rowPitch;
-            }
-            resource->Unmap(UINT(i), nullptr);
-        }
-    }
     return resource;
+}
+
+// IntermediateResourceを経由して全サブリソースのコピー命令を積む。
+// 戻り値はGPUによるコピー完了まで呼び出し側で保持する必要がある。
+[[nodiscard]]
+ComPtr<ID3D12Resource> UploadTextureData(
+    ID3D12Resource* texture,
+    const DirectX::ScratchImage& mipImages,
+    ID3D12Device* device,
+    ID3D12GraphicsCommandList* commandList) {
+
+    std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+    HRESULT hr = DirectX::PrepareUpload(
+        device,
+        mipImages.GetImages(),
+        mipImages.GetImageCount(),
+        mipImages.GetMetadata(),
+        subresources
+    );
+    assert(SUCCEEDED(hr));
+
+    const UINT subresourceCount = static_cast<UINT>(subresources.size());
+    const UINT64 intermediateSize = GetRequiredIntermediateSize(
+        texture,
+        0,
+        subresourceCount
+    );
+
+    D3D12_HEAP_PROPERTIES uploadHeapProps{};
+    uploadHeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+
+    D3D12_RESOURCE_DESC bufferDesc{};
+    bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    bufferDesc.Width = intermediateSize;
+    bufferDesc.Height = 1;
+    bufferDesc.DepthOrArraySize = 1;
+    bufferDesc.MipLevels = 1;
+    bufferDesc.SampleDesc.Count = 1;
+    bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    ComPtr<ID3D12Resource> intermediateResource;
+    hr = device->CreateCommittedResource(
+        &uploadHeapProps,
+        D3D12_HEAP_FLAG_NONE,
+        &bufferDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&intermediateResource)
+    );
+    assert(SUCCEEDED(hr));
+
+    UpdateSubresources(
+        commandList,
+        texture,
+        intermediateResource.Get(),
+        0,
+        0,
+        subresourceCount,
+        subresources.data()
+    );
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = texture;
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_GENERIC_READ;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    commandList->ResourceBarrier(1, &barrier);
+
+    return intermediateResource;
 }
 
 void TextureManager::Initialize(DirectXCommon* dxCommon,SrvManager*srvManager) {
@@ -117,58 +176,20 @@ uint32_t TextureManager::LoadTexture(const std::string& filePath) {
 
     const DirectX::TexMetadata& finalMetadata = mipImages.GetMetadata();
 
-    D3D12_RESOURCE_DESC textureDesc{};
-    textureDesc.Width = UINT(finalMetadata.width);
-    textureDesc.Height = UINT(finalMetadata.height);
-    textureDesc.MipLevels = UINT16(finalMetadata.mipLevels);
-    textureDesc.DepthOrArraySize = UINT16(finalMetadata.arraySize);
-    textureDesc.Format = finalMetadata.format;
-    textureDesc.SampleDesc.Count = 1;
-    textureDesc.Dimension = D3D12_RESOURCE_DIMENSION(finalMetadata.dimension);
+    ComPtr<ID3D12Resource> textureResource =
+        CreateTextureResource(dxCommon_->GetDevice(), finalMetadata);
 
-    D3D12_HEAP_PROPERTIES heapProps{};
-    heapProps.Type = D3D12_HEAP_TYPE_CUSTOM;
-    heapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-    heapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
-
-    Microsoft::WRL::ComPtr<ID3D12Resource> textureResource;
-
-    hr = dxCommon_->GetDevice()->CreateCommittedResource(
-        &heapProps,
-        D3D12_HEAP_FLAG_NONE,
-        &textureDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&textureResource));
-
-    assert(SUCCEEDED(hr));
-
-    for (size_t arrayIndex = 0; arrayIndex < finalMetadata.arraySize; ++arrayIndex) {
-        for (size_t mipIndex = 0; mipIndex < finalMetadata.mipLevels; ++mipIndex) {
-
-            const DirectX::Image* img = mipImages.GetImage(
-                mipIndex,
-                arrayIndex,
-                0);
-
-            assert(img);
-
-            UINT subresourceIndex =
-                UINT(mipIndex + arrayIndex * finalMetadata.mipLevels);
-
-            hr = textureResource->WriteToSubresource(
-                subresourceIndex,
-                nullptr,
-                img->pixels,
-                UINT(img->rowPitch),
-                UINT(img->slicePitch));
-
-            assert(SUCCEEDED(hr));
-        }
-    }
+    ComPtr<ID3D12Resource> intermediateResource =
+        UploadTextureData(
+            textureResource.Get(),
+            mipImages,
+            dxCommon_->GetDevice(),
+            dxCommon_->GetCommandList()
+        );
 
     TextureData data{};
     data.resource = textureResource;
+    data.intermediateResource = intermediateResource;
     data.resourceDesc = textureResource->GetDesc();
 
     uint32_t index = static_cast<uint32_t>(textures_.size());
