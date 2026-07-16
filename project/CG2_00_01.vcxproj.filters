@@ -63,6 +63,7 @@
     <ClCompile Include="externals\imgui\ImGuizmo.cpp" />
     <ClCompile Include="Game\Controller\AnimationDebugPanel.cpp" />
     <ClCompile Include="Game\SceneFactory.cpp" />
+    <ClCompile Include="Game\Controller\StageEditor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h" />
@@ -168,6 +169,7 @@
     <ClInclude Include="Game\Controller\AnimationDebugPanel.h" />
     <ClInclude Include="Engine\SceneSystem\AbstractSceneFactory.h" />
     <ClInclude Include="Game\SceneFactory.h" />
+    <ClInclude Include="Game\Controller\StageEditor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="CG_3.rc" />

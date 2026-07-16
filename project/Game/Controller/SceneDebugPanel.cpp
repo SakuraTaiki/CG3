@@ -7,6 +7,7 @@
 #include "CameraDebugController.h"
 #include "EnvironmentController.h"
 #include "SceneObjectController.h"
+#include "StageEditor.h"
 #include "Object3dCommon.h"
 
 #include "Ring.h"

@@ -16,6 +16,7 @@ class Ring;
 class Cylinder;
 class Primitive;
 class Object3dCommon;
+class StageEditor;
 
 class SceneDebugPanel {
 public:
@@ -28,6 +29,7 @@ public:
         CameraDebugController& cameraDebug,
         EnvironmentController& environment,
         SceneObjectController& sceneObjects,
+        StageEditor& stageEditor,
         Ring* ring,
         Cylinder* cylinder,
         Primitive* primitive
@@ -105,7 +107,8 @@ private:
 
     void DrawGameViewWindow(
         EngineContext* context,
-        SceneObjectController& sceneObjects
+        SceneObjectController& sceneObjects,
+        StageEditor& stageEditor
     );
 
     void DrawTransformGizmo(
