@@ -116,6 +116,7 @@ private:
 
     Skeleton skeleton_;
     std::vector<QuaternionTransform> initialPose_;
+    std::vector<bool> skinJointMask_;
 
     float animationTime_ = 0.0f;
 
@@ -147,6 +148,7 @@ private:
 
     float jointDisplaySize_ = 0.06f;
     float boneDisplayThickness_ = 0.018f;
+    float modelDebugOpacity_ = 0.25f;
 
     int selectedJointIndex_ = 0;
     bool autoPauseOnJointEdit_ = true;
