@@ -69,16 +69,18 @@ void AnimationDebugController::Initialize(
     skeleton_ =
         CreateSkeleton(modelAnimated->GetRootNode());
 
+    // Only nodes used by the skin cluster are actual deforming bones.
+    skinJointMask_.assign(skeleton_.joints.size(), false);
+    const auto& skinClusterData = modelAnimated->GetSkinClusterData();
+    for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
+        skinJointMask_[i] =
+            skinClusterData.find(skeleton_.joints[i].name) != skinClusterData.end();
+    }
+
     initialPose_.resize(skeleton_.joints.size());
     for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
         initialPose_[i] = skeleton_.joints[i].transform;
     }
-
-    InitializeSkeletonDebug(
-        object3dCommon,
-        environmentTextureHandle,
-        environmentCoefficient
-    );
 
     animatedObject_ = std::make_unique<Object3d>();
     animatedObject_->Initialize(object3dCommon);
@@ -87,11 +89,20 @@ void AnimationDebugController::Initialize(
    
 
     animatedObject_->SetPosition({ 0.0f, 0.0f, 0.0f });
-    animatedObject_->SetRotation({ -90.0f, 0.0f, 0.0f });
+    constexpr float halfPi = 1.57079632679f;
+    animatedObject_->SetRotation({ -halfPi, 0.0f, 0.0f });
     animatedObject_->SetScale({ 200.0f, 200.0f, 200.0f });
 
     animatedObject_->SetEnvironmentTexture(environmentTextureHandle);
     animatedObject_->SetEnvironmentCoefficient(environmentCoefficient);
+
+    // The debug skeleton is parented to the animated model so both always use
+    // exactly the same object/world transform.
+    InitializeSkeletonDebug(
+        object3dCommon,
+        environmentTextureHandle,
+        environmentCoefficient
+    );
 }
 
 void AnimationDebugController::Finalize() {
@@ -124,6 +135,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
         jointObj->SetEnvironmentCoefficient(environmentCoefficient);
         jointObj->SetEnableLighting(false);
         jointObj->SetColor({ 1.0f, 0.55f, 0.10f, 1.0f });
+        jointObj->SetParent(animatedObject_.get());
 
         skeletonDebugObjects_.push_back(std::move(jointObj));
     }
@@ -143,6 +155,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
         boneObj->SetEnvironmentCoefficient(environmentCoefficient);
         boneObj->SetEnableLighting(false);
         boneObj->SetColor({ 0.88f, 0.88f, 0.88f, 1.0f });
+        boneObj->SetParent(animatedObject_.get());
 
         skeletonBoneObjects_.push_back(std::move(boneObj));
     }
@@ -160,14 +173,15 @@ void AnimationDebugController::Update(Input* input)
         UpdateSkelton(skeleton_);
     }
 
-    if (showSkeletonDebug_) {
-        UpdateSkeletonDebug();
-    }
-
     SyncSkeletonToObject();
 
     if (animatedObject_) {
         animatedObject_->Update();
+    }
+
+    // Parent world matrix must be current before updating child debug objects.
+    if (showSkeletonDebug_) {
+        UpdateSkeletonDebug();
     }
 }
 
@@ -578,20 +592,37 @@ void AnimationDebugController::UpdateSkeletonDebug() {
         return;
     }
 
-    Matrix4x4 objectWorld = Math::MakeIdentity4x4();
+    // Object3d renders the skinned mesh with:
+    //   rootNode.localMatrix * objectWorld
+    // Apply that same root-node matrix to debug joint coordinates. This keeps
+    // the course Skeleton/Joint/SkinCluster structure unchanged while placing
+    // markers in exactly the same mesh space as the rendered model.
+    Matrix4x4 modelRootMatrix = Math::MakeIdentity4x4();
+    if (animatedObject_ && animatedObject_->GetModel()) {
+        modelRootMatrix = animatedObject_->GetModel()->GetRootNode().localMatrix;
+    }
+
+    // Debug objects are children of animatedObject_. Cancel only the parent's
+    // scale for marker size/thickness. Their positions and bone lengths stay in
+    // model local space so they follow the exact same transform as the mesh.
+    Vector3 inverseParentScale = { 1.0f, 1.0f, 1.0f };
     if (animatedObject_) {
-        const Transform& objectTransform = animatedObject_->GetTransform();
-        objectWorld = Math::MakeAffineMatrix(
-            objectTransform.scale,
-            objectTransform.rotate,
-            objectTransform.translate
-        );
+        const Vector3& parentScale = animatedObject_->GetTransform().scale;
+        if (std::abs(parentScale.x) > 0.00001f) {
+            inverseParentScale.x = 1.0f / std::abs(parentScale.x);
+        }
+        if (std::abs(parentScale.y) > 0.00001f) {
+            inverseParentScale.y = 1.0f / std::abs(parentScale.y);
+        }
+        if (std::abs(parentScale.z) > 0.00001f) {
+            inverseParentScale.z = 1.0f / std::abs(parentScale.z);
+        }
     }
 
     for (size_t i = 0; i < skeleton_.joints.size(); ++i) {
         const Matrix4x4 mat = Math::Multiply(
             skeleton_.joints[i].skeletonSpaceMatrix,
-            objectWorld
+            modelRootMatrix
         );
 
         Vector3 jointPosition = {
@@ -602,10 +633,13 @@ void AnimationDebugController::UpdateSkeletonDebug() {
 
         skeletonDebugObjects_[i]->SetPosition(jointPosition);
         skeletonDebugObjects_[i]->SetRotation({ 0.0f, 0.0f, 0.0f });
+        const bool isSkinJoint =
+            i < skinJointMask_.size() && skinJointMask_[i];
+        const float displaySize = isSkinJoint ? jointDisplaySize_ : 0.0f;
         skeletonDebugObjects_[i]->SetScale({
-            jointDisplaySize_,
-            jointDisplaySize_,
-            jointDisplaySize_
+            displaySize * inverseParentScale.x,
+            displaySize * inverseParentScale.y,
+            displaySize * inverseParentScale.z
         });
         if (static_cast<int>(i) == selectedJointIndex_) {
             skeletonDebugObjects_[i]->SetColor({ 1.0f, 0.95f, 0.15f, 1.0f });
@@ -626,14 +660,28 @@ void AnimationDebugController::UpdateSkeletonDebug() {
             break;
         }
 
+        const bool childIsSkinJoint =
+            static_cast<size_t>(joint.index) < skinJointMask_.size() &&
+            skinJointMask_[joint.index];
+        const bool parentIsSkinJoint =
+            static_cast<size_t>(*joint.parent) < skinJointMask_.size() &&
+            skinJointMask_[*joint.parent];
+
+        if (!childIsSkinJoint || !parentIsSkinJoint) {
+            skeletonBoneObjects_[boneIndex]->SetScale({ 0.0f, 0.0f, 0.0f });
+            skeletonBoneObjects_[boneIndex]->Update();
+            ++boneIndex;
+            continue;
+        }
+
         const Matrix4x4 childMat = Math::Multiply(
             joint.skeletonSpaceMatrix,
-            objectWorld
+            modelRootMatrix
         );
 
         const Matrix4x4 parentMat = Math::Multiply(
             skeleton_.joints[*joint.parent].skeletonSpaceMatrix,
-            objectWorld
+            modelRootMatrix
         );
 
         Vector3 childPos = {
@@ -678,8 +726,8 @@ void AnimationDebugController::UpdateSkeletonDebug() {
         skeletonBoneObjects_[boneIndex]->SetRotation(rotation);
         skeletonBoneObjects_[boneIndex]->SetScale({
             length,
-            boneDisplayThickness_,
-            boneDisplayThickness_
+            boneDisplayThickness_ * inverseParentScale.y,
+            boneDisplayThickness_ * inverseParentScale.z
         });
         skeletonBoneObjects_[boneIndex]->Update();
 
@@ -688,20 +736,32 @@ void AnimationDebugController::UpdateSkeletonDebug() {
 }
 
 void AnimationDebugController::Draw() {
-    if (animatedObject_) {
-        animatedObject_->Draw();
-    }
-
     if (!showSkeletonDebug_) {
+        if (animatedObject_) {
+            animatedObject_->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            animatedObject_->Draw();
+        }
         return;
     }
 
+    // Draw bones first. The transparent model is blended over them afterwards,
+    // so joints inside the body remain visible without changing skinning.
     for (auto& debugObject : skeletonDebugObjects_) {
         debugObject->Draw();
     }
 
     for (auto& boneObject : skeletonBoneObjects_) {
         boneObject->Draw();
+    }
+
+    if (animatedObject_) {
+        animatedObject_->SetColor({
+            1.0f,
+            1.0f,
+            1.0f,
+            std::clamp(modelDebugOpacity_, 0.0f, 1.0f)
+        });
+        animatedObject_->Draw();
     }
 }
 
@@ -816,6 +876,13 @@ void AnimationDebugController::DrawImGui() {
         0.001f,
         0.002f,
         0.2f
+    );
+    ImGui::SliderFloat(
+        "Model Opacity",
+        &modelDebugOpacity_,
+        0.05f,
+        1.0f,
+        "%.2f"
     );
 
     const int jointCount =

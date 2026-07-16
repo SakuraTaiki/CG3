@@ -273,7 +273,13 @@ void Object3dCommon::CreateGraphicsPipeline() {
     psoDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
     auto& target = psoDesc.BlendState.RenderTarget[0];
-    target.BlendEnable = FALSE;
+    target.BlendEnable = TRUE;
+    target.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    target.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    target.BlendOp = D3D12_BLEND_OP_ADD;
+    target.SrcBlendAlpha = D3D12_BLEND_ONE;
+    target.DestBlendAlpha = D3D12_BLEND_ZERO;
+    target.BlendOpAlpha = D3D12_BLEND_OP_ADD;
     target.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     psoDesc.NumRenderTargets = 1;
