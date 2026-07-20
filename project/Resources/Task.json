@@ -1,0 +1,176 @@
+{
+    "coordinate_system": "ENGINE_Y_UP_LH",
+    "name": "RuntimeEditedScene",
+    "objects": [
+        {
+            "file_name": "",
+            "level": 0,
+            "model": "",
+            "name": "Camera",
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    153.55929565429688,
+                    46.69194412231445,
+                    180.0
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    7.358891487121582,
+                    4.958309173583984,
+                    -6.925790786743164
+                ]
+            },
+            "type": "EMPTY",
+            "visible": true
+        },
+        {
+            "file_name": "Cube_Cube.001.obj",
+            "level": 0,
+            "model": "Resources/axis/axis.obj",
+            "name": "Cube_Cube.001",
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    -180.0,
+                    1.129935412791383e-06,
+                    138.7245330810547
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    6.128782749176025,
+                    1.3378461599349976,
+                    0.025617361068725586
+                ]
+            },
+            "type": "MESH",
+            "visible": true
+        },
+        {
+            "file_name": "",
+            "level": 0,
+            "model": "",
+            "name": "Light",
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    -42.466426849365234,
+                    72.77922821044922,
+                    10.743666648864746
+                ],
+                "scaling": [
+                    1.0,
+                    0.9999999403953552,
+                    1.0
+                ],
+                "translation": [
+                    4.076245307922363,
+                    5.903861999511719,
+                    1.0054539442062378
+                ]
+            },
+            "type": "EMPTY",
+            "visible": true
+        },
+        {
+            "file_name": "Plane.obj",
+            "level": 0,
+            "model": "Resources/Plane.obj",
+            "name": "Plane",
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    -180.0,
+                    -0.0,
+                    180.0
+                ],
+                "scaling": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translation": [
+                    -4.354231834411621,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "MESH",
+            "visible": true
+        },
+        {
+            "file_name": "bunny.obj",
+            "level": 0,
+            "model": "Resources/bunny/bunny.obj",
+            "name": "bunny",
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    -180.0,
+                    -0.0,
+                    180.0
+                ],
+                "scaling": [
+                    1.0,
+                    2.569999933242798,
+                    1.0
+                ],
+                "translation": [
+                    4.126488208770752,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "MESH",
+            "visible": true
+        },
+        {
+            "collider": {
+                "center": [
+                    0.30000001192092896,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    2.0,
+                    2.0,
+                    2.0
+                ],
+                "type": "BOX"
+            },
+            "file_name": "star_thick.obj",
+            "level": 0,
+            "model": "Resources/star.obj",
+            "name": "star_thick",
+            "texture": "",
+            "transform": {
+                "rotation": [
+                    -180.0,
+                    -0.0,
+                    180.0
+                ],
+                "scaling": [
+                    1.9600000381469727,
+                    5.849999904632568,
+                    1.0
+                ],
+                "translation": [
+                    -1.7279865741729736,
+                    0.0,
+                    -0.03801083564758301
+                ]
+            },
+            "type": "MESH",
+            "visible": true
+        }
+    ],
+    "version": 4
+}

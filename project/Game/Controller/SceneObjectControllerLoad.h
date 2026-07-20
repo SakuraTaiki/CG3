@@ -29,6 +29,9 @@ bool SceneObjectController::LoadLevelSceneFromJson(
     const bool convertFromBlender =
         coordinateSystem != "ENGINE_Y_UP_LH";
 
+    const std::filesystem::path sceneDirectory =
+        std::filesystem::path(filePath).parent_path();
+
     ClearEditorObjects();
 
     bool hadLoadError = false;
@@ -41,13 +44,20 @@ bool SceneObjectController::LoadLevelSceneFromJson(
         const std::string exportFileName = objectJson.value("file_name", "");
 
         if (modelPath.empty() && !exportFileName.empty()) {
+            const std::filesystem::path exportedPath(exportFileName);
+            const std::filesystem::path sceneRelativePath =
+                exportedPath.is_absolute() || sceneDirectory.empty()
+                ? exportedPath
+                : sceneDirectory / exportedPath;
             const std::string defaultPath =
                 exportFileName.find('/') == std::string::npos &&
                 exportFileName.find('\\') == std::string::npos
                 ? "Resources/" + exportFileName
                 : exportFileName;
 
-            if (std::filesystem::exists(defaultPath)) {
+            if (std::filesystem::exists(sceneRelativePath)) {
+                modelPath = sceneRelativePath.generic_string();
+            } else if (std::filesystem::exists(defaultPath)) {
                 modelPath = defaultPath;
             } else {
                 // Blender形式はfile_nameしか持たないため、Resourcesの
@@ -70,6 +80,15 @@ bool SceneObjectController::LoadLevelSceneFromJson(
             }
         }
 
+        // The class Blender add-on falls back to "<Blender object name>.obj"
+        // when file_name was not explicitly assigned. Imported OBJ objects can
+        // have a different Blender name than their source filename
+        // (for example Cube_Cube.001 -> axis.obj). In that case, identify the
+        // source OBJ by its internal `o` or `g` declaration.
+        if (modelPath.empty() && !name.empty()) {
+            modelPath = FindObjPathByObjectName("Resources", name);
+        }
+
         const std::string texturePath =
             objectJson.value("texture", "");
 
@@ -83,32 +102,35 @@ bool SceneObjectController::LoadLevelSceneFromJson(
         if (modelPath.empty()) {
             if (objectType == "MESH") {
                 hadLoadError = true;
-                return;
+                // Preserve Blender hierarchy and transforms even when the
+                // exported mesh has not been copied into Resources yet.
+                index = AddEditorEmpty(name.empty() ? exportFileName : name);
+            } else {
+                index = AddEditorEmpty(name.empty() ? "Empty" : name);
             }
-            index = AddEditorEmpty(name.empty() ? "Empty" : name);
         } else {
             if (!std::filesystem::exists(modelPath)) {
                 hadLoadError = true;
-                return;
+                index = AddEditorEmpty(name.empty() ? exportFileName : name);
+            } else {
+                std::string directoryPath;
+                if (!SplitModelPath(modelPath, directoryPath, modelName)) {
+                    hadLoadError = true;
+                    index = AddEditorEmpty(name.empty() ? exportFileName : name);
+                } else {
+                    Model* model = ModelManager::Load(directoryPath, modelName);
+                    if (!model) {
+                        hadLoadError = true;
+                        index = AddEditorEmpty(name.empty() ? modelName : name);
+                    } else {
+                        index = AddEditorObject(
+                            model,
+                            name.empty() ? modelName : name,
+                            modelPath
+                        );
+                    }
+                }
             }
-
-            std::string directoryPath;
-            if (!SplitModelPath(modelPath, directoryPath, modelName)) {
-                hadLoadError = true;
-                return;
-            }
-
-            Model* model = ModelManager::Load(directoryPath, modelName);
-            if (!model) {
-                hadLoadError = true;
-                return;
-            }
-
-            index = AddEditorObject(
-                model,
-                name.empty() ? modelName : name,
-                modelPath
-            );
         }
 
         Object3d* object =
@@ -160,9 +182,10 @@ bool SceneObjectController::LoadLevelSceneFromJson(
             const float x = objectJson["scale"][0].get<float>();
             const float y = objectJson["scale"][1].get<float>();
             const float z = objectJson["scale"][2].get<float>();
-            transform.scale = convertFromBlender
-                ? Vector3{ x, z, y }
-                : Vector3{ x, y, z };
+            // Scale is expressed on the model's local axes. OBJ vertices keep
+            // those axes in this engine (apart from the existing X mirror),
+            // so Y/Z must not be swapped here.
+            transform.scale = Vector3{ x, y, z };
         }
 
         if (objectJson.contains("transform") && objectJson["transform"].is_object()) {
@@ -182,20 +205,15 @@ bool SceneObjectController::LoadLevelSceneFromJson(
             if (transformJson.contains("rotation") &&
                 transformJson["rotation"].is_array() &&
                 transformJson["rotation"].size() >= 3) {
-                constexpr float kDegreesToRadians = 0.017453292519943295f;
                 const float x = transformJson["rotation"][0].get<float>();
                 const float y = transformJson["rotation"][1].get<float>();
                 const float z = transformJson["rotation"][2].get<float>();
                 transform.rotate = convertFromBlender
-                    ? Vector3{
-                        -x * kDegreesToRadians,
-                        -z * kDegreesToRadians,
-                        -y * kDegreesToRadians
-                    }
+                    ? ConvertBlenderEulerDegreesToEngine(x, y, z)
                     : Vector3{
-                        x * kDegreesToRadians,
-                        y * kDegreesToRadians,
-                        z * kDegreesToRadians
+                        x * 0.017453292519943295f,
+                        y * 0.017453292519943295f,
+                        z * 0.017453292519943295f
                     };
             }
 
@@ -205,9 +223,7 @@ bool SceneObjectController::LoadLevelSceneFromJson(
                 const float x = transformJson["scaling"][0].get<float>();
                 const float y = transformJson["scaling"][1].get<float>();
                 const float z = transformJson["scaling"][2].get<float>();
-                transform.scale = convertFromBlender
-                    ? Vector3{ x, z, y }
-                    : Vector3{ x, y, z };
+                transform.scale = Vector3{ x, y, z };
             }
         }
 
@@ -238,7 +254,7 @@ bool SceneObjectController::LoadLevelSceneFromJson(
                     const float y = colliderJson["center"][1].get<float>();
                     const float z = colliderJson["center"][2].get<float>();
                     collider->center = convertFromBlender
-                        ? Vector3{ x, z, y }
+                        ? Vector3{ -x, y, z }
                         : Vector3{ x, y, z };
                 }
                 if (colliderJson.contains("size") && colliderJson["size"].is_array() &&
@@ -246,9 +262,7 @@ bool SceneObjectController::LoadLevelSceneFromJson(
                     const float x = colliderJson["size"][0].get<float>();
                     const float y = colliderJson["size"][1].get<float>();
                     const float z = colliderJson["size"][2].get<float>();
-                    collider->size = convertFromBlender
-                        ? Vector3{ x, z, y }
-                        : Vector3{ x, y, z };
+                    collider->size = Vector3{ x, y, z };
                 }
             }
         }

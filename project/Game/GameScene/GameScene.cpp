@@ -15,6 +15,7 @@
 #include "WinApp.h"
 
 #include <algorithm>
+#include <filesystem>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
@@ -41,19 +42,34 @@ void GameScene::Initialize(EngineContext* context) {
         environment_.GetEnvironmentCoefficient()
     );
 
-    const bool levelLoaded =
-        sceneObjects_.LoadLevelSceneFromJson(
+    // Blender export is authoritative whenever it exists. A missing model
+    // referenced by Task.json must not make us replace the whole scene with
+    // LevelScene.json.
+    const bool hasBlenderTask =
+        std::filesystem::exists("Resources/Task.json");
+    bool levelLoaded = false;
+    if (hasBlenderTask) {
+        levelLoaded = sceneObjects_.LoadLevelSceneFromJson(
+            "Resources/Task.json"
+        );
+    } else {
+        levelLoaded = sceneObjects_.LoadLevelSceneFromJson(
             "Resources/LevelScene.json"
         );
+    }
 
     sceneObjects_.ShowTerrain() = false;
     sceneObjects_.ShowAxis() = false;
 
     if (!levelLoaded) {
         OutputDebugStringA(
-            "Failed to load Resources/LevelScene.json\n"
+            hasBlenderTask
+                ? "Task.json was loaded with missing or invalid assets\n"
+                : "Failed to load Resources/LevelScene.json\n"
         );
     }
+
+    InitializeTaskJsonHotReload();
 
     animationDebug_.Initialize(
         object3dCommon,
@@ -148,6 +164,7 @@ void GameScene::Update() {
     }
 
     soundController_.Update(context_->GetInput());
+    UpdateTaskJsonHotReload();
     UpdateObjects();
 
 
@@ -220,6 +237,82 @@ void GameScene::Update() {
         cylinder_.get(),
         primitive_.get()
     );
+}
+
+void GameScene::InitializeTaskJsonHotReload() {
+    constexpr const char* kTaskJsonPath = "Resources/Task.json";
+    std::error_code error;
+
+    if (!std::filesystem::exists(kTaskJsonPath, error) || error) {
+        taskJsonWatchInitialized_ = false;
+        taskJsonReloadPending_ = false;
+        return;
+    }
+
+    taskJsonObservedWriteTime_ =
+        std::filesystem::last_write_time(kTaskJsonPath, error);
+    taskJsonWatchInitialized_ = !error;
+    taskJsonReloadPending_ = false;
+    taskJsonReloadAttempts_ = 0;
+}
+
+void GameScene::UpdateTaskJsonHotReload() {
+    constexpr const char* kTaskJsonPath = "Resources/Task.json";
+    constexpr auto kReloadDebounce = std::chrono::milliseconds(250);
+    constexpr int kMaxReloadAttempts = 10;
+
+    std::error_code error;
+    if (!std::filesystem::exists(kTaskJsonPath, error) || error) {
+        taskJsonWatchInitialized_ = false;
+        taskJsonReloadPending_ = false;
+        return;
+    }
+
+    const auto currentWriteTime =
+        std::filesystem::last_write_time(kTaskJsonPath, error);
+    if (error) {
+        return;
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    if (!taskJsonWatchInitialized_) {
+        taskJsonObservedWriteTime_ = currentWriteTime;
+        taskJsonWatchInitialized_ = true;
+        taskJsonReloadPending_ = true;
+        taskJsonReloadAttempts_ = 0;
+        taskJsonChangeDetectedAt_ = now;
+        return;
+    }
+
+    if (currentWriteTime != taskJsonObservedWriteTime_) {
+        taskJsonObservedWriteTime_ = currentWriteTime;
+        taskJsonReloadPending_ = true;
+        taskJsonReloadAttempts_ = 0;
+        taskJsonChangeDetectedAt_ = now;
+        return;
+    }
+
+    if (!taskJsonReloadPending_ ||
+        now - taskJsonChangeDetectedAt_ < kReloadDebounce) {
+        return;
+    }
+
+    const bool loaded =
+        sceneObjects_.LoadLevelSceneFromJson(kTaskJsonPath);
+    if (loaded) {
+        taskJsonReloadPending_ = false;
+        taskJsonReloadAttempts_ = 0;
+        OutputDebugStringA("Hot reloaded Resources/Task.json\n");
+        return;
+    }
+
+    ++taskJsonReloadAttempts_;
+    if (taskJsonReloadAttempts_ >= kMaxReloadAttempts) {
+        taskJsonReloadPending_ = false;
+        OutputDebugStringA("Task.json hot reload failed after retries\n");
+    } else {
+        taskJsonChangeDetectedAt_ = now;
+    }
 }
 
 void GameScene::UpdateObjects() {

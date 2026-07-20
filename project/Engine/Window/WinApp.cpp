@@ -1,6 +1,8 @@
 #include "WinApp.h"
 
 #include <mmsystem.h>
+#include <string>
+#include <vector>
 
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_win32.h"
@@ -148,6 +150,58 @@ bool WinApp::ProcessMessage()
     }
 
     return false;
+}
+
+bool WinApp::RestartExecutable()
+{
+    std::vector<wchar_t> executablePath(32768, L'\0');
+    const DWORD pathLength = GetModuleFileNameW(
+        nullptr,
+        executablePath.data(),
+        static_cast<DWORD>(executablePath.size())
+    );
+    if (pathLength == 0 || pathLength >= executablePath.size()) {
+        return false;
+    }
+
+    std::wstring commandLine = L"\"";
+    commandLine.append(executablePath.data(), pathLength);
+    commandLine += L"\"";
+    std::vector<wchar_t> mutableCommandLine(
+        commandLine.begin(),
+        commandLine.end()
+    );
+    mutableCommandLine.push_back(L'\0');
+
+    STARTUPINFOW startupInfo{};
+    startupInfo.cb = sizeof(startupInfo);
+    PROCESS_INFORMATION processInfo{};
+
+    const BOOL created = CreateProcessW(
+        executablePath.data(),
+        mutableCommandLine.data(),
+        nullptr,
+        nullptr,
+        FALSE,
+        0,
+        nullptr,
+        nullptr,
+        &startupInfo,
+        &processInfo
+    );
+    if (!created) {
+        return false;
+    }
+
+    CloseHandle(processInfo.hThread);
+    CloseHandle(processInfo.hProcess);
+
+    if (hwnd_) {
+        PostMessage(hwnd_, WM_CLOSE, 0, 0);
+    } else {
+        PostQuitMessage(0);
+    }
+    return true;
 }
 
 bool WinApp::ConsumeResize(

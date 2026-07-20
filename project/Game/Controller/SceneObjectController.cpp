@@ -8,6 +8,7 @@
 #include <fstream>
 #include <functional>
 #include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <filesystem>
 #include <regex>

@@ -2,6 +2,8 @@
 
 #include <memory>
 #include <vector>
+#include <chrono>
+#include <filesystem>
 
 #include "IScene.h"
 #include "EngineContext.h"
@@ -40,6 +42,8 @@ private:
     void InitializeRing();
     void InitializeCylinder();
     void InitializePrimitive();
+    void InitializeTaskJsonHotReload();
+    void UpdateTaskJsonHotReload();
    
 
     // 更新処理。
@@ -76,4 +80,10 @@ private:
     SceneObjectController sceneObjects_;
     SceneDebugPanel sceneDebugPanel_;
     StageEditor stageEditor_;
+
+    std::filesystem::file_time_type taskJsonObservedWriteTime_{};
+    std::chrono::steady_clock::time_point taskJsonChangeDetectedAt_{};
+    bool taskJsonWatchInitialized_ = false;
+    bool taskJsonReloadPending_ = false;
+    int taskJsonReloadAttempts_ = 0;
 };

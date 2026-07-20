@@ -68,7 +68,7 @@ bool SceneObjectController::SaveLevelSceneToJson(
 
     nlohmann::json sceneJson;
     sceneJson["version"] = 4;
-    sceneJson["name"] = "LevelScene";
+    sceneJson["name"] = "RuntimeEditedScene";
     sceneJson["coordinate_system"] = "ENGINE_Y_UP_LH";
     sceneJson["objects"] = nlohmann::json::array();
 

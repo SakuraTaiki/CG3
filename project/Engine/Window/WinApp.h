@@ -20,6 +20,7 @@ public:
     void Finalize();
 
     bool ProcessMessage();
+    bool RestartExecutable();
 
     void ToggleFullscreen();
 

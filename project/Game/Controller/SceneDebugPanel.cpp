@@ -24,6 +24,7 @@
 #include <string>
 #include <cstring>
 #include <functional>
+#include <filesystem>
 
 #ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"

@@ -24,6 +24,7 @@ void SceneDebugPanel::Draw(
     );
 
     DrawMainMenuBar(
+        context,
         drawMode,
         hitEffect,
         animationDebug,
@@ -67,6 +68,7 @@ void SceneDebugPanel::Draw(
 }
 
 void SceneDebugPanel::DrawMainMenuBar(
+    EngineContext* context,
     GameSceneDrawMode& drawMode,
     HitEffectController& hitEffect,
     AnimationDebugController& animationDebug,
@@ -82,34 +84,65 @@ void SceneDebugPanel::DrawMainMenuBar(
             ImGui::MenuItem("New Scene", nullptr, false, false);
             ImGui::Separator();
 
-            if (ImGui::MenuItem("Save Level Scene Json", "Ctrl+S")) {
-                if (sceneObjects.SaveLevelSceneToJson("Resources/LevelScene.json")) {
+            if (ImGui::MenuItem("Save Runtime Task Json", "Ctrl+S")) {
+                if (sceneObjects.SaveLevelSceneToJson("Resources/Task.json")) {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Info,
-                        "Saved level scene: Resources/LevelScene.json"
+                        "Saved runtime scene: Resources/Task.json"
                     );
                 } else {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Save level scene failed."
+                        "Save Resources/Task.json failed."
                     );
                 }
             }
 
-            if (ImGui::MenuItem("Reload Level Scene Json", "Ctrl+O")) {
-                if (sceneObjects.LoadLevelSceneFromJson("Resources/LevelScene.json")) {
+            if (ImGui::MenuItem("Reload Runtime Task Json", "Ctrl+O")) {
+                const bool hasBlenderTask =
+                    std::filesystem::exists("Resources/Task.json");
+                const char* loadedPath = hasBlenderTask
+                    ? "Resources/Task.json"
+                    : "Resources/LevelScene.json";
+                bool loaded = false;
+                if (hasBlenderTask) {
+                    loaded = sceneObjects.LoadLevelSceneFromJson("Resources/Task.json");
+                } else {
+                    loaded = sceneObjects.LoadLevelSceneFromJson("Resources/LevelScene.json");
+                }
+                if (loaded) {
                     selected_ = EditorSelection::None;
                     selectedObjectIndex_ = 0;
                     Detail::GetModelApplyTargetIndex() = 0;
 
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Info,
-                        "Reloaded level scene: Resources/LevelScene.json"
+                        std::string("Reloaded level scene: ") + loadedPath
                     );
                 } else {
                     Detail::AddEditorLog(
+                        hasBlenderTask
+                            ? Detail::EditorLogType::Warning
+                            : Detail::EditorLogType::Error,
+                        hasBlenderTask
+                            ? "Task.json loaded partially: one or more model files are missing."
+                            : "Reload level scene failed."
+                    );
+                }
+            }
+
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save Task && Restart EXE")) {
+                if (!sceneObjects.SaveLevelSceneToJson("Resources/Task.json")) {
+                    Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Reload level scene failed."
+                        "Restart cancelled: failed to save Resources/Task.json."
+                    );
+                } else if (!context || !context->GetWinApp() ||
+                           !context->GetWinApp()->RestartExecutable()) {
+                    Detail::AddEditorLog(
+                        Detail::EditorLogType::Error,
+                        "Restart failed: could not launch the executable."
                     );
                 }
             }
