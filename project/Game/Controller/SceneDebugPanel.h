@@ -51,6 +51,7 @@ private:
     };
 
     void DrawMainMenuBar(
+        EngineContext* context,
         GameSceneDrawMode& drawMode,
         HitEffectController& hitEffect,
         AnimationDebugController& animationDebug,
