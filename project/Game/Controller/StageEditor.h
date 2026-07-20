@@ -1,103 +1,100 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
 
+// Cursor-driven 2.5D stage editor.
+// X/Y are the gameplay plane. Z selects a small number of depth layers.
 class StageEditor {
 public:
-    enum class Tool { Select, Paint, Erase, Object };
-    enum class ObjectType { PlayerStart, Goal, MovingPlatform };
+    enum class Category { Basic, Gimmick, Enemy, System };
 
-    struct StageObject {
-        uint32_t id = 0;
-        ObjectType type = ObjectType::MovingPlatform;
-        int gridX = 0;
-        int gridY = 0;
-        int width = 3;
-        int height = 1;
-        int endGridX = 6;
-        int endGridY = 0;
-        float speed = 3.0f;
-        float waitSeconds = 0.25f;
-        bool pingPong = true;
+    struct BlockDefinition {
+        int id;
+        const char* name;
+        Category category;
+        uint32_t color;
+        bool rotatable;
+    };
+
+    struct Cell {
+        int blockId = 0;
+        int rotationQuarterTurns = 0;
     };
 
     void Initialize();
     void Draw();
     void DrawGameView(float rectX, float rectY, float rectWidth, float rectHeight);
-    bool IsEditingGameView() const { return !previewPlaying_; }
+    bool IsEditingGameView() const { return true; }
 
 private:
     struct Snapshot {
-        std::vector<int> tiles;
-        std::vector<StageObject> objects;
-        uint32_t nextObjectId = 1;
+        std::vector<Cell> cells;
+        int cursorX = 0;
+        int cursorY = 0;
+        int cursorZ = 0;
     };
 
-    static constexpr int kDefaultWidth = 120;
-    static constexpr int kDefaultHeight = 30;
-    static constexpr int kTileSize = 32;
-    static constexpr int kTileTypeCount = 6;
+    static constexpr int kDefaultWidth = 80;
+    static constexpr int kDefaultHeight = 24;
+    static constexpr int kDepthLayers = 3;
+    static constexpr int kTilePixels = 32;
 
-    void DrawToolbar();
-    void DrawPalette();
-    void DrawCanvas();
-    void DrawInspector();
-    void DrawStatusBar();
-    void DrawGridAndContents(const std::array<float, 2>& origin,
-                             const std::array<float, 2>& size);
-    void HandleCanvasInput(const std::array<float, 2>& origin,
-                           const std::array<float, 2>& size);
+    void DrawStageEditorWindow();
+    void DrawCategoryTabs();
+    void DrawBlockPalette();
+    void DrawFilePanel();
+    void DrawHelpPanel();
+    void DrawOverlay(float x, float y, float width, float height);
+    void HandleKeyboard();
+    void HandleMouse(float x, float y, float width, float height);
 
-    int TileIndex(int x, int y) const;
-    bool IsInside(int x, int y) const;
-    void PaintTile(int x, int y, int tileId);
-    void PlaceObject(int x, int y);
-    int FindObjectAt(int x, int y) const;
-    StageObject* SelectedObject();
-    const StageObject* SelectedObject() const;
+    bool IsInside(int x, int y, int z) const;
+    size_t CellIndex(int x, int y, int z) const;
+    Cell& CellAt(int x, int y, int z);
+    const Cell& CellAt(int x, int y, int z) const;
+    const BlockDefinition* FindBlock(int id) const;
+    void PlaceSelectedBlock();
+    void RemoveBlock();
+    void RotateBlock();
+    void MoveCursor(int dx, int dy, int dz);
 
-    void BeginEdit();
-    void CommitEdit();
     Snapshot MakeSnapshot() const;
     void ApplySnapshot(const Snapshot& snapshot);
+    void PushUndo();
     void Undo();
     void Redo();
-    void ResetStage();
-    bool Save(const std::string& path);
-    bool Load(const std::string& path);
-    void StartPreview();
-    void StopPreview();
-    void UpdatePreview(float deltaSeconds);
+    void NewStage();
 
-    const char* TileName(int tileId) const;
-    const char* ObjectName(ObjectType type) const;
+    bool SaveAsNewStage();
+    bool LoadStage(const std::string& path);
+    void RefreshStageFiles();
+    std::string MakeUniqueStagePath(const std::string& requestedName) const;
+    static std::string SanitizeFileName(const std::string& name);
 
     int stageWidth_ = kDefaultWidth;
     int stageHeight_ = kDefaultHeight;
-    std::vector<int> tiles_;
-    std::vector<StageObject> objects_;
-    uint32_t nextObjectId_ = 1;
+    std::vector<Cell> cells_;
 
-    Tool tool_ = Tool::Paint;
-    ObjectType objectType_ = ObjectType::MovingPlatform;
-    int selectedTile_ = 1;
-    uint32_t selectedObjectId_ = 0;
+    int cursorX_ = 2;
+    int cursorY_ = kDefaultHeight - 4;
+    int cursorZ_ = 0;
+    int selectedBlockId_ = 1;
+    Category category_ = Category::Basic;
 
     float zoom_ = 1.0f;
-    float scrollX_ = 0.0f;
-    float scrollY_ = 0.0f;
+    float viewOffsetX_ = 0.0f;
+    float viewOffsetY_ = 0.0f;
     bool showGrid_ = true;
-    bool previewPlaying_ = false;
-    float previewTime_ = 0.0f;
-    bool strokeActive_ = false;
-    bool strokeChanged_ = false;
-    Snapshot strokeBefore_;
+    bool gameViewHovered_ = false;
 
     std::vector<Snapshot> undoStack_;
     std::vector<Snapshot> redoStack_;
-    std::string filePath_ = "Resources/Stages/stage_01.json";
+    std::vector<std::string> stageFiles_;
+    int selectedStageFile_ = -1;
+
+    std::string stageName_ = "stage_01";
+    std::string currentFile_;
     std::string status_ = "Ready";
 };
