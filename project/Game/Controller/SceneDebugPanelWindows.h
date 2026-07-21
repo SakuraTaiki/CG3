@@ -19,6 +19,31 @@ void SceneDebugPanel::Draw(
 
     context->GetImGuiManager()->Begin();
 
+    const bool gamePlayMode = stageEditor.IsGamePlayMode();
+    if (!workspaceModeSyncInitialized_) {
+        previousGamePlayMode_ = gamePlayMode;
+        workspaceModeSyncInitialized_ = true;
+    } else if (gamePlayMode != previousGamePlayMode_) {
+        ApplyWorkspace(gamePlayMode ? Workspace::GameTesting : Workspace::StageEditing);
+        previousGamePlayMode_ = gamePlayMode;
+    }
+
+    if (ImGui::IsKeyPressed(ImGuiKey_F11)) {
+        gameViewMaximized_ = !gameViewMaximized_;
+        showGameViewWindow_ = true;
+    }
+    if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
+        stageEditor.ToggleMode();
+    }
+    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_P)) {
+        showProjectWindow_ = !showProjectWindow_;
+        workspace_ = Workspace::Custom;
+    }
+    if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_GraveAccent)) {
+        showConsoleWindow_ = !showConsoleWindow_;
+        workspace_ = Workspace::Custom;
+    }
+
     cameraDebug.Update(
         context->GetCamera()
     );
@@ -28,43 +53,101 @@ void SceneDebugPanel::Draw(
         drawMode,
         hitEffect,
         animationDebug,
-        sceneObjects
-    );
-
-    DrawHierarchyWindow(
-        sceneObjects
-    );
-
-    DrawInspectorWindow(
-        context,
-        environment,
         sceneObjects,
-        animationDebug
+        stageEditor
     );
 
-    DrawProjectWindow();
+    if (showHierarchyWindow_) {
+        DrawHierarchyWindow(sceneObjects);
+    }
 
-    DrawGameViewWindow(context, sceneObjects, stageEditor);
+    if (showInspectorWindow_) {
+        DrawInspectorWindow(context, environment, sceneObjects, animationDebug);
+    }
 
-    DrawConsoleWindow();
+    if (showProjectWindow_) DrawProjectWindow();
 
-    DrawDebugToolsWindow(
-        context,
-        drawMode,
-        hitEffect,
-        animationDebug,
-        soundController,
-        environment,
-        sceneObjects,
-        ring,
-        cylinder,
-        primitive
-    );
+    if (showGameViewWindow_) DrawGameViewWindow(context, sceneObjects, stageEditor);
 
-    stageEditor.Draw();
+    if (showConsoleWindow_) DrawConsoleWindow();
+
+    if (showDebugToolsWindow_) {
+        DrawDebugToolsWindow(
+            context, drawMode, hitEffect, animationDebug, soundController,
+            environment, sceneObjects, ring, cylinder, primitive
+        );
+    }
+
+    if (showStageEditorWindow_) stageEditor.Draw();
 
     context->GetImGuiManager()->End();
 #endif
+}
+
+void SceneDebugPanel::ApplyWorkspace(Workspace workspace) {
+    workspace_ = workspace;
+    gameViewMaximized_ = false;
+    switch (workspace) {
+    case Workspace::StageEditing:
+        showHierarchyWindow_ = true;
+        showInspectorWindow_ = false;
+        showProjectWindow_ = true;
+        showConsoleWindow_ = true;
+        showDebugToolsWindow_ = false;
+        showGameViewWindow_ = true;
+        showStageEditorWindow_ = true;
+        break;
+    case Workspace::GameTesting:
+        showHierarchyWindow_ = false;
+        showInspectorWindow_ = false;
+        showProjectWindow_ = false;
+        showConsoleWindow_ = false;
+        showDebugToolsWindow_ = false;
+        showGameViewWindow_ = true;
+        showStageEditorWindow_ = false;
+        gameViewMaximized_ = true;
+        break;
+    case Workspace::SceneEditing:
+        showHierarchyWindow_ = true;
+        showInspectorWindow_ = true;
+        showProjectWindow_ = true;
+        showConsoleWindow_ = false;
+        showDebugToolsWindow_ = false;
+        showGameViewWindow_ = true;
+        showStageEditorWindow_ = false;
+        break;
+    case Workspace::Effects:
+        showHierarchyWindow_ = false;
+        showInspectorWindow_ = false;
+        showProjectWindow_ = false;
+        showConsoleWindow_ = true;
+        showDebugToolsWindow_ = true;
+        showGameViewWindow_ = true;
+        showStageEditorWindow_ = false;
+        break;
+    case Workspace::Animation:
+        showHierarchyWindow_ = true;
+        showInspectorWindow_ = false;
+        showProjectWindow_ = false;
+        showConsoleWindow_ = false;
+        showDebugToolsWindow_ = true;
+        showGameViewWindow_ = true;
+        showStageEditorWindow_ = false;
+        break;
+    case Workspace::Custom:
+        break;
+    }
+}
+
+const char* SceneDebugPanel::GetWorkspaceName() const {
+    switch (workspace_) {
+    case Workspace::StageEditing: return "Stage Editing";
+    case Workspace::GameTesting: return "Game Testing";
+    case Workspace::SceneEditing: return "Scene Editing";
+    case Workspace::Effects: return "Effects";
+    case Workspace::Animation: return "Animation";
+    default: return "Custom";
+    }
 }
 
 void SceneDebugPanel::DrawMainMenuBar(
@@ -72,7 +155,8 @@ void SceneDebugPanel::DrawMainMenuBar(
     GameSceneDrawMode& drawMode,
     HitEffectController& hitEffect,
     AnimationDebugController& animationDebug,
-    SceneObjectController& sceneObjects
+    SceneObjectController& sceneObjects,
+    StageEditor& stageEditor
 ) {
 #ifdef USE_IMGUI
     //==================================
@@ -217,20 +301,51 @@ void SceneDebugPanel::DrawMainMenuBar(
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Workspace")) {
+            if (ImGui::MenuItem("Stage Editing", nullptr, workspace_ == Workspace::StageEditing)) ApplyWorkspace(Workspace::StageEditing);
+            if (ImGui::MenuItem("Game Testing", nullptr, workspace_ == Workspace::GameTesting)) ApplyWorkspace(Workspace::GameTesting);
+            if (ImGui::MenuItem("Scene Editing", nullptr, workspace_ == Workspace::SceneEditing)) ApplyWorkspace(Workspace::SceneEditing);
+            if (ImGui::MenuItem("Effects", nullptr, workspace_ == Workspace::Effects)) ApplyWorkspace(Workspace::Effects);
+            if (ImGui::MenuItem("Animation", nullptr, workspace_ == Workspace::Animation)) ApplyWorkspace(Workspace::Animation);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Save Current Dock Layout")) {
+                ImGui::SaveIniSettingsToDisk("imgui.ini");
+            }
+            if (ImGui::MenuItem("Reload Saved Dock Layout")) {
+                ImGui::LoadIniSettingsFromDisk("imgui.ini");
+            }
+            if (ImGui::MenuItem("Reset Visibility Layout")) ApplyWorkspace(Workspace::StageEditing);
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Window")) {
-            ImGui::MenuItem("Hierarchy");
-            ImGui::MenuItem("Inspector");
-            ImGui::MenuItem("Project");
-            ImGui::MenuItem("Console");
-            ImGui::MenuItem("Debug Tools");
+            bool changed = false;
+            changed |= ImGui::MenuItem("Hierarchy", nullptr, &showHierarchyWindow_);
+            changed |= ImGui::MenuItem("Inspector", nullptr, &showInspectorWindow_);
+            changed |= ImGui::MenuItem("Game View", "F11", &showGameViewWindow_);
+            changed |= ImGui::MenuItem("3D Stage Editor", nullptr, &showStageEditorWindow_);
+            changed |= ImGui::MenuItem("Project", "Ctrl+P", &showProjectWindow_);
+            changed |= ImGui::MenuItem("Console", "Ctrl+`", &showConsoleWindow_);
+            changed |= ImGui::MenuItem("Debug Tools", nullptr, &showDebugToolsWindow_);
+            ImGui::Separator();
+            if (ImGui::MenuItem("Maximize Game View", "F11", gameViewMaximized_)) {
+                gameViewMaximized_ = !gameViewMaximized_;
+                showGameViewWindow_ = true;
+                changed = true;
+            }
+            if (changed) workspace_ = Workspace::Custom;
             ImGui::EndMenu();
         }
 
         ImGui::Separator();
 
-        if (ImGui::Button("Play")) {
+        if (ImGui::Button(stageEditor.IsGamePlayMode() ? "Stop (F5)" : "Play (F5)")) {
+            stageEditor.ToggleMode();
             drawMode = GameSceneDrawMode::NormalObj;
-            Detail::AddEditorLog(Detail::EditorLogType::Info, "Play Button pressed.");
+            Detail::AddEditorLog(
+                Detail::EditorLogType::Info,
+                stageEditor.IsGamePlayMode() ? "GamePlay started." : "Returned to editor."
+            );
         }
 
         ImGui::SameLine();
@@ -239,6 +354,9 @@ void SceneDebugPanel::DrawMainMenuBar(
             hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
             Detail::AddEditorLog(Detail::EditorLogType::Info, "Effect emitted from menu bar.");
         }
+
+        ImGui::SameLine();
+        ImGui::TextDisabled("Workspace: %s", GetWorkspaceName());
 
         ImGui::SameLine();
         ImGui::TextDisabled(

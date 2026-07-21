@@ -36,6 +36,15 @@ public:
     );
 
 private:
+    enum class Workspace {
+        StageEditing,
+        GameTesting,
+        SceneEditing,
+        Effects,
+        Animation,
+        Custom
+    };
+
     enum class EditorSelection {
         None,
         Terrain,
@@ -55,7 +64,8 @@ private:
         GameSceneDrawMode& drawMode,
         HitEffectController& hitEffect,
         AnimationDebugController& animationDebug,
-        SceneObjectController& sceneObjects
+        SceneObjectController& sceneObjects,
+        StageEditor& stageEditor
     );
 
     void DrawHierarchyWindow(SceneObjectController& sceneObjects);
@@ -130,6 +140,9 @@ private:
         float rectHeight
     );
 
+    void ApplyWorkspace(Workspace workspace);
+    const char* GetWorkspaceName() const;
+
     EditorSelection selected_ = EditorSelection::Terrain;
     size_t selectedObjectIndex_ = 0;
 
@@ -139,4 +152,16 @@ private:
     bool showColliders_ = true;
     int gizmoOperation_ = 0;
     int gizmoMode_ = 0;
+
+    Workspace workspace_ = Workspace::StageEditing;
+    bool showHierarchyWindow_ = true;
+    bool showInspectorWindow_ = false;
+    bool showProjectWindow_ = true;
+    bool showConsoleWindow_ = true;
+    bool showDebugToolsWindow_ = false;
+    bool showGameViewWindow_ = true;
+    bool showStageEditorWindow_ = true;
+    bool gameViewMaximized_ = false;
+    bool workspaceModeSyncInitialized_ = false;
+    bool previousGamePlayMode_ = false;
 };

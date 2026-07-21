@@ -5,7 +5,20 @@ void SceneDebugPanel::DrawGameViewWindow(
 )
 {
 #ifdef USE_IMGUI
-    ImGui::Begin("Game View");
+    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_None;
+    const char* windowName = "Game View";
+    if (gameViewMaximized_) {
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->WorkPos, ImGuiCond_Always);
+        ImGui::SetNextWindowSize(viewport->WorkSize, ImGuiCond_Always);
+        windowFlags = ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoBringToFrontOnFocus;
+        windowName = "Game View##Maximized";
+    }
+    ImGui::Begin(windowName, nullptr, windowFlags);
 
     if (!context || !context->GetImGuiManager()) {
         ImGui::TextDisabled("Game View unavailable.");
@@ -13,25 +26,27 @@ void SceneDebugPanel::DrawGameViewWindow(
         return;
     }
 
-    ImGui::Checkbox("Gizmo", &showTransformGizmo_);
+    if (!gameViewMaximized_) {
+        ImGui::Checkbox("Gizmo", &showTransformGizmo_);
 
-    ImGui::SameLine();
-    ImGui::Checkbox("Colliders", &showColliders_);
+        ImGui::SameLine();
+        ImGui::Checkbox("Colliders", &showColliders_);
 
-    ImGui::SameLine();
-    ImGui::RadioButton("Move", &gizmoOperation_, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("Move", &gizmoOperation_, 0);
 
-    ImGui::SameLine();
-    ImGui::RadioButton("Rotate", &gizmoOperation_, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("Rotate", &gizmoOperation_, 1);
 
-    ImGui::SameLine();
-    ImGui::RadioButton("Scale", &gizmoOperation_, 2);
+        ImGui::SameLine();
+        ImGui::RadioButton("Scale", &gizmoOperation_, 2);
 
-    ImGui::SameLine();
-    ImGui::RadioButton("Local", &gizmoMode_, 0);
+        ImGui::SameLine();
+        ImGui::RadioButton("Local", &gizmoMode_, 0);
 
-    ImGui::SameLine();
-    ImGui::RadioButton("World", &gizmoMode_, 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("World", &gizmoMode_, 1);
+    }
 
     ImGuiManager* imguiManager =
         context->GetImGuiManager();

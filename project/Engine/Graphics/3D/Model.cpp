@@ -83,7 +83,8 @@ void Model::LoadObjFile(const std::string& directoryPath,
         filePath.c_str(),
         aiProcess_FlipWindingOrder |
         aiProcess_FlipUVs |
-        aiProcess_Triangulate
+        aiProcess_Triangulate |
+        aiProcess_GenSmoothNormals
     );
 
     assert(scene->HasMeshes());

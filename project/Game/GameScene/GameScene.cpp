@@ -95,10 +95,15 @@ void GameScene::Initialize(EngineContext* context) {
     hitEffect_.RefreshPresetList();
 
     soundController_.Initialize();
-    stageEditor_.Initialize();
+    stageEditor_.Initialize(
+        object3dCommon,
+        environment_.GetEnvironmentTextureHandle(),
+        environment_.GetEnvironmentCoefficient()
+    );
 }
 
 void GameScene::Finalize() {
+    stageEditor_.Finalize();
     sceneObjects_.Finalize();
 
     animationDebug_.Finalize();
@@ -159,13 +164,14 @@ void GameScene::InitializePrimitive()
 void GameScene::Update() {
     Input* input = context_->GetInput();
 
-    if (input->TriggerKey(DIK_SPACE)) {
+    if (stageEditor_.IsGamePlayMode() && input->TriggerKey(DIK_SPACE)) {
         hitEffect_.Emit({ 0.0f, 3.0f, 0.0f });
     }
 
     soundController_.Update(context_->GetInput());
     UpdateTaskJsonHotReload();
     UpdateObjects();
+    stageEditor_.Update();
 
 
     WinApp* winApp =
@@ -344,6 +350,8 @@ void GameScene::Draw3D() {
     if (drawMode_ == GameSceneDrawMode::NormalObj) {
         sceneObjects_.Draw();
     }
+
+    stageEditor_.Draw3D();
 
     if (drawMode_ == GameSceneDrawMode::Animation) {
         animationDebug_.Draw();
