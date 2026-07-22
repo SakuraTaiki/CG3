@@ -4,10 +4,9 @@
 #include <string>
 #include <vector>
 
+#ifdef USE_IMGUI
 #include "externals/imgui/imgui.h"
 #include "externals/imgui/imgui_impl_win32.h"
-
-#include <cassert>
 
 extern IMGUI_IMPL_API LRESULT
 ImGui_ImplWin32_WndProcHandler(
@@ -16,12 +15,17 @@ ImGui_ImplWin32_WndProcHandler(
     WPARAM wParam,
     LPARAM lParam
 );
+#endif
+
+#include <cassert>
 
 #pragma comment(lib, "winmm.lib")
 
 void WinApp::Initialize()
 {
+#ifdef USE_IMGUI
     ImGui_ImplWin32_EnableDpiAwareness();
+#endif
 
     CoInitializeEx(
         nullptr,
@@ -433,6 +437,7 @@ LRESULT CALLBACK WinApp::WindowProc(
     }
 
     // ImGui初期化前は呼ばない
+#ifdef USE_IMGUI
     if (
         ImGui::GetCurrentContext() != nullptr &&
         ImGui_ImplWin32_WndProcHandler(
@@ -444,6 +449,7 @@ LRESULT CALLBACK WinApp::WindowProc(
         ) {
         return true;
     }
+#endif
 
     if (winApp) {
         if (message == WM_NCDESTROY) {

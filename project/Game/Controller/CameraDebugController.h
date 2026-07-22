@@ -3,10 +3,11 @@
 #include "MyMath.h"
 
 class Camera;
+class Input;
 
 class CameraDebugController {
 public:
-    void Update(Camera* camera);
+    void Update(Camera* camera, Input* input);
 
 private:
     void InitializeFromCamera(Camera* camera);

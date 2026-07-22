@@ -61,6 +61,24 @@ void Input::Initialize(WinApp* winApp)
             sizeof(key_)
         );
     }
+
+    result = directInput_->CreateDevice(
+        GUID_SysMouse,
+        mouse_.GetAddressOf(),
+        nullptr
+    );
+    assert(SUCCEEDED(result));
+
+    result = mouse_->SetDataFormat(&c_dfDIMouse2);
+    assert(SUCCEEDED(result));
+
+    result = mouse_->SetCooperativeLevel(
+        winApp_->GetHwnd(),
+        DISCL_FOREGROUND | DISCL_NONEXCLUSIVE
+    );
+    assert(SUCCEEDED(result));
+
+    mouse_->Acquire();
 }
 
 
@@ -104,6 +122,23 @@ void Input::Update()
             key_,
             sizeof(key_)
         );
+    }
+
+    result = mouse_->GetDeviceState(
+        sizeof(mouseState_),
+        &mouseState_
+    );
+
+    if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
+        mouse_->Acquire();
+        result = mouse_->GetDeviceState(
+            sizeof(mouseState_),
+            &mouseState_
+        );
+    }
+
+    if (FAILED(result)) {
+        ZeroMemory(&mouseState_, sizeof(mouseState_));
     }
 }
 

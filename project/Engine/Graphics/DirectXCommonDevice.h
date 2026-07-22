@@ -75,7 +75,8 @@ void DirectXCommon::InitializeSwapChain() {
 void DirectXCommon::InitializeRenderTargetView() {
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc{};
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-    rtvHeapDesc.NumDescriptors = 3;
+    // SwapChain x2 + scene render texture + post-effect result texture.
+    rtvHeapDesc.NumDescriptors = 4;
     HRESULT hr = device_->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap_));
     assert(SUCCEEDED(hr));
 

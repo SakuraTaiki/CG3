@@ -1,14 +1,10 @@
 #include "CameraDebugController.h"
 
 #include "Camera.h"
+#include "Input.h"
 
 #include <algorithm>
 #include <cmath>
-
-#ifdef USE_IMGUI
-#include "externals/imgui/imgui.h"
-#endif
-
 
 namespace {
     constexpr float kPi =
@@ -112,10 +108,10 @@ void CameraDebugController::CalculateCameraAxes(
 
 
 void CameraDebugController::Update(
-    Camera* camera
+    Camera* camera,
+    Input* input
 ) {
-#ifdef USE_IMGUI
-    if (!camera) {
+    if (!camera || !input) {
         return;
     }
 
@@ -123,15 +119,9 @@ void CameraDebugController::Update(
         InitializeFromCamera(camera);
     }
 
-    ImGuiIO& io =
-        ImGui::GetIO();
-
-    const float deltaTime =
-        std::clamp(
-            io.DeltaTime,
-            0.0f,
-            0.1f
-        );
+    constexpr float deltaTime = 1.0f / 60.0f;
+    const float mouseDeltaX = static_cast<float>(input->GetMouseDeltaX());
+    const float mouseDeltaY = static_cast<float>(input->GetMouseDeltaY());
 
     // =========================================
     // Orbit
@@ -139,23 +129,19 @@ void CameraDebugController::Update(
     // =========================================
 
     const bool orbitWithLeft =
-        io.KeyAlt &&
-        ImGui::IsMouseDown(
-            ImGuiMouseButton_Left
-        );
+        (input->PushKey(DIK_LALT) || input->PushKey(DIK_RALT)) &&
+        input->PushMouseButton(0);
 
     const bool orbitWithRight =
-        ImGui::IsMouseDown(
-            ImGuiMouseButton_Right
-        );
+        input->PushMouseButton(1);
 
     if (orbitWithLeft || orbitWithRight) {
         yaw_ +=
-            io.MouseDelta.x *
+            mouseDeltaX *
             rotateSensitivity_;
 
         pitch_ +=
-            io.MouseDelta.y *
+            mouseDeltaY *
             rotateSensitivity_;
 
         pitch_ = std::clamp(
@@ -180,22 +166,20 @@ void CameraDebugController::Update(
     // 中ドラッグ
     // =========================================
 
-    if (ImGui::IsMouseDown(
-        ImGuiMouseButton_Middle
-    )) {
+    if (input->PushMouseButton(2)) {
         // 遠いほど大きく移動する
         const float panSpeed =
-            std::max(
+            (std::max)(
                 distance_,
                 1.0f
             ) * panSensitivity_;
 
         const float horizontal =
-            io.MouseDelta.x *
+            mouseDeltaX *
             panSpeed;
 
         const float vertical =
-            -io.MouseDelta.y *
+            -mouseDeltaY *
             panSpeed;
 
         focusPoint_.x +=
@@ -215,12 +199,14 @@ void CameraDebugController::Update(
     // Smooth Zoom
     // =========================================
 
-    if (io.MouseWheel != 0.0f) {
+    const float mouseWheel =
+        static_cast<float>(input->GetMouseWheelDelta()) / WHEEL_DELTA;
+    if (mouseWheel != 0.0f) {
         // 距離に対して割合でズームする
         // 遠距離では大きく、近距離では細かく動く
         targetDistance_ *=
             std::exp(
-                -io.MouseWheel *
+                -mouseWheel *
                 zoomSensitivity_
             );
 
@@ -273,7 +259,4 @@ void CameraDebugController::Update(
         yaw_,
         0.0f
         });
-#else
-    (void)camera;
-#endif
 }

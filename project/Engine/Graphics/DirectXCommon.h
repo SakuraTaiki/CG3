@@ -275,12 +275,16 @@ private: // 繝｡繝ｳ繝仙､画焚
     FpsLimiter fpsLimiter_;
 
     ComPtr<ID3D12Resource> renderTextureResource_;
+    ComPtr<ID3D12Resource> postEffectTextureResource_;
 
     ComPtr<ID3D12DescriptorHeap> renderTextureSrvHeap_;
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureSrvHandleCPU_{};
     D3D12_GPU_DESCRIPTOR_HANDLE renderTextureSrvHandleGPU_{};
 
     D3D12_CPU_DESCRIPTOR_HANDLE renderTextureRtvHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE postEffectTextureRtvHandle_{};
+    D3D12_CPU_DESCRIPTOR_HANDLE postEffectTextureSrvHandleCPU_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE postEffectTextureSrvHandleGPU_{};
 
     D3D12_CPU_DESCRIPTOR_HANDLE depthTextureSrvHandleCPU_{};
 
@@ -304,6 +308,7 @@ private: // 繝｡繝ｳ繝仙､画焚
 
 
     D3D12_RESOURCE_STATES renderTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    D3D12_RESOURCE_STATES postEffectTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
     ComPtr<ID3D12RootSignature> copyImageRootSignature_;
     ComPtr<ID3D12PipelineState> copyImagePipelineState_;

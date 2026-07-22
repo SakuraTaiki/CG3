@@ -68,6 +68,7 @@ void DirectXCommon::ResizeIfNeeded()
 
     depthStencilResource_.Reset();
     renderTextureResource_.Reset();
+    postEffectTextureResource_.Reset();
 
     rtvDescriptorHeap_.Reset();
     dsvDescriptorHeap_.Reset();
