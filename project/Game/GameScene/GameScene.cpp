@@ -164,6 +164,8 @@ void GameScene::InitializePrimitive()
 void GameScene::Update() {
     Input* input = context_->GetInput();
 
+    UpdatePostEffectShortcuts();
+
     if (stageEditor_.IsGamePlayMode() && input->TriggerKey(DIK_SPACE)) {
         hitEffect_.Emit({ 0.0f, 3.0f, 0.0f });
     }
@@ -247,6 +249,125 @@ void GameScene::Update() {
         cylinder_.get(),
         primitive_.get()
     );
+}
+
+void GameScene::UpdatePostEffectShortcuts() {
+    Input* input = context_->GetInput();
+    DirectXCommon* dxCommon = context_->GetDxCommon();
+    if (!input || !dxCommon) {
+        return;
+    }
+
+    auto& vignette = dxCommon->GetVignetteSettings();
+    auto& smoothing = dxCommon->GetSmoothingSettings();
+    auto& gaussian = dxCommon->GetGaussianSettings();
+    auto& outline = dxCommon->GetOutlineSettings();
+    auto& radialBlur = dxCommon->GetRadialBlurSettings();
+    auto& dissolve = dxCommon->GetDissolveSettings();
+    auto& random = dxCommon->GetRandomSettings();
+
+    auto triggered = [input](BYTE mainKey, BYTE numpadKey) {
+        return input->TriggerKey(mainKey) || input->TriggerKey(numpadKey);
+    };
+
+    enum class Effect {
+        None,
+        GrayScale,
+        Vignette,
+        Smoothing,
+        Gaussian,
+        Outline,
+        RadialBlur,
+        Dissolve,
+        Random
+    };
+
+    Effect effect = Effect::None;
+    bool enable = false;
+
+    if (triggered(DIK_1, DIK_NUMPAD1)) {
+        effect = Effect::GrayScale;
+        enable = !dxCommon->GetGrayScale();
+    } else if (triggered(DIK_2, DIK_NUMPAD2)) {
+        effect = Effect::Vignette;
+        enable = !vignette.enabled;
+    } else if (triggered(DIK_3, DIK_NUMPAD3)) {
+        effect = Effect::Smoothing;
+        enable = !smoothing.enabled;
+    } else if (triggered(DIK_4, DIK_NUMPAD4)) {
+        effect = Effect::Gaussian;
+        enable = !gaussian.enabled;
+    } else if (triggered(DIK_5, DIK_NUMPAD5)) {
+        effect = Effect::Outline;
+        enable = !outline.enabled;
+    } else if (triggered(DIK_6, DIK_NUMPAD6)) {
+        effect = Effect::RadialBlur;
+        enable = !radialBlur.enabled;
+    } else if (triggered(DIK_7, DIK_NUMPAD7)) {
+        effect = Effect::Dissolve;
+        enable = !dissolve.enabled;
+    } else if (triggered(DIK_8, DIK_NUMPAD8)) {
+        effect = Effect::Random;
+        enable = !random.enabled;
+    }
+
+    if (effect == Effect::None) {
+        return;
+    }
+
+    dxCommon->SetGrayScale(false);
+    vignette.enabled = false;
+    smoothing.enabled = false;
+    gaussian.enabled = false;
+    outline.enabled = false;
+    radialBlur.enabled = false;
+    dissolve.enabled = false;
+    random.enabled = false;
+
+    if (!enable) {
+        return;
+    }
+
+    switch (effect) {
+    case Effect::GrayScale:
+        dxCommon->SetGrayScale(true);
+        break;
+    case Effect::Vignette:
+        vignette.enabled = true;
+        break;
+    case Effect::Smoothing:
+        // Uniform 9x9 box blur: intentionally broad for the evaluation demo.
+        smoothing.radius = 4;
+        smoothing.strength = 1.0f;
+        smoothing.enabled = true;
+        break;
+    case Effect::Gaussian:
+        // Center-weighted 9x9 blur, visually distinct from the box filter.
+        gaussian.radius = 4;
+        gaussian.sigma = 1.0f;
+        gaussian.strength = 1.0f;
+        gaussian.enabled = true;
+        break;
+    case Effect::Outline:
+        outline.enabled = true;
+        break;
+    case Effect::RadialBlur:
+        radialBlur.enabled = true;
+        break;
+    case Effect::Dissolve:
+        // The default threshold is zero and produces almost no visible change.
+        dissolve.threshold = 0.5f;
+        dissolve.edgeWidth = 0.08f;
+        dissolve.edgeIntensity = 1.0f;
+        dissolve.enabled = true;
+        break;
+    case Effect::Random:
+        random.enabled = true;
+        dxCommon->ResetRandomTime();
+        break;
+    default:
+        break;
+    }
 }
 
 void GameScene::InitializeTaskJsonHotReload() {

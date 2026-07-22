@@ -44,6 +44,7 @@ private:
     void InitializePrimitive();
     void InitializeTaskJsonHotReload();
     void UpdateTaskJsonHotReload();
+    void UpdatePostEffectShortcuts();
    
 
     // 更新処理。
