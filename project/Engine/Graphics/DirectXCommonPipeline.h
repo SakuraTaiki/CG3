@@ -39,9 +39,25 @@ void DirectXCommon::InitializeRenderTexture()
 
     device_->CreateRenderTargetView(renderTextureResource_.Get(), nullptr, renderTextureRtvHandle_);
 
+    hr = device_->CreateCommittedResource(
+        &heapProperties,
+        D3D12_HEAP_FLAG_NONE,
+        &resourceDesc,
+        D3D12_RESOURCE_STATE_RENDER_TARGET,
+        &clearValue,
+        IID_PPV_ARGS(&postEffectTextureResource_));
+    assert(SUCCEEDED(hr));
+
+    postEffectTextureRtvHandle_ = rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    postEffectTextureRtvHandle_.ptr += rtvSize * 3;
+    device_->CreateRenderTargetView(
+        postEffectTextureResource_.Get(), nullptr, postEffectTextureRtvHandle_);
+
     D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc{};
     srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    srvHeapDesc.NumDescriptors = 3;
+    // The root descriptor table spans three SRVs. Reserve a second complete
+    // range beginning at slot 3 for copying the processed texture.
+    srvHeapDesc.NumDescriptors = 6;
     srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
     hr = device_->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&renderTextureSrvHeap_));
@@ -108,6 +124,18 @@ void DirectXCommon::InitializeRenderTexture()
 
     dissolveMaskSrvHandleGPU_.ptr +=
         srvSize * 2;
+
+    postEffectTextureSrvHandleCPU_ = renderTextureSrvHandleCPU_;
+    postEffectTextureSrvHandleCPU_.ptr += srvSize * 3;
+    postEffectTextureSrvHandleGPU_ = renderTextureSrvHandleGPU_;
+    postEffectTextureSrvHandleGPU_.ptr += srvSize * 3;
+
+    device_->CreateShaderResourceView(
+        postEffectTextureResource_.Get(),
+        &srvDesc,
+        postEffectTextureSrvHandleCPU_);
+
+    postEffectTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
 
 }
 

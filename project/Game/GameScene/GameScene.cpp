@@ -173,6 +173,10 @@ void GameScene::Update() {
     UpdateObjects();
     stageEditor_.Update();
 
+    cameraDebug_.Update(
+        context_->GetCamera(),
+        input
+    );
 
     WinApp* winApp =
         context_->GetWinApp();
@@ -399,6 +403,8 @@ void GameScene::Draw2D()
             camera->GetFarClip();
     }
 
+
+	dxCommon->DrawRenderTextureToSwapChain();
     
     dxCommon->PrepareRenderTextureForImgui();
 

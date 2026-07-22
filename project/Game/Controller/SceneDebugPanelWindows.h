@@ -44,10 +44,6 @@ void SceneDebugPanel::Draw(
         workspace_ = Workspace::Custom;
     }
 
-    cameraDebug.Update(
-        context->GetCamera()
-    );
-
     DrawMainMenuBar(
         context,
         drawMode,

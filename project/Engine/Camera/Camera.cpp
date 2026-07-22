@@ -4,7 +4,7 @@ Camera::Camera()
     : transform_({
         { 1.0f, 1.0f, 1.0f },
         { 0.3f, 0.0f, 0.0f },
-        { 0.0f, 5.0f, -10.0f }
+        { 0.0f, 7.0f, -30.0f }
         })
     , worldMatrix_(Math::MakeIdentity4x4())
     , viewMatrix_(Math::MakeIdentity4x4())

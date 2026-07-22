@@ -48,6 +48,15 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
     renderTextureState_ =
         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
+    TransitionResource(
+        postEffectTextureResource_.Get(),
+        postEffectTextureState_,
+        D3D12_RESOURCE_STATE_RENDER_TARGET);
+    postEffectTextureState_ = D3D12_RESOURCE_STATE_RENDER_TARGET;
+
+    commandList_->OMSetRenderTargets(
+        1, &postEffectTextureRtvHandle_, false, nullptr);
+
     // Outline邵ｺ譴ｧ諤剰怏・ｹ邵ｺ・ｪ陜｣・ｴ陷ｷ蛹ｻ繝ｻDepth郢ｧ・訴xelShader邵ｺ荵晢ｽ蛾坡・ｭ邵ｺ・ｿ髴趣ｽｼ郢ｧﾂ
     if (outlineSettings_.enabled) {
         TransitionResource(
@@ -516,6 +525,29 @@ void DirectXCommon::DrawRenderTextureToSwapChain()
             D3D12_RESOURCE_STATE_DEPTH_WRITE
         );
     }
+
+    // The effect pass above is rendered to a separate texture so that the
+    // ImGui Game View can display the processed image instead of the raw scene.
+    TransitionResource(
+        postEffectTextureResource_.Get(),
+        postEffectTextureState_,
+        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+    postEffectTextureState_ = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+    UINT backBufferIndex = swapChain_->GetCurrentBackBufferIndex();
+    D3D12_CPU_DESCRIPTOR_HANDLE backBufferRtv =
+        rtvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
+    const UINT rtvDescriptorSize = device_->GetDescriptorHandleIncrementSize(
+        D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    backBufferRtv.ptr +=
+        static_cast<SIZE_T>(backBufferIndex) * rtvDescriptorSize;
+    commandList_->OMSetRenderTargets(1, &backBufferRtv, false, nullptr);
+
+    commandList_->SetGraphicsRootSignature(copyImageRootSignature_.Get());
+    commandList_->SetPipelineState(normalCopyPipelineState_.Get());
+    commandList_->SetGraphicsRootDescriptorTable(
+        0, postEffectTextureSrvHandleGPU_);
+    commandList_->DrawInstanced(3, 1, 0, 0);
 }
 
 void DirectXCommon::CopyRenderTextureSrvTo(D3D12_CPU_DESCRIPTOR_HANDLE destinationHandle)
@@ -523,7 +555,7 @@ void DirectXCommon::CopyRenderTextureSrvTo(D3D12_CPU_DESCRIPTOR_HANDLE destinati
     device_->CopyDescriptorsSimple(
         1,
         destinationHandle,
-        renderTextureSrvHandleCPU_,
+        postEffectTextureSrvHandleCPU_,
         D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV
     );
 }
