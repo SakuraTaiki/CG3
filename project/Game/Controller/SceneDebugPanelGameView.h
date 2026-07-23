@@ -87,16 +87,18 @@ void SceneDebugPanel::DrawGameViewWindow(
         imageMax.y - imageMin.y
     );
 
-    if (!stageEditor.IsEditingGameView()) {
-        DrawColliderOverlay(
-            context,
-            sceneObjects,
-            imageMin.x,
-            imageMin.y,
-            imageMax.x - imageMin.x,
-            imageMax.y - imageMin.y
-        );
+    // Collision visualization is useful while placing objects as well as
+    // during gameplay. Keep it enabled in both EditorMode and GamePlayMode.
+    DrawColliderOverlay(
+        context,
+        sceneObjects,
+        imageMin.x,
+        imageMin.y,
+        imageMax.x - imageMin.x,
+        imageMax.y - imageMin.y
+    );
 
+    if (!stageEditor.IsEditingGameView()) {
         DrawTransformGizmo(
             context,
             sceneObjects,

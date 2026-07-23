@@ -32,9 +32,27 @@ bool SceneObjectController::LoadLevelSceneFromJson(
     const std::filesystem::path sceneDirectory =
         std::filesystem::path(filePath).parent_path();
 
-    ClearEditorObjects();
-
     bool hadLoadError = false;
+    // Keep runtime object instances alive across reloads. Reusing objects by
+    // their Blender name avoids a visible blank frame and preserves references
+    // held by future gameplay components.
+    std::vector<uint8_t> touchedObjects(objects_.size(), 0);
+    for (size_t index = 0; index < 3 && index < touchedObjects.size(); ++index) {
+        touchedObjects[index] = 1;
+    }
+
+    auto findReusableObject = [&](const std::string& objectName) {
+        if (objectName.empty()) {
+            return kNoParent;
+        }
+        for (size_t index = 3; index < objectNames_.size(); ++index) {
+            if (!touchedObjects[index] && objectNames_[index] == objectName) {
+                return index;
+            }
+        }
+        return kNoParent;
+    };
+
     std::function<void(const nlohmann::json&, size_t)> loadObject;
     loadObject = [&](const nlohmann::json& objectJson, size_t parentIndex) {
         const std::string name =
@@ -96,41 +114,68 @@ bool SceneObjectController::LoadLevelSceneFromJson(
             "type",
             modelPath.empty() ? "EMPTY" : "MESH"
         );
-        size_t index = kNoParent;
+        size_t index = findReusableObject(name);
+        const bool reusedObject = index != kNoParent;
         std::string modelName;
+        Model* loadedModel = nullptr;
 
         if (modelPath.empty()) {
             if (objectType == "MESH") {
                 hadLoadError = true;
-                // Preserve Blender hierarchy and transforms even when the
-                // exported mesh has not been copied into Resources yet.
-                index = AddEditorEmpty(name.empty() ? exportFileName : name);
-            } else {
+            }
+            if (index == kNoParent) {
                 index = AddEditorEmpty(name.empty() ? "Empty" : name);
             }
         } else {
             if (!std::filesystem::exists(modelPath)) {
                 hadLoadError = true;
-                index = AddEditorEmpty(name.empty() ? exportFileName : name);
+                if (index == kNoParent) {
+                    index = AddEditorEmpty(name.empty() ? exportFileName : name);
+                }
             } else {
                 std::string directoryPath;
                 if (!SplitModelPath(modelPath, directoryPath, modelName)) {
                     hadLoadError = true;
-                    index = AddEditorEmpty(name.empty() ? exportFileName : name);
+                    if (index == kNoParent) {
+                        index = AddEditorEmpty(name.empty() ? exportFileName : name);
+                    }
                 } else {
-                    Model* model = ModelManager::Load(directoryPath, modelName);
-                    if (!model) {
+                    loadedModel = ModelManager::Load(directoryPath, modelName);
+                    if (!loadedModel) {
                         hadLoadError = true;
-                        index = AddEditorEmpty(name.empty() ? modelName : name);
+                        if (index == kNoParent) {
+                            index = AddEditorEmpty(name.empty() ? modelName : name);
+                        }
                     } else {
-                        index = AddEditorObject(
-                            model,
-                            name.empty() ? modelName : name,
-                            modelPath
-                        );
+                        if (index == kNoParent) {
+                            index = AddEditorObject(
+                                loadedModel,
+                                name.empty() ? modelName : name,
+                                modelPath
+                            );
+                        } else if (GetObjectModelPath(index) != modelPath) {
+                            // The model instance is already valid when only
+                            // placement/collider data changed. Avoid resetting
+                            // it during a live edit so rendering stays continuous.
+                            objects_[index]->SetModel(loadedModel);
+                            SetObjectModelPath(index, modelPath);
+                        }
                     }
                 }
             }
+        }
+
+        if (reusedObject && !loadedModel) {
+            objects_[index]->SetModel(nullptr);
+            SetObjectModelPath(index, modelPath);
+        }
+
+        if (index >= touchedObjects.size()) {
+            touchedObjects.resize(objects_.size(), 0);
+        }
+        if (index != kNoParent && index < touchedObjects.size()) {
+            touchedObjects[index] = 1;
+            SetObjectName(index, name.empty() ? modelName : name);
         }
 
         Object3d* object =
@@ -141,7 +186,7 @@ bool SceneObjectController::LoadLevelSceneFromJson(
             return;
         }
 
-        if (parentIndex != kNoParent && !SetObjectParent(index, parentIndex)) {
+        if (!SetObjectParent(index, parentIndex)) {
             hadLoadError = true;
             return;
         }
@@ -243,6 +288,7 @@ bool SceneObjectController::LoadLevelSceneFromJson(
             SetObjectTexturePath(index, texturePath);
         }
 
+        RemoveBoxCollider(index);
         if (objectJson.contains("collider") && objectJson["collider"].is_object()) {
             const auto& colliderJson = objectJson["collider"];
             if (colliderJson.value("type", "") == "BOX") {
@@ -280,8 +326,17 @@ bool SceneObjectController::LoadLevelSceneFromJson(
         }
     }
     catch (...) {
-        ClearEditorObjects();
         return false;
+    }
+
+    // Objects removed from the source file are retired without invalidating
+    // their addresses. This is safer for components that may keep references.
+    for (size_t index = 3; index < objects_.size(); ++index) {
+        if (index >= touchedObjects.size() || !touchedObjects[index]) {
+            SetObjectVisible(index, false);
+            RemoveBoxCollider(index);
+            SetObjectParent(index, kNoParent);
+        }
     }
 
     return !hadLoadError;

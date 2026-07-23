@@ -212,17 +212,21 @@ void SceneDebugPanel::DrawMainMenuBar(
             }
 
             ImGui::Separator();
-            if (ImGui::MenuItem("Save Task && Restart EXE")) {
+            if (ImGui::MenuItem("Save Task && Apply Live")) {
                 if (!sceneObjects.SaveLevelSceneToJson("Resources/Task.json")) {
                     Detail::AddEditorLog(
                         Detail::EditorLogType::Error,
-                        "Restart cancelled: failed to save Resources/Task.json."
+                        "Live apply cancelled: failed to save Resources/Task.json."
                     );
-                } else if (!context || !context->GetWinApp() ||
-                           !context->GetWinApp()->RestartExecutable()) {
+                } else if (!sceneObjects.LoadLevelSceneFromJson("Resources/Task.json")) {
                     Detail::AddEditorLog(
-                        Detail::EditorLogType::Error,
-                        "Restart failed: could not launch the executable."
+                        Detail::EditorLogType::Warning,
+                        "Task.json was applied partially: one or more assets are missing."
+                    );
+                } else {
+                    Detail::AddEditorLog(
+                        Detail::EditorLogType::Info,
+                        "Saved and applied Resources/Task.json without restarting the EXE."
                     );
                 }
             }
