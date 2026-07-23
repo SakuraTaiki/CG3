@@ -328,5 +328,8 @@ MigrationBackup/
 DirectXGame/DirectXGame.exe
 DirectXGame/imgui.ini
 
+# Dear ImGui runtime layout/settings (machine-local)
+/project/imgui.ini
+
 # DirectXTex Compiled Shaders
 **/DirectXTex/Shaders/Compiled/
