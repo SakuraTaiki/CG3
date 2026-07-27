@@ -49,7 +49,7 @@ public:
     void Initialize(DirectXCommon* dxCommon, const std::string& directoryPath, const std::string& filename, TextureManager* textureManager);
     void Draw(
         ID3D12GraphicsCommandList* commandList,
-        const D3D12_VERTEX_BUFFER_VIEW* influenceBufferView = nullptr
+        const D3D12_VERTEX_BUFFER_VIEW* overrideVertexBufferView = nullptr
         );
 
     // ゲッター
@@ -62,6 +62,9 @@ public:
     }
 
     size_t GetVertexCount() const { return vertices_.size(); }
+    ID3D12Resource* GetVertexBufferResource() const {
+        return vertexBuffer_.Get();
+    }
     bool StretchVertexX(size_t vertexIndex, float amount);
 
 private:

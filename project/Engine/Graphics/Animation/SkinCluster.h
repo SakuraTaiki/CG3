@@ -32,6 +32,19 @@ struct SkinCluster {
 
     uint32_t paletteSrvIndex = 0;
     D3D12_GPU_DESCRIPTOR_HANDLE paletteSrvHandle{};
+
+    uint32_t sourceVertexSrvIndex = 0;
+    D3D12_GPU_DESCRIPTOR_HANDLE sourceVertexSrvHandle{};
+    uint32_t influenceSrvIndex = 0;
+    D3D12_GPU_DESCRIPTOR_HANDLE influenceSrvHandle{};
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> skinnedVertexResource;
+    D3D12_VERTEX_BUFFER_VIEW skinnedVertexBufferView{};
+    uint32_t skinnedVertexUavIndex = 0;
+    D3D12_GPU_DESCRIPTOR_HANDLE skinnedVertexUavHandle{};
+    bool skinnedVertexIsReadyForDraw = false;
+    bool computeDispatchRequired = true;
+    uint32_t vertexCount = 0;
 };
 
 bool CreateSkinCluster(

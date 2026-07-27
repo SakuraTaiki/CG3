@@ -46,6 +46,13 @@ public:
 
     bool IsEditingGameView() const { return mode_ == Mode::Editor; }
     bool IsGamePlayMode() const { return mode_ == Mode::GamePlay; }
+    bool IsActive() const { return active_; }
+    void SetActive(bool active) {
+        active_ = active;
+        if (!active_) {
+            gameViewHovered_ = false;
+        }
+    }
     void ToggleMode();
 
 private:
@@ -98,6 +105,7 @@ private:
     Vector3 cursorScale_{1.0f, 1.0f, 1.0f};
     float cursorMoveSpeed_ = 4.0f;
     bool gameViewHovered_ = false;
+    bool active_ = true;
 
     std::vector<Placement> placements_;
     std::vector<std::unique_ptr<Object3d>> objects_;

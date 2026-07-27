@@ -30,6 +30,8 @@ void Object3dCommon::Initialize(DirectXCommon* dxCommon) {
         // ここで落ちる可能性が高い
     }
 
+    CreateSkinningComputePipeline();
+
     CreateLightBuffer();
     CreateSpotLightBuffer();
     CreatePointLightBuffer();
@@ -254,9 +256,6 @@ void Object3dCommon::CreateGraphicsPipeline() {
     { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-
-    { "WEIGHT",   0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    { "INDEX",    0, DXGI_FORMAT_R32G32B32A32_SINT,  1, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
     };
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
@@ -299,6 +298,85 @@ void Object3dCommon::CreateGraphicsPipeline() {
     } else {
         OutputDebugStringA("CreateGraphicsPipelineState Success!\n");
     }
+}
+
+void Object3dCommon::CreateSkinningComputePipeline() {
+    D3D12_DESCRIPTOR_RANGE ranges[4]{};
+    for (UINT index = 0; index < 4; ++index) {
+        ranges[index].RangeType =
+            index == 3
+            ? D3D12_DESCRIPTOR_RANGE_TYPE_UAV
+            : D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+        ranges[index].NumDescriptors = 1;
+        ranges[index].BaseShaderRegister =
+            index == 3 ? 0 : index;
+        ranges[index].RegisterSpace = 0;
+        ranges[index].OffsetInDescriptorsFromTableStart =
+            D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    }
+
+    D3D12_ROOT_PARAMETER rootParameters[5]{};
+    for (UINT index = 0; index < 4; ++index) {
+        rootParameters[index].ParameterType =
+            D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+        rootParameters[index].DescriptorTable.NumDescriptorRanges = 1;
+        rootParameters[index].DescriptorTable.pDescriptorRanges =
+            &ranges[index];
+        rootParameters[index].ShaderVisibility =
+            D3D12_SHADER_VISIBILITY_ALL;
+    }
+
+    rootParameters[4].ParameterType =
+        D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    rootParameters[4].Constants.ShaderRegister = 0;
+    rootParameters[4].Constants.RegisterSpace = 0;
+    rootParameters[4].Constants.Num32BitValues = 1;
+    rootParameters[4].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+    D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+    rootSignatureDesc.NumParameters = _countof(rootParameters);
+    rootSignatureDesc.pParameters = rootParameters;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> signatureBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> errorBlob;
+    HRESULT hr = D3D12SerializeRootSignature(
+        &rootSignatureDesc,
+        D3D_ROOT_SIGNATURE_VERSION_1,
+        &signatureBlob,
+        &errorBlob
+    );
+    if (FAILED(hr) && errorBlob) {
+        OutputDebugStringA(
+            static_cast<const char*>(errorBlob->GetBufferPointer())
+        );
+    }
+    assert(SUCCEEDED(hr));
+
+    hr = dxCommon_->GetDevice()->CreateRootSignature(
+        0,
+        signatureBlob->GetBufferPointer(),
+        signatureBlob->GetBufferSize(),
+        IID_PPV_ARGS(&skinningComputeRootSignature_)
+    );
+    assert(SUCCEEDED(hr));
+
+    auto computeShader = dxCommon_->CompileShader(
+        L"Resources/shaders/hlsl/Skinning.CS.hlsl",
+        L"cs_6_0"
+    );
+    assert(computeShader);
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pipelineDesc{};
+    pipelineDesc.pRootSignature = skinningComputeRootSignature_.Get();
+    pipelineDesc.CS = {
+        computeShader->GetBufferPointer(),
+        computeShader->GetBufferSize()
+    };
+    hr = dxCommon_->GetDevice()->CreateComputePipelineState(
+        &pipelineDesc,
+        IID_PPV_ARGS(&skinningComputePipelineState_)
+    );
+    assert(SUCCEEDED(hr));
 }
 
 void Object3dCommon::CreateLightBuffer() {

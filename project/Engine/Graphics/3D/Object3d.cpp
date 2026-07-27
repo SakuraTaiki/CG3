@@ -168,6 +168,12 @@ void Object3d::Draw() {
 
     auto commandList = object3dCommon_->GetDxCommon()->GetCommandList();
 
+    if (skinning_ && skinning_->HasSkinCluster()) {
+        skinning_->DispatchComputeSkinning();
+        // Compute dispatch changes both root signature and PSO.
+        object3dCommon_->PreDraw();
+    }
+
     commandList->SetGraphicsRootConstantBufferView(
         0,
         materialResource_->GetGPUVirtualAddress()
@@ -241,12 +247,10 @@ void Object3d::Draw() {
     }
 
     if (skinning_ && skinning_->HasSkinCluster()) {
-        commandList->SetGraphicsRootDescriptorTable(
-            6,
-            skinning_->GetPaletteSrvHandle()
+        model_->Draw(
+            commandList,
+            skinning_->GetSkinnedVertexBufferView()
         );
-
-        model_->Draw(commandList, skinning_->GetInfluenceBufferView());
     } else {
         model_->Draw(commandList);
     }

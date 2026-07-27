@@ -353,22 +353,17 @@ void Model::CreateBuffers(DirectXCommon* dxCommon) {
 
 void Model::Draw(
     ID3D12GraphicsCommandList* commandList,
-    const D3D12_VERTEX_BUFFER_VIEW* influenceBufferView
+    const D3D12_VERTEX_BUFFER_VIEW* overrideVertexBufferView
     ) {
     if (!vertexBuffer_ || !indexBuffer_) {
         return;
     }
 
-    if (influenceBufferView) {
-        D3D12_VERTEX_BUFFER_VIEW vbvs[2] = {
-            vertexBufferView_,
-            *influenceBufferView
-        };
-
-        commandList->IASetVertexBuffers(0, 2, vbvs);
-    } else {
-        commandList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-    }
+    const D3D12_VERTEX_BUFFER_VIEW* vertexBufferView =
+        overrideVertexBufferView
+        ? overrideVertexBufferView
+        : &vertexBufferView_;
+    commandList->IASetVertexBuffers(0, 1, vertexBufferView);
 
     commandList->IASetIndexBuffer(&indexBufferView_);
 

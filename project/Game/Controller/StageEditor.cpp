@@ -60,6 +60,12 @@ void StageEditor::Initialize(Object3dCommon* common, uint32_t environmentTexture
     object3dCommon_=common;
     environmentTexture_=environmentTexture;
     environmentCoefficient_=environmentCoefficient;
+#ifndef USE_IMGUI
+    // Release builds do not provide the editor UI, so starting in Editor
+    // mode would leave the placement cursor visible with no way to enter
+    // gameplay. Start directly in the runtime mode instead.
+    mode_=Mode::GamePlay;
+#endif
     ModelManager::Load("Resources/Editor", "joint_box.obj");
     ModelManager::Load("Resources/Editor", "ico_sphere.obj");
     Model* cursorFrameModel=ModelManager::Load("Resources/Editor","placement_cursor_frame.obj");
@@ -84,6 +90,10 @@ void StageEditor::Finalize() {
 }
 
 void StageEditor::Update() {
+    if (!active_) {
+        return;
+    }
+
     for (auto& object:objects_) if(object) object->Update();
     if(cursorObject_ && mode_==Mode::Editor) {
         cursorObject_->SetPosition(cursorPosition_);
@@ -100,6 +110,10 @@ void StageEditor::Update() {
 }
 
 void StageEditor::Draw3D() {
+    if (!active_) {
+        return;
+    }
+
     for (auto& object:objects_) if(object) object->Draw();
     if(cursorObject_ && mode_==Mode::Editor) cursorObject_->Draw();
     if(cursorFrameObject_ && mode_==Mode::Editor) cursorFrameObject_->Draw();
@@ -107,6 +121,10 @@ void StageEditor::Draw3D() {
 
 void StageEditor::Draw() {
 #ifdef USE_IMGUI
+    if (!active_) {
+        return;
+    }
+
     ImGui::SetNextWindowSize({330,720},ImGuiCond_FirstUseEver);
     if(!ImGui::Begin("3D Stage Editor")){ImGui::End();return;}
     DrawModeSwitcher();
@@ -201,6 +219,11 @@ void StageEditor::DrawTransformPanel() {
 
 void StageEditor::DrawGameView(float x,float y,float width,float height) {
 #ifdef USE_IMGUI
+    if (!active_) {
+        gameViewHovered_ = false;
+        return;
+    }
+
     gameViewHovered_=ImGui::IsItemHovered();
     HandleEditorInput();
     ImDrawList* draw=ImGui::GetWindowDrawList();

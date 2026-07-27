@@ -1,5 +1,41 @@
 #include "Input.h"
 #include <cassert>
+#include <algorithm>
+#include <cmath>
+
+namespace {
+struct DirectInputGamepadEnumeration {
+    GUID instanceGuid{};
+    bool found = false;
+};
+
+BOOL CALLBACK FindFirstGamepad(
+    const DIDEVICEINSTANCE* instance,
+    VOID* context
+) {
+    auto* enumeration =
+        static_cast<DirectInputGamepadEnumeration*>(context);
+    enumeration->instanceGuid = instance->guidInstance;
+    enumeration->found = true;
+    return DIENUM_STOP;
+}
+
+BOOL CALLBACK ConfigureGamepadAxis(
+    const DIDEVICEOBJECTINSTANCE* object,
+    VOID* context
+) {
+    auto* device = static_cast<IDirectInputDevice8*>(context);
+    DIPROPRANGE range{};
+    range.diph.dwSize = sizeof(DIPROPRANGE);
+    range.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+    range.diph.dwHow = DIPH_BYID;
+    range.diph.dwObj = object->dwType;
+    range.lMin = -32768;
+    range.lMax = 32767;
+    device->SetProperty(DIPROP_RANGE, &range.diph);
+    return DIENUM_CONTINUE;
+}
+}
 
 
 void Input::Initialize(WinApp* winApp)
@@ -79,6 +115,69 @@ void Input::Initialize(WinApp* winApp)
     assert(SUCCEEDED(result));
 
     mouse_->Acquire();
+
+    InitializeDirectInputGamepad();
+}
+
+void Input::InitializeDirectInputGamepad()
+{
+    directInputGamepad_.Reset();
+    directInputGamepadConnected_ = false;
+    ZeroMemory(
+        &directInputGamepadState_,
+        sizeof(directInputGamepadState_)
+    );
+    ZeroMemory(
+        &directInputGamepadStatePre_,
+        sizeof(directInputGamepadStatePre_)
+    );
+
+    if (!directInput_ || !winApp_) {
+        return;
+    }
+
+    DirectInputGamepadEnumeration enumeration{};
+    directInput_->EnumDevices(
+        DI8DEVCLASS_GAMECTRL,
+        FindFirstGamepad,
+        &enumeration,
+        DIEDFL_ATTACHEDONLY
+    );
+    if (!enumeration.found) {
+        return;
+    }
+
+    HRESULT result = directInput_->CreateDevice(
+        enumeration.instanceGuid,
+        directInputGamepad_.GetAddressOf(),
+        nullptr
+    );
+    if (FAILED(result)) {
+        directInputGamepad_.Reset();
+        return;
+    }
+
+    result = directInputGamepad_->SetDataFormat(&c_dfDIJoystick2);
+    if (FAILED(result)) {
+        directInputGamepad_.Reset();
+        return;
+    }
+
+    result = directInputGamepad_->SetCooperativeLevel(
+        winApp_->GetHwnd(),
+        DISCL_FOREGROUND | DISCL_NONEXCLUSIVE
+    );
+    if (FAILED(result)) {
+        directInputGamepad_.Reset();
+        return;
+    }
+
+    directInputGamepad_->EnumObjects(
+        ConfigureGamepadAxis,
+        directInputGamepad_.Get(),
+        DIDFT_AXIS
+    );
+    directInputGamepad_->Acquire();
 }
 
 
@@ -140,6 +239,41 @@ void Input::Update()
     if (FAILED(result)) {
         ZeroMemory(&mouseState_, sizeof(mouseState_));
     }
+
+    gamepadStatePre_ = gamepadState_;
+    ZeroMemory(&gamepadState_, sizeof(gamepadState_));
+    gamepadConnected_ =
+        XInputGetState(0, &gamepadState_) == ERROR_SUCCESS;
+
+    directInputGamepadStatePre_ = directInputGamepadState_;
+    directInputGamepadConnected_ = false;
+    if (directInputGamepad_) {
+        HRESULT gamepadResult = directInputGamepad_->Poll();
+        if (FAILED(gamepadResult)) {
+            gamepadResult = directInputGamepad_->Acquire();
+            while (gamepadResult == DIERR_INPUTLOST) {
+                gamepadResult = directInputGamepad_->Acquire();
+            }
+        }
+
+        if (SUCCEEDED(gamepadResult)) {
+            gamepadResult = directInputGamepad_->GetDeviceState(
+                sizeof(directInputGamepadState_),
+                &directInputGamepadState_
+            );
+        }
+        directInputGamepadConnected_ = SUCCEEDED(gamepadResult);
+    }
+
+    if (!gamepadConnected_ && !directInputGamepadConnected_) {
+        ++gamepadReconnectCounter_;
+        if (gamepadReconnectCounter_ >= 120) {
+            gamepadReconnectCounter_ = 0;
+            InitializeDirectInputGamepad();
+        }
+    } else {
+        gamepadReconnectCounter_ = 0;
+    }
 }
 
 bool Input::PushKey(BYTE keyNumber)
@@ -152,4 +286,91 @@ bool Input::TriggerKey(BYTE keyNumber)
     return
         key_[keyNumber] != 0 &&
         keyPre_[keyNumber] == 0;
+}
+
+namespace {
+float NormalizeStickAxis(SHORT value, SHORT deadZone)
+{
+    const int raw = static_cast<int>(value);
+    const int magnitude = std::abs(raw);
+    if (magnitude <= deadZone) {
+        return 0.0f;
+    }
+
+    const float normalized =
+        static_cast<float>(magnitude - deadZone) /
+        static_cast<float>(32767 - deadZone);
+    return (raw < 0 ? -1.0f : 1.0f) *
+        std::clamp(normalized, 0.0f, 1.0f);
+}
+}
+
+float Input::GetLeftStickX() const
+{
+    if (gamepadConnected_) {
+        return NormalizeStickAxis(
+            gamepadState_.Gamepad.sThumbLX,
+            XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE
+        );
+    }
+    if (directInputGamepadConnected_) {
+        return NormalizeStickAxis(
+            static_cast<SHORT>(directInputGamepadState_.lX),
+            6553
+        );
+    }
+    return 0.0f;
+}
+
+float Input::GetLeftStickY() const
+{
+    if (gamepadConnected_) {
+        return NormalizeStickAxis(
+            gamepadState_.Gamepad.sThumbLY,
+            XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE
+        );
+    }
+    if (directInputGamepadConnected_) {
+        return -NormalizeStickAxis(
+            static_cast<SHORT>(directInputGamepadState_.lY),
+            6553
+        );
+    }
+    return 0.0f;
+}
+
+bool Input::PushGamepadButton(WORD button) const
+{
+    if (gamepadConnected_) {
+        return (gamepadState_.Gamepad.wButtons & button) != 0;
+    }
+
+    if (directInputGamepadConnected_ &&
+        button == XINPUT_GAMEPAD_A) {
+        // The physical south button is commonly index 0 (Switch/standard
+        // DirectInput) or index 1 (PlayStation DirectInput).
+        return (directInputGamepadState_.rgbButtons[0] & 0x80) != 0 ||
+            (directInputGamepadState_.rgbButtons[1] & 0x80) != 0;
+    }
+    return false;
+}
+
+bool Input::TriggerGamepadButton(WORD button) const
+{
+    if (gamepadConnected_) {
+        return PushGamepadButton(button) &&
+            (gamepadStatePre_.Gamepad.wButtons & button) == 0;
+    }
+
+    if (directInputGamepadConnected_ &&
+        button == XINPUT_GAMEPAD_A) {
+        const bool current =
+            (directInputGamepadState_.rgbButtons[0] & 0x80) != 0 ||
+            (directInputGamepadState_.rgbButtons[1] & 0x80) != 0;
+        const bool previous =
+            (directInputGamepadStatePre_.rgbButtons[0] & 0x80) != 0 ||
+            (directInputGamepadStatePre_.rgbButtons[1] & 0x80) != 0;
+        return current && !previous;
+    }
+    return false;
 }
