@@ -472,7 +472,15 @@ void GameScene::Draw3D() {
 
     context_->GetObject3dCommon()->PreDraw();
 
-    if (drawMode_ == GameSceneDrawMode::NormalObj) {
+    // The stage editor owns the editing viewport.  Do not mix the legacy
+    // SceneObjectController scene (terrain/axis/Blender objects) into it:
+    // placed stage items must be previewed against the same clean view that
+    // will be used for the stage itself.  Runtime scene objects return when
+    // entering GamePlay mode.
+    if (
+        drawMode_ == GameSceneDrawMode::NormalObj &&
+        stageEditor_.IsGamePlayMode()
+        ) {
         sceneObjects_.Draw();
     }
 
