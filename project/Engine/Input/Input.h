@@ -5,11 +5,13 @@
 #define DIRECTINPUT_VERSION 0x0800
 
 #include <dinput.h> // DirectInputのヘッダー
+#include <Xinput.h>
 #include "WinApp.h"
 
 // ライブラリのリンク指示
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxguid.lib")
+#pragma comment(lib, "xinput.lib")
 
 class Input {
 public:
@@ -29,6 +31,14 @@ public:
     // キーがトリガーされたか（押した瞬間）判定
     bool TriggerKey(BYTE keyNumber);
 
+    bool IsGamepadConnected() const {
+        return gamepadConnected_ || directInputGamepadConnected_;
+    }
+    float GetLeftStickX() const;
+    float GetLeftStickY() const;
+    bool PushGamepadButton(WORD button) const;
+    bool TriggerGamepadButton(WORD button) const;
+
     LONG GetMouseDeltaX() const { return mouseState_.lX; }
     LONG GetMouseDeltaY() const { return mouseState_.lY; }
     LONG GetMouseWheelDelta() const { return mouseState_.lZ; }
@@ -38,14 +48,24 @@ public:
     }
 
 private:
+    void InitializeDirectInputGamepad();
+
     WinApp* winApp_ = nullptr;
 
     ComPtr<IDirectInput8> directInput_;
     ComPtr<IDirectInputDevice8> keyboard_;
     ComPtr<IDirectInputDevice8> mouse_;
+    ComPtr<IDirectInputDevice8> directInputGamepad_;
 
     // キーボードの入力状態（全キー256個）
     DIMOUSESTATE2 mouseState_ = {};
     BYTE key_[256] = {};
     BYTE keyPre_[256] = {}; // 1フレーム前の状態（トリガー判定用）
+    XINPUT_STATE gamepadState_ = {};
+    XINPUT_STATE gamepadStatePre_ = {};
+    bool gamepadConnected_ = false;
+    DIJOYSTATE2 directInputGamepadState_ = {};
+    DIJOYSTATE2 directInputGamepadStatePre_ = {};
+    bool directInputGamepadConnected_ = false;
+    uint32_t gamepadReconnectCounter_ = 0;
 };

@@ -3,6 +3,7 @@
   <ItemGroup>
     <FxCompile Include="Resources\shaders\hlsl\Particle.PS.hlsl" />
     <FxCompile Include="Resources\shaders\hlsl\Particle.VS.hlsl" />
+    <None Include="Resources\shaders\hlsl\Skinning.CS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="externals\imgui\imgui.cpp" />

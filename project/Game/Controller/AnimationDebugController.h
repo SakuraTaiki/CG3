@@ -128,6 +128,10 @@ private:
 
     // クロスフェード開始時の姿勢
     std::vector<QuaternionTransform> blendStartPose_;
+    Animation blendSourceAnimation_;
+    float blendSourceAnimationTime_ = 0.0f;
+    bool blendSourceAnimationLoop_ = true;
+    bool hasBlendSourceAnimation_ = false;
 
     bool isBlending_ = false;
     float blendTime_ = 0.0f;
@@ -151,7 +155,7 @@ private:
     float modelYaw_ = 0.0f;
 
     float jointDisplaySize_ = 0.06f;
-    float boneDisplayThickness_ = 0.018f;
+    float boneDisplayThickness_ = 0.055f;
     float modelDebugOpacity_ = 0.25f;
 
     int selectedJointIndex_ = 0;

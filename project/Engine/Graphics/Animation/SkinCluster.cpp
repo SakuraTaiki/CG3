@@ -36,6 +36,37 @@ namespace {
         return resource;
     }
 
+    Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBufferResource(
+        ID3D12Device* device,
+        size_t sizeInBytes
+    ) {
+        Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+
+        D3D12_HEAP_PROPERTIES heapProps{};
+        heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+        D3D12_RESOURCE_DESC resourceDesc{};
+        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        resourceDesc.Width = sizeInBytes;
+        resourceDesc.Height = 1;
+        resourceDesc.DepthOrArraySize = 1;
+        resourceDesc.MipLevels = 1;
+        resourceDesc.SampleDesc.Count = 1;
+        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        const HRESULT hr = device->CreateCommittedResource(
+            &heapProps,
+            D3D12_HEAP_FLAG_NONE,
+            &resourceDesc,
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+            nullptr,
+            IID_PPV_ARGS(&resource)
+        );
+        assert(SUCCEEDED(hr));
+        return resource;
+    }
+
 }
 
 bool CreateSkinCluster(
@@ -53,6 +84,12 @@ bool CreateSkinCluster(
     }
 
     const auto& skinClusterData = model.GetSkinClusterData();
+    // OBJ files and other rigid models still have a root node, but they do
+    // not need any skinning resources. Allocating palette/SRV/UAV entries for
+    // every rigid object quickly exhausts the shared descriptor heap.
+    if (skinClusterData.empty() || model.GetVertexCount() == 0) {
+        return false;
+    }
 
     skinCluster.inverseBindPoseMatrices.resize(skeleton.joints.size());
     std::generate(
@@ -85,6 +122,7 @@ bool CreateSkinCluster(
         srvManager->GetGPUDescriptorHandle(skinCluster.paletteSrvIndex);
 
     const size_t vertexCount = model.GetVertexCount();
+    skinCluster.vertexCount = static_cast<uint32_t>(vertexCount);
 
     skinCluster.influenceResource = CreateBufferResource(
         device,
@@ -114,6 +152,54 @@ bool CreateSkinCluster(
         static_cast<UINT>(sizeof(VertexInfluence) * vertexCount);
     skinCluster.influenceBufferView.StrideInBytes =
         sizeof(VertexInfluence);
+
+    skinCluster.sourceVertexSrvIndex = srvManager->Allocate();
+    srvManager->CreateSRVForStructuredBuffer(
+        skinCluster.sourceVertexSrvIndex,
+        model.GetVertexBufferResource(),
+        static_cast<UINT>(vertexCount),
+        sizeof(ModelVertexData)
+    );
+    skinCluster.sourceVertexSrvHandle =
+        srvManager->GetGPUDescriptorHandle(
+            skinCluster.sourceVertexSrvIndex
+        );
+
+    skinCluster.influenceSrvIndex = srvManager->Allocate();
+    srvManager->CreateSRVForStructuredBuffer(
+        skinCluster.influenceSrvIndex,
+        skinCluster.influenceResource.Get(),
+        static_cast<UINT>(vertexCount),
+        sizeof(VertexInfluence)
+    );
+    skinCluster.influenceSrvHandle =
+        srvManager->GetGPUDescriptorHandle(
+            skinCluster.influenceSrvIndex
+        );
+
+    const size_t skinnedVertexBufferSize =
+        sizeof(ModelVertexData) * vertexCount;
+    skinCluster.skinnedVertexResource = CreateUavBufferResource(
+        device,
+        skinnedVertexBufferSize
+    );
+    skinCluster.skinnedVertexUavIndex = srvManager->Allocate();
+    srvManager->CreateUAVForStructuredBuffer(
+        skinCluster.skinnedVertexUavIndex,
+        skinCluster.skinnedVertexResource.Get(),
+        static_cast<UINT>(vertexCount),
+        sizeof(ModelVertexData)
+    );
+    skinCluster.skinnedVertexUavHandle =
+        srvManager->GetGPUDescriptorHandle(
+            skinCluster.skinnedVertexUavIndex
+        );
+    skinCluster.skinnedVertexBufferView.BufferLocation =
+        skinCluster.skinnedVertexResource->GetGPUVirtualAddress();
+    skinCluster.skinnedVertexBufferView.SizeInBytes =
+        static_cast<UINT>(skinnedVertexBufferSize);
+    skinCluster.skinnedVertexBufferView.StrideInBytes =
+        sizeof(ModelVertexData);
 
     for (const auto& jointWeight : skinClusterData) {
         auto it = skeleton.jointMap.find(jointWeight.first);
@@ -187,4 +273,8 @@ void UpdateSkinCluster(
             .skeletonSpaceInverseTransposeMatrix =
             Math::Transpose(Math::Inverse(skeletonSpaceMatrix));
     }
+
+    // The palette changed, so the cached skinned vertex buffer must be
+    // refreshed once before the next draw. Additional passes can reuse it.
+    skinCluster.computeDispatchRequired = true;
 }

@@ -50,6 +50,12 @@ public:
     DirectXCommon* GetDxCommon() const { return dxCommon_; }
     ID3D12RootSignature* GetRootSignature() const { return rootSignature_.Get(); }
     ID3D12PipelineState* GetPipelineState() const { return pipelineState_.Get(); }
+    ID3D12RootSignature* GetSkinningComputeRootSignature() const {
+        return skinningComputeRootSignature_.Get();
+    }
+    ID3D12PipelineState* GetSkinningComputePipelineState() const {
+        return skinningComputePipelineState_.Get();
+    }
 
     // ライト制御
     void SetDefaultLight();
@@ -202,6 +208,7 @@ public:
 private:
     void CreateRootSignature();
     void CreateGraphicsPipeline();
+    void CreateSkinningComputePipeline();
     void CreateLightBuffer();
     void CreateSpotLightBuffer();
     void CreatePointLightBuffer();
@@ -212,6 +219,10 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature>
+        skinningComputeRootSignature_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState>
+        skinningComputePipelineState_;
 
     // 平行光源用
     Microsoft::WRL::ComPtr<ID3D12Resource> lightResource_;

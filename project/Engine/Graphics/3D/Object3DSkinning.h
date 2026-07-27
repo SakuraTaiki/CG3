@@ -20,11 +20,12 @@ public:
     void SetAnimation(const Animation& animation);
 
     void Update();
+    void DispatchComputeSkinning();
 
     bool HasSkinCluster() const { return hasSkinCluster_; }
 
-    const D3D12_VERTEX_BUFFER_VIEW* GetInfluenceBufferView() const {
-        return &skinCluster_.influenceBufferView;
+    const D3D12_VERTEX_BUFFER_VIEW* GetSkinnedVertexBufferView() const {
+        return &skinCluster_.skinnedVertexBufferView;
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE GetPaletteSrvHandle() const {

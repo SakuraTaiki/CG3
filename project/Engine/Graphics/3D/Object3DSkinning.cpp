@@ -58,6 +58,84 @@ void Object3dSkinning::Update() {
     UpdateSkinCluster(skinCluster_, skeleton_);
 }
 
+void Object3dSkinning::DispatchComputeSkinning() {
+    if (!object3dCommon_ || !hasSkinCluster_ ||
+        skinCluster_.vertexCount == 0 ||
+        !skinCluster_.computeDispatchRequired) {
+        return;
+    }
+
+    ID3D12GraphicsCommandList* commandList =
+        object3dCommon_->GetDxCommon()->GetCommandList();
+
+    if (skinCluster_.skinnedVertexIsReadyForDraw) {
+        D3D12_RESOURCE_BARRIER toUav{};
+        toUav.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        toUav.Transition.pResource =
+            skinCluster_.skinnedVertexResource.Get();
+        toUav.Transition.StateBefore =
+            D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+        toUav.Transition.StateAfter =
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+        toUav.Transition.Subresource =
+            D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        commandList->ResourceBarrier(1, &toUav);
+    }
+
+    commandList->SetComputeRootSignature(
+        object3dCommon_->GetSkinningComputeRootSignature()
+    );
+    commandList->SetPipelineState(
+        object3dCommon_->GetSkinningComputePipelineState()
+    );
+    commandList->SetComputeRootDescriptorTable(
+        0,
+        skinCluster_.sourceVertexSrvHandle
+    );
+    commandList->SetComputeRootDescriptorTable(
+        1,
+        skinCluster_.influenceSrvHandle
+    );
+    commandList->SetComputeRootDescriptorTable(
+        2,
+        skinCluster_.paletteSrvHandle
+    );
+    commandList->SetComputeRootDescriptorTable(
+        3,
+        skinCluster_.skinnedVertexUavHandle
+    );
+    commandList->SetComputeRoot32BitConstant(
+        4,
+        skinCluster_.vertexCount,
+        0
+    );
+    commandList->Dispatch(
+        (skinCluster_.vertexCount + 1023u) / 1024u,
+        1,
+        1
+    );
+
+    D3D12_RESOURCE_BARRIER uavBarrier{};
+    uavBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    uavBarrier.UAV.pResource =
+        skinCluster_.skinnedVertexResource.Get();
+    commandList->ResourceBarrier(1, &uavBarrier);
+
+    D3D12_RESOURCE_BARRIER toVertexBuffer{};
+    toVertexBuffer.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    toVertexBuffer.Transition.pResource =
+        skinCluster_.skinnedVertexResource.Get();
+    toVertexBuffer.Transition.StateBefore =
+        D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+    toVertexBuffer.Transition.StateAfter =
+        D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
+    toVertexBuffer.Transition.Subresource =
+        D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    commandList->ResourceBarrier(1, &toVertexBuffer);
+    skinCluster_.skinnedVertexIsReadyForDraw = true;
+    skinCluster_.computeDispatchRequired = false;
+}
+
 Matrix4x4 Object3dSkinning::GetRootLocalMatrix() const {
     if (!model_) {
         return Math::MakeIdentity4x4();

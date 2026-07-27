@@ -119,7 +119,7 @@ void AnimationDebugController::InitializeSkeletonDebug(
     skeletonBoneObjects_.clear();
 
     Model* jointModel =
-        ModelManager::Load("Resources/Editor", "joint_box.obj");
+        ModelManager::Load("Resources/Editor", "ico_sphere.obj");
     Model* boneModel =
         ModelManager::Load("Resources/Editor", "bone_line.obj");
 
@@ -162,6 +162,14 @@ void AnimationDebugController::InitializeSkeletonDebug(
 
 void AnimationDebugController::Update(Input* input)
 {
+#ifndef USE_IMGUI
+    // Release has no ImGui checkbox.  Let the evaluator toggle the skeleton
+    // overlay directly while keeping all gameplay keys unchanged.
+    if (input && input->TriggerKey(DIK_B)) {
+        showSkeletonDebug_ = !showSkeletonDebug_;
+    }
+#endif
+
     if (editorMode_ == EditorMode::Play) {
         UpdateMovement(input);
         UpdateAnimationInput(input);
@@ -205,13 +213,17 @@ void AnimationDebugController::UpdateAnimationInput(Input* input)
         input->PushKey(DIK_W) ||
         input->PushKey(DIK_A) ||
         input->PushKey(DIK_S) ||
-        input->PushKey(DIK_D);
+        input->PushKey(DIK_D) ||
+        std::abs(input->GetLeftStickX()) > 0.0f ||
+        std::abs(input->GetLeftStickY()) > 0.0f;
 
     const bool slideTriggered =
         input->TriggerKey(DIK_LCONTROL) ||
         input->TriggerKey(DIK_RCONTROL);
 
-    const bool jumpTriggered = input->TriggerKey(DIK_RETURN);
+    const bool jumpTriggered =
+        input->TriggerKey(DIK_RETURN) ||
+        input->TriggerGamepadButton(XINPUT_GAMEPAD_A);
 
     if (jumpTriggered && !isJumping_) {
         isJumping_ = true;
@@ -301,6 +313,23 @@ void AnimationDebugController::UpdateAnimation()
         }
     }
 
+    if (isBlending_ && hasBlendSourceAnimation_) {
+        blendSourceAnimationTime_ += deltaTime * animationSpeed_;
+        if (blendSourceAnimation_.duration > 0.0f) {
+            if (blendSourceAnimationLoop_) {
+                blendSourceAnimationTime_ = std::fmod(
+                    blendSourceAnimationTime_,
+                    blendSourceAnimation_.duration
+                );
+            } else {
+                blendSourceAnimationTime_ = (std::min)(
+                    blendSourceAnimationTime_,
+                    blendSourceAnimation_.duration
+                );
+            }
+        }
+    }
+
     if (playerAnimationState_ == PlayerAnimationState::Slide &&
         !animationPlaying_) {
         playerAnimationState_ = PlayerAnimationState::Idle;
@@ -309,6 +338,15 @@ void AnimationDebugController::UpdateAnimation()
 
     if (isBlending_) {
         // 新しいアニメーション側の姿勢を計算
+        Skeleton sourceSkeleton = skeleton_;
+        if (hasBlendSourceAnimation_) {
+            ApplyAnimation(
+                sourceSkeleton,
+                blendSourceAnimation_,
+                blendSourceAnimationTime_
+            );
+        }
+
         Skeleton targetSkeleton =
             skeleton_;
 
@@ -328,13 +366,8 @@ void AnimationDebugController::UpdateAnimation()
                 1.0f
             );
 
-        // Smoothstep
+        // Linear cross-fade: (1 - t) * source + t * target.
         // 開始と終了の速度を滑らかにする
-        blend =
-            blend *
-            blend *
-            (3.0f - 2.0f * blend);
-
         const size_t jointCount =
             (std::min)(
                 skeleton_.joints.size(),
@@ -346,7 +379,9 @@ void AnimationDebugController::UpdateAnimation()
             ++i) {
 
             const QuaternionTransform& start =
-                blendStartPose_[i];
+                hasBlendSourceAnimation_
+                ? sourceSkeleton.joints[i].transform
+                : blendStartPose_[i];
 
             const QuaternionTransform& target =
                 targetSkeleton
@@ -386,6 +421,7 @@ void AnimationDebugController::UpdateAnimation()
 
         if (blendTime_ >= blendDuration_) {
             isBlending_ = false;
+            hasBlendSourceAnimation_ = false;
 
             // 最後にターゲット姿勢を正確に反映
             ApplyAnimation(
@@ -506,6 +542,9 @@ void AnimationDebugController::UpdateMovement(Input* input)
         direction.x += 1.0f;
     }
 
+    direction.x += input->GetLeftStickX();
+    direction.z += input->GetLeftStickY();
+
     const float length = std::sqrt(
         direction.x * direction.x +
         direction.z * direction.z
@@ -547,6 +586,9 @@ void AnimationDebugController::SetEditorMode(EditorMode mode)
     isBlending_ = false;
     isJumping_ = false;
     jumpVelocity_ = 0.0f;
+    // The skeleton overlay is an Animation Edit tool.  Never carry it into
+    // Play or Preview when changing modes.
+    showSkeletonDebug_ = editorMode_ == EditorMode::AnimationEdit;
 
     if (animatedObject_) {
         Vector3 position = animatedObject_->GetTransform().translate;
@@ -557,7 +599,6 @@ void AnimationDebugController::SetEditorMode(EditorMode mode)
     if (editorMode_ == EditorMode::AnimationEdit) {
         animationPlaying_ = false;
         manualAnimationTest_ = true;
-        showSkeletonDebug_ = true;
     } else if (editorMode_ == EditorMode::Preview) {
         animationTime_ = 0.0f;
         animationPlaying_ = true;
@@ -598,6 +639,14 @@ void AnimationDebugController::StartAnimationTransition(
     bool loop
 )
 {
+    hasBlendSourceAnimation_ =
+        !isBlending_ &&
+        !animation_.nodeAnimations.empty();
+    if (hasBlendSourceAnimation_) {
+        blendSourceAnimation_ = animation_;
+        blendSourceAnimationTime_ = animationTime_;
+        blendSourceAnimationLoop_ = animationLoop_;
+    }
 
     // 現在画面に出ている姿勢を保存
     blendStartPose_.resize(

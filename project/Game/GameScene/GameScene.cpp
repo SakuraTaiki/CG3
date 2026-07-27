@@ -23,6 +23,13 @@
 void GameScene::Initialize(EngineContext* context) {
     context_ = context;
 
+#ifndef USE_IMGUI
+    // The submitted Release build is evaluated on the animation feature.
+    // Start directly in the glTF animation view because no ImGui scene
+    // selector is available in that configuration.
+    drawMode_ = GameSceneDrawMode::Animation;
+#endif
+
     ModelManager::Initialize(context_->GetObject3dCommon());
 
     InitializeModels();
@@ -173,6 +180,9 @@ void GameScene::Update() {
     soundController_.Update(context_->GetInput());
     UpdateTaskJsonHotReload();
     UpdateObjects();
+    // Draw modes are exclusive tool contexts.  Animation mode must not
+    // update the stage placement cursor or consume the same WASD input.
+    stageEditor_.SetActive(drawMode_ == GameSceneDrawMode::NormalObj);
     stageEditor_.Update();
 
     cameraDebug_.Update(
@@ -484,7 +494,9 @@ void GameScene::Draw3D() {
         sceneObjects_.Draw();
     }
 
-    stageEditor_.Draw3D();
+    if (drawMode_ == GameSceneDrawMode::NormalObj) {
+        stageEditor_.Draw3D();
+    }
 
     if (drawMode_ == GameSceneDrawMode::Animation) {
         animationDebug_.Draw();
