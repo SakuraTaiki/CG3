@@ -1,0 +1,97 @@
+{"kind":"deck","id":"pr/quczdz","name":"Deck"}
+{"kind":"layout","layoutId":"3981576a-2800-4875-b89e-6d10d1bd9e77","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"c856e975-0033-43ba-b8c3-b3cd85192dd9","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/rmu01g","slide":1,"title":"PORTFOLIO / 2026","textShapes":4}
+{"kind":"textbox","id":"sh/epo321sf","slide":1,"text":"PORTFOLIO / 2026","textPreview":"PORTFOLIO / 2026","textChars":16,"textLines":1,"bbox":[42,38,420,36]}
+{"kind":"textbox","id":"sh/1sf2dwb6","slide":1,"text":"3D Stage Editor","textPreview":"3D Stage Editor","textChars":15,"textLines":1,"bbox":[42,175,650,100]}
+{"kind":"textbox","id":"sh/gr6l4ral","slide":1,"text":"ゲーム内で配置からステージ構築まで完結する\n自作3Dレベルエディター","textPreview":"ゲーム内で配置からステージ構築まで完結する | 自作3Dレベルエディター","textChars":34,"textLines":2,"bbox":[46,300,570,96]}
+{"kind":"textbox","id":"sh/2do361sr","slide":1,"text":"Sakura Taiki  |  C++ / DirectX 12 / ImGui","textPreview":"Sakura Taiki  |  C++ / DirectX 12 / ImGui","textChars":41,"textLines":1,"bbox":[46,610,600,32]}
+{"kind":"image","id":"im/29cr21s7","slide":1,"name":"","geometry":"roundRect","alt":"3Dステージエディターの実行画面","bbox":[700,70,538,565]}
+{"kind":"notes","id":"nt/rmu01g","slide":1,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/bdfcpl","slide":2,"title":"配置作業をゲーム画面の中で完結","textShapes":7}
+{"kind":"textbox","id":"sh/pkfi1knm","slide":2,"text":"配置作業をゲーム画面の中で完結","textPreview":"配置作業をゲーム画面の中で完結","textChars":15,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/2h4zqpov","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/3id0zu5g","slide":2,"bbox":[42,104,1196,2]}
+{"kind":"textbox","id":"sh/cn6hwz6d","slide":2,"text":"狙い","textPreview":"狙い","textChars":2,"textLines":1,"bbox":[42,142,300,36]}
+{"kind":"textbox","id":"sh/dofi54ny","slide":2,"text":"コードを書き換えず、画面を見ながら\nブロックやギミックを組み合わせる。","textPreview":"コードを書き換えず、画面を見ながら | ブロックやギミックを組み合わせる。","textChars":35,"textLines":2,"bbox":[42,185,510,108]}
+{"kind":"shape","id":"sh/qlozupo7","slide":2,"bbox":[42,350,12,12]}
+{"kind":"textbox","id":"sh/bmx03u5s","slide":2,"text":"整数座標の3Dカーソルで位置を指定","textPreview":"整数座標の3Dカーソルで位置を指定","textChars":17,"textLines":1,"bbox":[70,340,492,46]}
+{"kind":"shape","id":"sh/sr2hkv6t","slide":2,"bbox":[42,420,12,12]}
+{"kind":"textbox","id":"sh/tsvyt0ne","slide":2,"text":"選択中オブジェクトを半透明でプレビュー","textPreview":"選択中オブジェクトを半透明でプレビュー","textChars":19,"textLines":1,"bbox":[70,410,492,46]}
+{"kind":"shape","id":"sh/5gredwb6","slide":2,"bbox":[42,490,12,12]}
+{"kind":"textbox","id":"sh/4fix4ral","slide":2,"text":"配置結果を即座に画面へ反映","textPreview":"配置結果を即座に画面へ反映","textChars":13,"textLines":1,"bbox":[70,480,492,46]}
+{"kind":"image","id":"im/8rypof21","slide":2,"name":"","geometry":"roundRect","alt":"3Dステージエディターの実行画面","bbox":[630,150,608,470]}
+{"kind":"notes","id":"nt/bdfcpl","slide":2,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/ylsxic","slide":3,"title":"27種類を4カテゴリから選択","textShapes":12}
+{"kind":"textbox","id":"sh/c7ut8jq9","slide":3,"text":"27種類を4カテゴリから選択","textPreview":"27種類を4カテゴリから選択","textChars":14,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/r6lcfy9o","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/q5cb6t83","slide":3,"bbox":[42,104,1196,2]}
+{"kind":"shape","id":"sh/p43udory","slide":3,"bbox":[42,165,370,350]}
+{"kind":"textbox","id":"sh/43ut4jqd","slide":3,"text":"BASIC","textPreview":"BASIC","textChars":5,"textLines":1,"bbox":[66,190,320,36]}
+{"kind":"textbox","id":"sh/32lcbe9s","slide":3,"text":"Ground / Wall / Brick\nIce / Moving / Timed","textPreview":"Ground / Wall / Brick | Ice / Moving / Timed","textChars":42,"textLines":2,"bbox":[66,250,320,130]}
+{"kind":"textbox","id":"sh/21cb2987","slide":3,"text":"基礎形状を素早く構築","textPreview":"基礎形状を素早く構築","textChars":10,"textLines":1,"bbox":[66,440,320,42]}
+{"kind":"shape","id":"sh/907up8r2","slide":3,"bbox":[444,165,370,350]}
+{"kind":"textbox","id":"sh/8zedg3qh","slide":3,"text":"GIMMICK","textPreview":"GIMMICK","textChars":7,"textLines":1,"bbox":[468,190,320,36]}
+{"kind":"textbox","id":"sh/axsj2lgn","slide":3,"text":"Star / Door / Switch\nGoal / Ladder / Spike","textPreview":"Star / Door / Switch | Goal / Ladder / Spike","textChars":42,"textLines":2,"bbox":[468,250,320,130]}
+{"kind":"textbox","id":"sh/by1kvqh8","slide":3,"text":"遊びを生む機能を配置","textPreview":"遊びを生む機能を配置","textChars":10,"textLines":1,"bbox":[468,440,320,42]}
+{"kind":"shape","id":"sh/wza14byt","slide":3,"bbox":[846,165,370,350]}
+{"kind":"textbox","id":"sh/x032xgzy","slide":3,"text":"ENEMY & SYSTEM","textPreview":"ENEMY & SYSTEM","textChars":14,"textLines":1,"bbox":[870,190,320,36]}
+{"kind":"textbox","id":"sh/mtsjy1gb","slide":3,"text":"Walker / Flyer / Chaser\nPlayer Start / Checkpoint","textPreview":"Walker / Flyer / Chaser | Player Start / Checkpoint","textChars":49,"textLines":2,"bbox":[870,250,320,130]}
+{"kind":"textbox","id":"sh/nu1kr6hw","slide":3,"text":"ゲーム開始条件まで定義","textPreview":"ゲーム開始条件まで定義","textChars":11,"textLines":1,"bbox":[870,440,320,42]}
+{"kind":"textbox","id":"sh/ova10byh","slide":3,"text":"選択した種類ごとに、初期サイズ・色・専用パラメータを自動設定","textPreview":"選択した種類ごとに、初期サイズ・色・専用パラメータを自動設定","textChars":30,"textLines":1,"bbox":[42,570,1196,56]}
+{"kind":"notes","id":"nt/ylsxic","slide":3,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/cuas6b","slide":4,"title":"選ぶ → 動かす → 置く → 戻す","textShapes":17}
+{"kind":"textbox","id":"sh/ahcbq5or","slide":4,"text":"選ぶ → 動かす → 置く → 戻す","textPreview":"選ぶ → 動かす → 置く → 戻す","textChars":18,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/xk3ulkni","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/cjutsf6x","slide":4,"bbox":[42,104,1196,2]}
+{"kind":"textbox","id":"sh/ne1cfq5g","slide":4,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[42,175,70,52]}
+{"kind":"textbox","id":"sh/2dsbmlov","slide":4,"text":"SELECT","textPreview":"SELECT","textChars":6,"textLines":1,"bbox":[42,245,260,38]}
+{"kind":"textbox","id":"sh/pg3uh0n6","slide":4,"text":"パレットから種類を選択","textPreview":"パレットから種類を選択","textChars":11,"textLines":1,"bbox":[42,300,250,90]}
+{"kind":"textbox","id":"sh/ofatov6l","slide":4,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[287,205,42,42]}
+{"kind":"textbox","id":"sh/fa1sbq54","slide":4,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[342,175,70,52]}
+{"kind":"textbox","id":"sh/epsbiloj","slide":4,"text":"MOVE","textPreview":"MOVE","textChars":4,"textLines":1,"bbox":[342,245,260,38]}
+{"kind":"textbox","id":"sh/obyxcrqp","slide":4,"text":"WASD / Q・Eで3D移動","textPreview":"WASD / Q・Eで3D移動","textChars":15,"textLines":1,"bbox":[342,300,250,90]}
+{"kind":"textbox","id":"sh/pc7y5w7a","slide":4,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[587,205,42,42]}
+{"kind":"textbox","id":"sh/29gfah8z","slide":4,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[642,175,70,52]}
+{"kind":"textbox","id":"sh/napg3m9k","slide":4,"text":"PLACE","textPreview":"PLACE","textChars":5,"textLines":1,"bbox":[642,245,260,38]}
+{"kind":"textbox","id":"sh/0nyx87qt","slide":4,"text":"Enterで配置、Rで90°回転","textPreview":"Enterで配置、Rで90°回転","textChars":16,"textLines":1,"bbox":[642,300,250,90]}
+{"kind":"textbox","id":"sh/187y1cre","slide":4,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[887,205,42,42]}
+{"kind":"textbox","id":"sh/elwf6h8n","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[942,175,70,52]}
+{"kind":"textbox","id":"sh/fm5gz298","slide":4,"text":"EDIT","textPreview":"EDIT","textChars":4,"textLines":1,"bbox":[942,245,260,38]}
+{"kind":"textbox","id":"sh/kjihkbqx","slide":4,"text":"削除・Undo・Redoで調整","textPreview":"削除・Undo・Redoで調整","textChars":15,"textLines":1,"bbox":[942,300,250,90]}
+{"kind":"image","id":"im/qhk3yh4v","slide":4,"name":"","geometry":"roundRect","alt":"3Dステージエディターの実行画面","bbox":[42,430,1196,210]}
+{"kind":"notes","id":"nt/cuas6b","slide":4,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/fkdeu2","slide":5,"title":"制作を壊さないための設計","textShapes":8}
+{"kind":"textbox","id":"sh/3a1cz2ho","slide":5,"text":"制作を壊さないための設計","textPreview":"制作を壊さないための設計","textChars":12,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/4bat87i9","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/5cju1czu","slide":5,"bbox":[42,104,1196,2]}
+{"kind":"textbox","id":"sh/qdcvax0f","slide":5,"text":"EDITOR / GAMEPLAY","textPreview":"EDITOR / GAMEPLAY","textChars":17,"textLines":1,"bbox":[42,155,360,36]}
+{"kind":"textbox","id":"sh/relc32hk","slide":5,"text":"モードを分離し、プレイ中は配置カーソルと編集入力を停止。","textPreview":"モードを分離し、プレイ中は配置カーソルと編集入力を停止。","textChars":28,"textLines":1,"bbox":[420,150,780,80]}
+{"kind":"shape","id":"sh/sfudc7i5","slide":5,"bbox":[42,255,1196,1]}
+{"kind":"textbox","id":"sh/dg3u5czq","slide":5,"text":"NON-DESTRUCTIVE SAVE","textPreview":"NON-DESTRUCTIVE SAVE","textChars":20,"textLines":1,"bbox":[42,310,360,36]}
+{"kind":"textbox","id":"sh/ehcveh0b","slide":5,"text":"保存時は既存ファイルを上書きせず、固有名のJSONを生成。","textPreview":"保存時は既存ファイルを上書きせず、固有名のJSONを生成。","textChars":29,"textLines":1,"bbox":[420,305,780,80]}
+{"kind":"shape","id":"sh/f2lc7mhw","slide":5,"bbox":[42,410,1196,1]}
+{"kind":"textbox","id":"sh/zml4fyd8","slide":5,"text":"SNAPSHOT HISTORY","textPreview":"SNAPSHOT HISTORY","textChars":16,"textLines":1,"bbox":[42,465,360,36]}
+{"kind":"textbox","id":"sh/ylcnmtwn","slide":5,"text":"配置配列と次IDをスナップショット化し、最大100手のUndoに対応。","textPreview":"配置配列と次IDをスナップショット化し、最大100手のUndoに対応。","textChars":35,"textLines":1,"bbox":[420,460,780,80]}
+{"kind":"shape","id":"sh/lo3mh8vy","slide":5,"bbox":[42,565,1196,1]}
+{"kind":"notes","id":"nt/fkdeu2","slide":5,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/a9wgzx","slide":6,"title":"実装済みの基盤を、遊べるステージへ","textShapes":11}
+{"kind":"textbox","id":"sh/orixsry9","slide":6,"text":"実装済みの基盤を、遊べるステージへ","textPreview":"実装済みの基盤を、遊べるステージへ","textChars":17,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/nq9gjmx4","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/2p0fqhgj","slide":6,"bbox":[42,104,1196,2]}
+{"kind":"textbox","id":"sh/xgbypwf6","slide":6,"text":"実装済み","textPreview":"実装済み","textChars":4,"textLines":1,"bbox":[42,155,300,42]}
+{"kind":"shape","id":"sh/cf2xwryl","slide":6,"bbox":[42,225,12,12]}
+{"kind":"textbox","id":"sh/be9gnmx0","slide":6,"text":"複数種類の3D配置・回転・削除","textPreview":"複数種類の3D配置・回転・削除","textChars":15,"textLines":1,"bbox":[70,215,492,46]}
+{"kind":"shape","id":"sh/ad0fu1gf","slide":6,"bbox":[42,303,12,12]}
+{"kind":"textbox","id":"sh/tk7edcfm","slide":6,"text":"Undo / RedoとJSON保存・読込","textPreview":"Undo / RedoとJSON保存・読込","textChars":21,"textLines":1,"bbox":[70,293,492,46]}
+{"kind":"shape","id":"sh/sjyxk7yh","slide":6,"bbox":[42,381,12,12]}
+{"kind":"textbox","id":"sh/6lsbulgv","slide":6,"text":"ステージ順を管理するプレイリスト","textPreview":"ステージ順を管理するプレイリスト","textChars":16,"textLines":1,"bbox":[70,371,492,46]}
+{"kind":"textbox","id":"sh/7m1cnqhg","slide":6,"text":"NEXT","textPreview":"NEXT","textChars":4,"textLines":1,"bbox":[690,155,300,42]}
+{"kind":"shape","id":"sh/8nutwvyl","slide":6,"bbox":[690,225,12,12]}
+{"kind":"textbox","id":"sh/to3up0z6","slide":6,"text":"自機とブロックの当たり判定","textPreview":"自機とブロックの当たり判定","textChars":13,"textLines":1,"bbox":[718,215,492,46]}
+{"kind":"shape","id":"sh/upcbylgr","slide":6,"bbox":[690,303,12,12]}
+{"kind":"textbox","id":"sh/vqlcrqhc","slide":6,"text":"配置データからゲームルールを生成","textPreview":"配置データからゲームルールを生成","textChars":16,"textLines":1,"bbox":[718,293,492,46]}
+{"kind":"shape","id":"sh/grutkvyx","slide":6,"bbox":[690,381,12,12]}
+{"kind":"textbox","id":"sh/hs3ut0zi","slide":6,"text":"エディターと実プレイの往復検証","textPreview":"エディターと実プレイの往復検証","textChars":15,"textLines":1,"bbox":[718,371,492,46]}
+{"kind":"textbox","id":"sh/itcbm5g3","slide":6,"text":"短い試行錯誤で、ステージの面白さを検証できる制作環境を目指す。","textPreview":"短い試行錯誤で、ステージの面白さを検証できる制作環境を目指す。","textChars":31,"textLines":1,"bbox":[42,555,1196,70]}
+{"kind":"notes","id":"nt/a9wgzx","slide":6,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}

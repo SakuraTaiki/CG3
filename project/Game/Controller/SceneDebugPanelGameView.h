@@ -29,8 +29,10 @@ void SceneDebugPanel::DrawGameViewWindow(
     if (!gameViewMaximized_) {
         ImGui::Checkbox("Gizmo", &showTransformGizmo_);
 
-        ImGui::SameLine();
-        ImGui::Checkbox("Colliders", &showColliders_);
+        if (workspace_ == Workspace::Effects || workspace_ == Workspace::SceneEditing) {
+            ImGui::SameLine();
+            ImGui::Checkbox("Colliders", &showColliders_);
+        }
 
         ImGui::SameLine();
         ImGui::RadioButton("Move", &gizmoOperation_, 0);
@@ -90,7 +92,8 @@ void SceneDebugPanel::DrawGameViewWindow(
     // SceneObjectController belongs to the runtime scene.  Its colliders
     // (including the legacy terrain/axis helpers) would otherwise be drawn
     // over the stage placement view.
-    if (stageEditor.IsGamePlayMode()) {
+    if (!stageEditor.IsGamePlayMode() &&
+        (workspace_ == Workspace::Effects || workspace_ == Workspace::SceneEditing)) {
         DrawColliderOverlay(
             context,
             sceneObjects,

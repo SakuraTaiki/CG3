@@ -10,12 +10,17 @@
 
 class Object3dCommon;
 class Model;
+class Input;
 
 // Free-position 3D stage editor for a 2.5D game.
 class StageEditor {
 public:
+    static constexpr int kTileSizePixels = 16;
+    static constexpr float kTileWorldSize = 1.0f;
+
     enum class Mode { Editor, GamePlay };
     enum class Category { Basic, Gimmick, Enemy, System };
+    enum class TileCollisionType { Empty, Solid, OneWay, Ladder, SlopeUpRight, SlopeUpLeft };
 
     struct ItemDefinition {
         int id = 0;
@@ -39,7 +44,7 @@ public:
 
     void Initialize(Object3dCommon* common, uint32_t environmentTexture, float environmentCoefficient);
     void Finalize();
-    void Update();
+    void Update(Input* input);
     void Draw3D();
     void Draw();
     void DrawGameView(float rectX, float rectY, float rectWidth, float rectHeight);
@@ -55,8 +60,20 @@ public:
     }
     void ToggleMode();
 
+    int GetStageWidthInTiles() const { return stageWidth_; }
+    int GetStageHeightInTiles() const { return stageHeight_; }
+    const Vector3& GetPlayerPosition() const { return playerPosition_; }
+    int GetTileAt(int gridX, int gridY) const;
+    bool IsSolidTile(int gridX, int gridY) const;
+    TileCollisionType GetTileCollisionType(int gridX, int gridY) const;
+    static Vector3 GridToWorld(int gridX, int gridY, float z = 0.0f);
+
 private:
-    struct Snapshot { std::vector<Placement> placements; uint32_t nextId = 1; };
+    struct Snapshot {
+        std::vector<int> tiles;
+        std::vector<Placement> placements;
+        uint32_t nextId = 1;
+    };
 
     void DrawModeSwitcher();
     void DrawPalette();
@@ -64,12 +81,46 @@ private:
     void DrawFilePanel();
     void DrawPlaylistManager();
     void DrawSelectedItemSettings();
-    void HandleEditorInput();
+    void HandleEditorInput(
+        float rectX,
+        float rectY,
+        float rectWidth,
+        float rectHeight
+    );
+    void DrawGridOverlay(float rectX, float rectY, float rectWidth, float rectHeight);
+    bool MouseToGrid(
+        float mouseX,
+        float mouseY,
+        float rectX,
+        float rectY,
+        float rectWidth,
+        float rectHeight,
+        int& gridX,
+        int& gridY
+    ) const;
 
     void SetMode(Mode mode);
+    void ResetPlayer();
+    void ResetRuntimeState();
+    void RespawnPlayer(bool damaged = false);
+    void UpdatePlayer(Input* input);
+    void UpdateRuntimeObjects(float deltaTime);
+    void UpdateGimmickCollisions(Input* input, float deltaTime);
+    void ResolvePlacedSolidCollisions();
+    bool IsPlayerOverlappingPlacement(size_t index, float padding = 0.0f) const;
+    bool IsRuntimePlacementActive(size_t index) const;
+    Vector3 GetRuntimePlacementPosition(size_t index) const;
+    void ShowRuntimeMessage(const std::string& message, float seconds = 1.5f);
+    void MovePlayerHorizontal(float amount);
+    void MovePlayerVertical(float amount);
+    bool IsCollisionSolid(int gridX, int gridY) const;
     void PlaceItem();
     void RemoveNearest();
     void RotateCursor();
+    void PaintTile(int gridX, int gridY);
+    void EraseTile(int gridX, int gridY);
+    bool IsTileItem(int itemId) const;
+    int TileIndex(int gridX, int gridY) const;
     int FindNearestPlacement(float maxDistance) const;
     const ItemDefinition* FindItem(int id) const;
 
@@ -108,9 +159,36 @@ private:
     bool active_ = true;
 
     std::vector<Placement> placements_;
+    std::vector<int> tiles_;
+    std::vector<std::unique_ptr<Object3d>> tileObjects_;
     std::vector<std::unique_ptr<Object3d>> objects_;
     std::unique_ptr<Object3d> cursorObject_;
     std::unique_ptr<Object3d> cursorFrameObject_;
+    std::unique_ptr<Object3d> playerObject_;
+
+    Vector3 playerPosition_{1.5f, 2.5f, 0.0f};
+    Vector3 playerVelocity_{};
+    static constexpr float kPlayerHalfSize = 0.5f;
+    static constexpr float kPlayerMoveSpeed = 5.0f;
+    static constexpr float kPlayerJumpSpeed = 9.0f;
+    static constexpr float kPlayerGravity = 24.0f;
+    bool playerGrounded_ = false;
+    Vector3 playerRespawnPosition_{1.5f,2.5f,0.0f};
+    std::vector<uint8_t> runtimePlacementActive_;
+    std::vector<uint8_t> runtimePlacementTouching_;
+    std::vector<Vector3> runtimePlacementPositions_;
+    std::vector<uint8_t> runtimeTileActive_;
+    float runtimeTime_ = 0.0f;
+    float playerFlashTimer_ = 0.0f;
+    float runtimeMessageTimer_ = 0.0f;
+    float doorCooldown_ = 0.0f;
+    std::string runtimeMessage_;
+    int collectedStars_ = 0;
+    int collectedBubbles_ = 0;
+    int keyCount_ = 0;
+    bool pSwitchActive_ = false;
+    bool onOffActive_ = true;
+    bool goalReached_ = false;
 
     std::vector<Snapshot> undoStack_;
     std::vector<Snapshot> redoStack_;
@@ -121,9 +199,12 @@ private:
     int selectedCampaignIndex_ = -1;
     int selectedAvailableIndex_ = -1;
 
-    int stageWidth_ = 100;
-    int stageHeight_ = 100;
-    int stageDepth_ = 20;
+    int stageWidth_ = 200;
+    int stageHeight_ = 15;
+    int stageDepth_ = 1;
+    int lastPaintGridX_ = -1;
+    int lastPaintGridY_ = -1;
+    bool showGrid_ = true;
     int selectedDoorId_ = 1;
     int selectedSwitchId_ = 1;
     int selectedTimedGroupId_ = 1;

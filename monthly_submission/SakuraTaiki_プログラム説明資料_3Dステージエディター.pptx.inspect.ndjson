@@ -1,0 +1,127 @@
+{"kind":"deck","id":"pr/36ho9q","name":"Deck"}
+{"kind":"layout","layoutId":"6f4d2dbb-273c-4c82-ac64-96ee62deebd1","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"2f99d4d6-180b-4446-8d9a-62a9a95ce0e8","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/w2acse","slide":1,"title":"PROGRAM DESIGN","textShapes":4}
+{"kind":"textbox","id":"sh/1kvq1c7a","slide":1,"text":"PROGRAM DESIGN","textPreview":"PROGRAM DESIGN","textChars":14,"textLines":1,"bbox":[42,38,420,36]}
+{"kind":"textbox","id":"sh/ehk7qx8z","slide":1,"text":"3D Stage Editor\nプログラム説明資料","textPreview":"3D Stage Editor | プログラム説明資料","textChars":25,"textLines":2,"bbox":[42,170,700,175]}
+{"kind":"textbox","id":"sh/fit8z2p4","slide":1,"text":"C++ / DirectX 12 / ImGui / JSON","textPreview":"C++ / DirectX 12 / ImGui / JSON","textChars":31,"textLines":1,"bbox":[46,390,600,36]}
+{"kind":"textbox","id":"sh/p8vq5c7m","slide":1,"text":"Sakura Taiki","textPreview":"Sakura Taiki","textChars":12,"textLines":1,"bbox":[46,610,400,30]}
+{"kind":"image","id":"im/9c7qd4fe","slide":1,"name":"","geometry":"roundRect","alt":"3Dステージエディターの実行画面","bbox":[760,80,478,530]}
+{"kind":"notes","id":"nt/w2acse","slide":1,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/nvnr5t","slide":2,"title":"StageEditorが編集状態を一元管理","textShapes":14}
+{"kind":"textbox","id":"sh/5s7ydovu","slide":2,"text":"StageEditorが編集状態を一元管理","textPreview":"StageEditorが編集状態を一元管理","textChars":21,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/i5gzitw3","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/3qpgbydo","slide":2,"bbox":[42,104,1196,2]}
+{"kind":"shape","id":"sh/sviho3el","slide":2,"bbox":[55,240,250,130]}
+{"kind":"textbox","id":"sh/dwrih8vq","slide":2,"text":"INPUT","textPreview":"INPUT","textChars":5,"textLines":1,"bbox":[73,260,214,30]}
+{"kind":"textbox","id":"sh/qtgzmtwf","slide":2,"text":"キー入力 / ImGui","textPreview":"キー入力 / ImGui","textChars":12,"textLines":1,"bbox":[73,305,214,42]}
+{"kind":"textbox","id":"sh/ru9gfyd0","slide":2,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[310,280,40,40]}
+{"kind":"shape","id":"sh/8zehcje1","slide":2,"bbox":[355,240,250,130]}
+{"kind":"textbox","id":"sh/t0ny54vm","slide":2,"text":"STAGE EDITOR","textPreview":"STAGE EDITOR","textChars":12,"textLines":1,"bbox":[373,260,214,30]}
+{"kind":"textbox","id":"sh/psn29gz6","slide":2,"text":"選択・配置・履歴・保存","textPreview":"選択・配置・履歴・保存","textChars":11,"textLines":1,"bbox":[373,305,214,42]}
+{"kind":"textbox","id":"sh/ore10byl","slide":2,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[610,280,40,40]}
+{"kind":"shape","id":"sh/nq5k76h0","slide":2,"bbox":[655,240,250,130]}
+{"kind":"textbox","id":"sh/2pwjy1gf","slide":2,"text":"OBJECT3D","textPreview":"OBJECT3D","textChars":8,"textLines":1,"bbox":[673,260,214,30]}
+{"kind":"textbox","id":"sh/xgn2dgz2","slide":2,"text":"生成・更新・描画","textPreview":"生成・更新・描画","textChars":8,"textLines":1,"bbox":[673,305,214,42]}
+{"kind":"textbox","id":"sh/wve14vyx","slide":2,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[910,280,40,40]}
+{"kind":"shape","id":"sh/bu5kbqhc","slide":2,"bbox":[955,240,250,130]}
+{"kind":"textbox","id":"sh/atwj2lgr","slide":2,"text":"JSON","textPreview":"JSON","textChars":4,"textLines":1,"bbox":[973,260,214,30]}
+{"kind":"textbox","id":"sh/lk72h0ze","slide":2,"text":"ステージ / プレイリスト","textPreview":"ステージ / プレイリスト","textChars":13,"textLines":1,"bbox":[973,305,214,42]}
+{"kind":"textbox","id":"sh/kjy18vyt","slide":2,"text":"編集ロジックをGameSceneから分離し、配置データを描画オブジェクトとファイルへ橋渡しする。","textPreview":"編集ロジックをGameSceneから分離し、配置データを描画オブジェクトとファイルへ橋渡しする。","textChars":48,"textLines":1,"bbox":[55,470,1170,80]}
+{"kind":"notes","id":"nt/nvnr5t","slide":2,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/8olnas","slide":3,"title":"定義と配置を分けてデータ駆動にする","textShapes":7}
+{"kind":"textbox","id":"sh/7qpkv2l8","slide":3,"text":"定義と配置を分けてデータ駆動にする","textPreview":"定義と配置を分けてデータ駆動にする","textChars":17,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/8ryl4n2d","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/ts72xs3y","slide":3,"bbox":[42,104,1196,2]}
+{"kind":"shape","id":"sh/ylwjydkb","slide":3,"bbox":[42,155,540,360]}
+{"kind":"textbox","id":"sh/zm5krilw","slide":3,"text":"struct ItemDefinition {\n  int id;\n  Category category;\n  const char* modelFile;\n  Vector4 color;\n  Vector3 defaultScale;\n};","textPreview":"struct ItemDefinition { |   int id; |   Category category; |   const char* modelFile; |   Vector4 color; |   Vector3 defaultScale; | };","textChars":123,"textLines":7,"bbox":[62,169,500,332]}
+{"kind":"shape","id":"sh/knel0n2h","slide":3,"bbox":[656,155,582,360]}
+{"kind":"textbox","id":"sh/lon2ts32","slide":3,"text":"struct Placement {\n  uint32_t id;\n  int itemId;\n  Vector3 position, rotation, scale;\n  int variant;\n  Vector3 moveOffset;\n};","textPreview":"struct Placement { |   uint32_t id; |   int itemId; |   Vector3 position, rotation, scale; |   int variant; |   Vector3 moveOffset; | };","textChars":124,"textLines":7,"bbox":[676,169,542,332]}
+{"kind":"textbox","id":"sh/axcjudkf","slide":3,"text":"種類ごとの固定情報","textPreview":"種類ごとの固定情報","textChars":9,"textLines":1,"bbox":[42,545,540,38]}
+{"kind":"textbox","id":"sh/by5knil0","slide":3,"text":"ステージごとに変化する情報","textPreview":"ステージごとに変化する情報","textChars":13,"textLines":1,"bbox":[656,545,582,38]}
+{"kind":"textbox","id":"sh/r2lkzm5k","slide":3,"text":"モデル情報を重複保存せず、itemIdで関連付ける。","textPreview":"モデル情報を重複保存せず、itemIdで関連付ける。","textChars":26,"textLines":1,"bbox":[42,615,1196,38]}
+{"kind":"notes","id":"nt/8olnas","slide":3,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/6zf1ue","slide":4,"title":"入力はEditorモードかつGameView上でだけ処理","textShapes":7}
+{"kind":"textbox","id":"sh/ru5ofmxg","slide":4,"text":"入力はEditorモードかつGameView上でだけ処理","textPreview":"入力はEditorモードかつGameView上でだけ処理","textChars":28,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/svep8re1","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/dwn6hwfm","slide":4,"bbox":[42,104,1196,2]}
+{"kind":"shape","id":"sh/i5c72xgz","slide":4,"bbox":[42,155,560,410]}
+{"kind":"textbox","id":"sh/365ob2xk","slide":4,"text":"if (mode_ != Mode::Editor ||\n    !gameViewHovered_ || io.WantTextInput) return;\n\nWASD : X / Y\nQ・E  : Z\nEnter : Place\nR     : Rotate Y 90°\nCtrl+Z / Ctrl+Y : Undo / Redo","textPreview":"if (mode_ != Mode::Editor || |     !gameViewHovered_ || io.WantTextInput) return; |  | WASD : X / Y | Q・E  : Z | Enter : Place | R     : ...","textChars":167,"textLines":8,"bbox":[62,169,520,382]}
+{"kind":"shape","id":"sh/4rep47ep","slide":4,"bbox":[680,215,12,12]}
+{"kind":"textbox","id":"sh/5sn6dcfa","slide":4,"text":"ゲーム操作との入力競合を防止","textPreview":"ゲーム操作との入力競合を防止","textChars":14,"textLines":1,"bbox":[708,205,472,46]}
+{"kind":"shape","id":"sh/21g7e1w3","slide":4,"bbox":[680,305,12,12]}
+{"kind":"textbox","id":"sh/nmp8n6xo","slide":4,"text":"テキスト入力中の誤配置を防止","textPreview":"テキスト入力中の誤配置を防止","textChars":14,"textLines":1,"bbox":[708,295,472,46]}
+{"kind":"shape","id":"sh/fe5k7mt4","slide":4,"bbox":[680,395,12,12]}
+{"kind":"textbox","id":"sh/udw3ehcj","slide":4,"text":"座標をステージ範囲内へclamp","textPreview":"座標をステージ範囲内へclamp","textChars":16,"textLines":1,"bbox":[708,385,472,46]}
+{"kind":"textbox","id":"sh/hg729wba","slide":4,"text":"編集可能な文脈を先に判定することで、同じキーを安全に共用。","textPreview":"編集可能な文脈を先に判定することで、同じキーを安全に共用。","textChars":29,"textLines":1,"bbox":[680,500,500,92]}
+{"kind":"notes","id":"nt/6zf1ue","slide":4,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/8gr4gv","slide":5,"title":"配置データからObject3dを再構築","textShapes":15}
+{"kind":"textbox","id":"sh/gvqxg32t","slide":5,"text":"配置データからObject3dを再構築","textPreview":"配置データからObject3dを再構築","textChars":19,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/fahwnyl8","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/u9ofet4n","slide":5,"bbox":[42,104,1196,2]}
+{"kind":"textbox","id":"sh/p0zet83a","slide":5,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[42,150,70,46]}
+{"kind":"textbox","id":"sh/4zqxkn2p","slide":5,"text":"Placement","textPreview":"Placement","textChars":9,"textLines":1,"bbox":[135,150,260,42]}
+{"kind":"textbox","id":"sh/3yhwrilk","slide":5,"text":"座標・回転・拡縮","textPreview":"座標・回転・拡縮","textChars":8,"textLines":1,"bbox":[430,150,760,50]}
+{"kind":"shape","id":"sh/2x8fidkz","slide":5,"bbox":[74,208,2,45]}
+{"kind":"textbox","id":"sh/54feho36","slide":5,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[42,262,70,46]}
+{"kind":"textbox","id":"sh/k36d8jml","slide":5,"text":"FindItem","textPreview":"FindItem","textChars":8,"textLines":1,"bbox":[135,262,260,42]}
+{"kind":"textbox","id":"sh/2dw3q547","slide":5,"text":"モデル・色を参照","textPreview":"モデル・色を参照","textChars":8,"textLines":1,"bbox":[430,262,760,50]}
+{"kind":"shape","id":"sh/ne5kzals","slide":5,"bbox":[74,320,2,45]}
+{"kind":"textbox","id":"sh/ofelsfmd","slide":5,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[42,374,70,46]}
+{"kind":"textbox","id":"sh/pg721k3y","slide":5,"text":"CreateObject","textPreview":"CreateObject","textChars":12,"textLines":1,"bbox":[135,374,260,42]}
+{"kind":"textbox","id":"sh/ahg3u54j","slide":5,"text":"Object3dを初期化","textPreview":"Object3dを初期化","textChars":12,"textLines":1,"bbox":[430,374,760,50]}
+{"kind":"shape","id":"sh/bipk3al4","slide":5,"bbox":[74,432,2,45]}
+{"kind":"textbox","id":"sh/wjylwfmp","slide":5,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[42,486,70,46]}
+{"kind":"textbox","id":"sh/xk7m5k3u","slide":5,"text":"Draw3D","textPreview":"Draw3D","textChars":6,"textLines":1,"bbox":[135,486,260,42]}
+{"kind":"textbox","id":"sh/ylg3yp4f","slide":5,"text":"配置物とカーソルを描画","textPreview":"配置物とカーソルを描画","textChars":11,"textLines":1,"bbox":[430,486,760,50]}
+{"kind":"textbox","id":"sh/j6p47ul0","slide":5,"text":"読込・Undo後はRebuildObjects()で表示状態を配置データへ同期する。","textPreview":"読込・Undo後はRebuildObjects()で表示状態を配置データへ同期する。","textChars":42,"textLines":1,"bbox":[42,610,1196,38]}
+{"kind":"notes","id":"nt/8gr4gv","slide":5,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/dwn678","slide":6,"title":"Snapshotで最大100手のUndo / Redo","textShapes":9}
+{"kind":"textbox","id":"sh/k321snu5","slide":6,"text":"Snapshotで最大100手のUndo / Redo","textPreview":"Snapshotで最大100手のUndo / Redo","textChars":27,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/j2t0zidk","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/ihkjqdcz","slide":6,"bbox":[42,104,1196,2]}
+{"kind":"shape","id":"sh/t8vi5svm","slide":6,"bbox":[42,160,590,390]}
+{"kind":"textbox","id":"sh/s7m1wnu1","slide":6,"text":"struct Snapshot {\n  std::vector<Placement> placements;\n  uint32_t nextId;\n};\n\nPlace / Remove / Rotate の直前に PushUndo();\nUndo時は現在状態をredoStackへ退避。","textPreview":"struct Snapshot { |   std::vector<Placement> placements; |   uint32_t nextId; | }; |  | Place / Remove / Rotate の直前に PushUndo(); | Undo時は...","textChars":143,"textLines":7,"bbox":[62,174,550,362]}
+{"kind":"textbox","id":"sh/76d03idg","slide":6,"text":"編集前","textPreview":"編集前","textChars":3,"textLines":1,"bbox":[700,185,180,38]}
+{"kind":"textbox","id":"sh/65kjudcv","slide":6,"text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[880,185,60,38]}
+{"kind":"textbox","id":"sh/9critovi","slide":6,"text":"編集後","textPreview":"編集後","textChars":3,"textLines":1,"bbox":[940,185,180,38]}
+{"kind":"shape","id":"sh/8bihk3ux","slide":6,"bbox":[710,260,170,150]}
+{"kind":"shape","id":"sh/mlc3m1sb","slide":6,"bbox":[950,260,170,150]}
+{"kind":"textbox","id":"sh/nml4f6tg","slide":6,"text":"placements\nnextId","textPreview":"placements | nextId","textChars":17,"textLines":2,"bbox":[710,290,170,90]}
+{"kind":"textbox","id":"sh/onuloba1","slide":6,"text":"placements'\nnextId'","textPreview":"placements' | nextId'","textChars":19,"textLines":2,"bbox":[950,290,170,90]}
+{"kind":"textbox","id":"sh/983mhgbm","slide":6,"text":"オブジェクトそのものではなく、再生成可能な配置データを履歴として保持。","textPreview":"オブジェクトそのものではなく、再生成可能な配置データを履歴として保持。","textChars":35,"textLines":1,"bbox":[680,465,500,95]}
+{"kind":"notes","id":"nt/dwn678","slide":6,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/2alaho","slide":7,"title":"JSON保存とステージ順管理","textShapes":7}
+{"kind":"textbox","id":"sh/za1gzy10","slide":7,"text":"JSON保存とステージ順管理","textPreview":"JSON保存とステージ順管理","textChars":14,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/0vahs3il","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/lwjy18j6","slide":7,"bbox":[42,104,1196,2]}
+{"kind":"shape","id":"sh/mxszud0r","slide":7,"bbox":[42,155,590,405]}
+{"kind":"textbox","id":"sh/ny1g3y1c","slide":7,"text":"{\n  \"version\": 4,\n  \"coordinate_system\": \"integer_3d_cursor\",\n  \"size\": [100,100,20],\n  \"placements\": [\n    { \"item_id\": 3, \"position\": [5,2,0] }\n  ]\n}","textPreview":"{ |   \"version\": 4, |   \"coordinate_system\": \"integer_3d_cursor\", |   \"size\": [100,100,20], |   \"placements\": [ |     { \"item_id\": 3, \"po...","textChars":151,"textLines":8,"bbox":[62,169,550,377]}
+{"kind":"shape","id":"sh/8zahw3ix","slide":7,"bbox":[700,200,12,12]}
+{"kind":"textbox","id":"sh/90jy58z2","slide":7,"text":"既存ファイルを上書きしない固有名保存","textPreview":"既存ファイルを上書きしない固有名保存","textChars":18,"textLines":1,"bbox":[728,190,452,46]}
+{"kind":"shape","id":"sh/21ofi90n","slide":7,"bbox":[700,290,12,12]}
+{"kind":"textbox","id":"sh/32xgre1s","slide":7,"text":"位置・回転・拡縮・variantを永続化","textPreview":"位置・回転・拡縮・variantを永続化","textChars":20,"textLines":1,"bbox":[728,280,452,46]}
+{"kind":"shape","id":"sh/7q5gnq9g","slide":7,"bbox":[700,380,12,12]}
+{"kind":"textbox","id":"sh/mpwzulsv","slide":7,"text":"sequence.txtでステージ順を管理","textPreview":"sequence.txtでステージ順を管理","textChars":21,"textLines":1,"bbox":[728,370,452,46]}
+{"kind":"textbox","id":"sh/9s7ipgrm","slide":7,"text":"編集結果をデータとして残し、ゲーム実行時に再利用できる。","textPreview":"編集結果をデータとして残し、ゲーム実行時に再利用できる。","textChars":28,"textLines":1,"bbox":[700,500,480,75]}
+{"kind":"notes","id":"nt/2alaho","slide":7,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}
+{"kind":"slide","id":"sl/7qju7c","slide":8,"title":"モード分離を土台にゲームへ接続","textShapes":11}
+{"kind":"textbox","id":"sh/jet8butg","slide":8,"text":"モード分離を土台にゲームへ接続","textPreview":"モード分離を土台にゲームへ接続","textChars":15,"textLines":1,"bbox":[42,30,1110,62]}
+{"kind":"textbox","id":"sh/kf2p4zu1","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1184,40,54,28]}
+{"kind":"shape","id":"sh/lgbqd4b6","slide":8,"bbox":[42,104,1196,2]}
+{"kind":"textbox","id":"sh/6hk76psr","slide":8,"text":"EDITOR","textPreview":"EDITOR","textChars":6,"textLines":1,"bbox":[42,170,420,50]}
+{"kind":"shape","id":"sh/7it8futc","slide":8,"bbox":[42,255,12,12]}
+{"kind":"textbox","id":"sh/8j2p8zax","slide":8,"text":"配置カーソルを表示","textPreview":"配置カーソルを表示","textChars":9,"textLines":1,"bbox":[70,245,402,46]}
+{"kind":"shape","id":"sh/tkbqh4bi","slide":8,"bbox":[42,327,12,12]}
+{"kind":"textbox","id":"sh/mlg7u5cn","slide":8,"text":"編集入力を処理","textPreview":"編集入力を処理","textChars":7,"textLines":1,"bbox":[70,317,402,46]}
+{"kind":"shape","id":"sh/nmpo3at8","slide":8,"bbox":[42,399,12,12]}
+{"kind":"textbox","id":"sh/bm5gjydg","slide":8,"text":"ファイル保存・読込","textPreview":"ファイル保存・読込","textChars":9,"textLines":1,"bbox":[70,389,402,46]}
+{"kind":"textbox","id":"sh/alwzqdwv","slide":8,"text":"GAMEPLAY","textPreview":"GAMEPLAY","textChars":8,"textLines":1,"bbox":[690,170,420,50]}
+{"kind":"shape","id":"sh/xonil8v6","slide":8,"bbox":[690,255,12,12]}
+{"kind":"textbox","id":"sh/cnehs3e1","slide":8,"text":"配置カーソルを非表示","textPreview":"配置カーソルを非表示","textChars":10,"textLines":1,"bbox":[718,245,452,46]}
+{"kind":"shape","id":"sh/nylgfyd4","slide":8,"bbox":[690,327,12,12]}
+{"kind":"textbox","id":"sh/2xczmtwj","slide":8,"text":"編集入力を停止","textPreview":"編集入力を停止","textChars":7,"textLines":1,"bbox":[718,317,452,46]}
+{"kind":"shape","id":"sh/p0nyh8va","slide":8,"bbox":[690,399,12,12]}
+{"kind":"textbox","id":"sh/ozuho3ep","slide":8,"text":"配置済みオブジェクトのみ描画","textPreview":"配置済みオブジェクトのみ描画","textChars":14,"textLines":1,"bbox":[718,389,452,46]}
+{"kind":"textbox","id":"sh/fulgbed8","slide":8,"text":"次段階：配置データから当たり判定とギミック動作を生成し、編集→試遊を短い周期で回す。","textPreview":"次段階：配置データから当たり判定とギミック動作を生成し、編集→試遊を短い周期で回す。","textChars":42,"textLines":1,"bbox":[42,550,1196,75]}
+{"kind":"notes","id":"nt/7qju7c","slide":8,"text":"[Sources]\n- User-provided project source code and gameplay capture.\n[/Sources]"}

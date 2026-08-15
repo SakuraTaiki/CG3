@@ -5,13 +5,16 @@ void SceneDebugPanel::DrawSceneControl(GameSceneDrawMode& drawMode, HitEffectCon
     ImGui::Text("Scene Control");
     ImGui::Separator();
 
-    if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
-        hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
-        Detail::AddEditorLog(Detail::EditorLogType::Info, "Effect emitted from Debug Tools.");
+    if (drawMode == GameSceneDrawMode::Effect) {
+        if (ImGui::Button("Emit Effect SPACE", ImVec2(180.0f, 32.0f))) {
+            hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
+            Detail::AddEditorLog(Detail::EditorLogType::Info, "Effect emitted from Debug Tools.");
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("SPACE key also emits");
+    } else {
+        ImGui::TextDisabled("Effect emission is available only in Effect / Debug OBJ mode.");
     }
-
-    ImGui::SameLine();
-    ImGui::TextDisabled("SPACE key also emits");
 
     ImGui::Spacing();
 
@@ -20,12 +23,16 @@ void SceneDebugPanel::DrawSceneControl(GameSceneDrawMode& drawMode, HitEffectCon
 
     int currentMode = static_cast<int>(drawMode);
 
-    if (ImGui::RadioButton("Normal OBJ / Terrain", currentMode == 0)) {
+    if (ImGui::RadioButton("Stage / GamePlay", currentMode == 0)) {
         drawMode = GameSceneDrawMode::NormalObj;
     }
 
     if (ImGui::RadioButton("Animation glTF", currentMode == 1)) {
         drawMode = GameSceneDrawMode::Animation;
+    }
+
+    if (ImGui::RadioButton("Effect / Debug OBJ", currentMode == 2)) {
+        drawMode = GameSceneDrawMode::Effect;
     }
 
     ImGui::Spacing();
