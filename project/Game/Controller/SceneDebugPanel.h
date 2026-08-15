@@ -149,7 +149,7 @@ private:
     AnimationDebugPanel animationDebugPanel_;
 
     bool showTransformGizmo_ = true;
-    bool showColliders_ = true;
+    bool showColliders_ = false;
     int gizmoOperation_ = 0;
     int gizmoMode_ = 0;
 

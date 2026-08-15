@@ -25,6 +25,7 @@ void SceneDebugPanel::Draw(
         workspaceModeSyncInitialized_ = true;
     } else if (gamePlayMode != previousGamePlayMode_) {
         ApplyWorkspace(gamePlayMode ? Workspace::GameTesting : Workspace::StageEditing);
+        drawMode = GameSceneDrawMode::NormalObj;
         previousGamePlayMode_ = gamePlayMode;
     }
 
@@ -34,6 +35,7 @@ void SceneDebugPanel::Draw(
     }
     if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
         stageEditor.ToggleMode();
+        drawMode = GameSceneDrawMode::NormalObj;
     }
     if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_P)) {
         showProjectWindow_ = !showProjectWindow_;
@@ -295,18 +297,20 @@ void SceneDebugPanel::DrawMainMenuBar(
                 sceneObjects.AddBoxCollider(selectedObjectIndex_);
             }
 
-            ImGui::Separator();
-            ImGui::MenuItem("Show Colliders", nullptr, &showColliders_);
+            if (workspace_ == Workspace::Effects || workspace_ == Workspace::SceneEditing) {
+                ImGui::Separator();
+                ImGui::MenuItem("Show Colliders", nullptr, &showColliders_);
+            }
 
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Workspace")) {
-            if (ImGui::MenuItem("Stage Editing", nullptr, workspace_ == Workspace::StageEditing)) ApplyWorkspace(Workspace::StageEditing);
-            if (ImGui::MenuItem("Game Testing", nullptr, workspace_ == Workspace::GameTesting)) ApplyWorkspace(Workspace::GameTesting);
-            if (ImGui::MenuItem("Scene Editing", nullptr, workspace_ == Workspace::SceneEditing)) ApplyWorkspace(Workspace::SceneEditing);
-            if (ImGui::MenuItem("Effects", nullptr, workspace_ == Workspace::Effects)) ApplyWorkspace(Workspace::Effects);
-            if (ImGui::MenuItem("Animation", nullptr, workspace_ == Workspace::Animation)) ApplyWorkspace(Workspace::Animation);
+            if (ImGui::MenuItem("Stage Editing", nullptr, workspace_ == Workspace::StageEditing)) { ApplyWorkspace(Workspace::StageEditing); drawMode = GameSceneDrawMode::NormalObj; }
+            if (ImGui::MenuItem("Game Testing", nullptr, workspace_ == Workspace::GameTesting)) { ApplyWorkspace(Workspace::GameTesting); drawMode = GameSceneDrawMode::NormalObj; }
+            if (ImGui::MenuItem("Scene Editing", nullptr, workspace_ == Workspace::SceneEditing)) { ApplyWorkspace(Workspace::SceneEditing); drawMode = GameSceneDrawMode::Effect; }
+            if (ImGui::MenuItem("Effects", nullptr, workspace_ == Workspace::Effects)) { ApplyWorkspace(Workspace::Effects); drawMode = GameSceneDrawMode::Effect; }
+            if (ImGui::MenuItem("Animation", nullptr, workspace_ == Workspace::Animation)) { ApplyWorkspace(Workspace::Animation); drawMode = GameSceneDrawMode::Animation; }
             ImGui::Separator();
             if (ImGui::MenuItem("Save Current Dock Layout")) {
                 ImGui::SaveIniSettingsToDisk("imgui.ini");
@@ -350,7 +354,7 @@ void SceneDebugPanel::DrawMainMenuBar(
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Emit")) {
+        if (drawMode == GameSceneDrawMode::Effect && ImGui::Button("Emit")) {
             hitEffect.Emit({ 0.0f, 3.0f, 0.0f });
             Detail::AddEditorLog(Detail::EditorLogType::Info, "Effect emitted from menu bar.");
         }

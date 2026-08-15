@@ -2,5 +2,6 @@
 
 enum class GameSceneDrawMode {
     NormalObj,
-    Animation
+    Animation,
+    Effect
 };

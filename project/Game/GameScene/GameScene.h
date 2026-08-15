@@ -45,6 +45,7 @@ private:
     void InitializeTaskJsonHotReload();
     void UpdateTaskJsonHotReload();
     void UpdatePostEffectShortcuts();
+    void UpdateSideScrollCamera();
    
 
     // 更新処理。
@@ -87,4 +88,7 @@ private:
     bool taskJsonWatchInitialized_ = false;
     bool taskJsonReloadPending_ = false;
     int taskJsonReloadAttempts_ = 0;
+
+    bool sideScrollCameraActive_ = false;
+    float sideScrollCameraX_ = 0.0f;
 };

@@ -15,6 +15,7 @@
 #include "WinApp.h"
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 
 #ifdef USE_IMGUI
@@ -171,9 +172,11 @@ void GameScene::InitializePrimitive()
 void GameScene::Update() {
     Input* input = context_->GetInput();
 
-    UpdatePostEffectShortcuts();
+    if (drawMode_ == GameSceneDrawMode::Effect) {
+        UpdatePostEffectShortcuts();
+    }
 
-    if (stageEditor_.IsGamePlayMode() && input->TriggerKey(DIK_SPACE)) {
+    if (drawMode_ == GameSceneDrawMode::Effect && input->TriggerKey(DIK_SPACE)) {
         hitEffect_.Emit({ 0.0f, 3.0f, 0.0f });
     }
 
@@ -183,12 +186,17 @@ void GameScene::Update() {
     // Draw modes are exclusive tool contexts.  Animation mode must not
     // update the stage placement cursor or consume the same WASD input.
     stageEditor_.SetActive(drawMode_ == GameSceneDrawMode::NormalObj);
-    stageEditor_.Update();
+    stageEditor_.Update(input);
 
-    cameraDebug_.Update(
-        context_->GetCamera(),
-        input
-    );
+    if (drawMode_ == GameSceneDrawMode::NormalObj && stageEditor_.IsGamePlayMode()) {
+        UpdateSideScrollCamera();
+    } else {
+        sideScrollCameraActive_ = false;
+        cameraDebug_.Update(
+            context_->GetCamera(),
+            input
+        );
+    }
 
     WinApp* winApp =
         context_->GetWinApp();
@@ -221,19 +229,20 @@ void GameScene::Update() {
         sprite_->Update();
     }
 
+    const bool effectMode = drawMode_ == GameSceneDrawMode::Effect;
     if (ring_) {
-        ring_->SetIsActive(hitEffect_.EnableRing());
+        ring_->SetIsActive(effectMode && hitEffect_.EnableRing());
         ring_->Update(view, projection);
     }
 
     if (cylinder_) {
-        cylinder_->SetIsActive(hitEffect_.EnableCylinder());
+        cylinder_->SetIsActive(effectMode && hitEffect_.EnableCylinder());
         cylinder_->Update(view, projection);
     }
 
     if (primitive_) {
         primitive_->SetIsActive(
-            hitEffect_.EnablePrimitive()
+            effectMode && hitEffect_.EnablePrimitive()
         );
 
         primitive_->Update(
@@ -242,8 +251,10 @@ void GameScene::Update() {
         );
     }
 
-    context_->GetParticleManager()->Update(view, projection);
-    context_->GetGPUParticleManager()->Update(view, projection);
+    if (effectMode) {
+        context_->GetParticleManager()->Update(view, projection);
+        context_->GetGPUParticleManager()->Update(view, projection);
+    }
 
     sceneDebugPanel_.Draw(
         context_,
@@ -259,6 +270,50 @@ void GameScene::Update() {
         cylinder_.get(),
         primitive_.get()
     );
+}
+
+void GameScene::UpdateSideScrollCamera() {
+    Camera* camera = context_ ? context_->GetCamera() : nullptr;
+    if (!camera) return;
+
+    constexpr float deltaTime = 1.0f / 60.0f;
+    constexpr float cameraZ = -30.0f;
+    constexpr float cameraY = 7.0f;
+    constexpr float followSmoothness = 10.0f;
+
+    const float distance = std::abs(cameraZ);
+    const float halfViewHeight = std::tan(camera->GetFovY() * 0.5f) * distance;
+    const float halfViewWidth = halfViewHeight * camera->GetAspectRatio();
+    const float stageWidth =
+        static_cast<float>(stageEditor_.GetStageWidthInTiles()) * StageEditor::kTileWorldSize;
+
+    const float minimumCameraX = halfViewWidth;
+    const float maximumCameraX = (std::max)(minimumCameraX, stageWidth - halfViewWidth);
+    const float playerX = stageEditor_.GetPlayerPosition().x;
+
+    // Start at the left edge. Once the player crosses the screen center,
+    // follow only to the right; clamping prevents showing outside the stage.
+    float targetCameraX = std::clamp(
+        (std::max)(minimumCameraX, playerX),
+        minimumCameraX,
+        maximumCameraX
+    );
+
+    if (!sideScrollCameraActive_) {
+        sideScrollCameraX_ = targetCameraX;
+        sideScrollCameraActive_ = true;
+    } else {
+        const float blend = 1.0f - std::exp(-followSmoothness * deltaTime);
+        sideScrollCameraX_ += (targetCameraX - sideScrollCameraX_) * blend;
+        sideScrollCameraX_ = std::clamp(
+            sideScrollCameraX_,
+            minimumCameraX,
+            maximumCameraX
+        );
+    }
+
+    camera->SetRotate({0.0f, 0.0f, 0.0f});
+    camera->SetTranslate({sideScrollCameraX_, cameraY, cameraZ});
 }
 
 void GameScene::UpdatePostEffectShortcuts() {
@@ -457,7 +512,7 @@ void GameScene::UpdateTaskJsonHotReload() {
 }
 
 void GameScene::UpdateObjects() {
-    if (drawMode_ == GameSceneDrawMode::NormalObj) {
+    if (drawMode_ == GameSceneDrawMode::Effect) {
         sceneObjects_.Update();
     }
 
@@ -487,10 +542,7 @@ void GameScene::Draw3D() {
     // placed stage items must be previewed against the same clean view that
     // will be used for the stage itself.  Runtime scene objects return when
     // entering GamePlay mode.
-    if (
-        drawMode_ == GameSceneDrawMode::NormalObj &&
-        stageEditor_.IsGamePlayMode()
-        ) {
+    if (drawMode_ == GameSceneDrawMode::Effect) {
         sceneObjects_.Draw();
     }
 
@@ -504,20 +556,22 @@ void GameScene::Draw3D() {
 
     environment_.Draw();
 
-    if (ring_) {
+    if (drawMode_ == GameSceneDrawMode::Effect && ring_) {
         ring_->Draw();
     }
 
-    if (cylinder_) {
+    if (drawMode_ == GameSceneDrawMode::Effect && cylinder_) {
         cylinder_->Draw();
     }
 
-    if (primitive_) {
+    if (drawMode_ == GameSceneDrawMode::Effect && primitive_) {
         primitive_->Draw();
     }
 
-    context_->GetParticleManager()->Draw();
-    context_->GetGPUParticleManager()->Draw();
+    if (drawMode_ == GameSceneDrawMode::Effect) {
+        context_->GetParticleManager()->Draw();
+        context_->GetGPUParticleManager()->Draw();
+    }
 }
 
 
