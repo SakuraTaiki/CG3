@@ -50,6 +50,7 @@ const StageEditor::ItemDefinition kItems[] = {
     {25, "Player Start", StageEditor::Category::System, "Resources/Editor", "ico_sphere.obj", {0.2f,0.72f,1,1}, {0.5f,0.5f,0.5f}},
     {26, "Checkpoint", StageEditor::Category::System, "Resources/Editor", "joint_box.obj", {0.25f,1,0.45f,1}, {0.25f,1.4f,0.25f}},
     {27, "Spike", StageEditor::Category::Gimmick, "Resources/Editor", "ico_sphere.obj", {0.95f,0.18f,0.18f,1}, {0.45f,0.45f,0.45f}},
+    {28, "Falling Floor", StageEditor::Category::Gimmick, "Resources/Editor", "joint_box.obj", {0.82f,0.48f,0.18f,1}, {1.0f,0.3f,1.0f}},
 };
 
 float DistanceSquared(const Vector3& a, const Vector3& b) {
@@ -564,10 +565,16 @@ void StageEditor::ResetRuntimeState() {
     runtimePlacementActive_.assign(placements_.size(), 1);
     runtimePlacementTouching_.assign(placements_.size(), 0);
     runtimePlacementPositions_.resize(placements_.size());
+    runtimeEnemyDirections_.assign(placements_.size(), 1.0f);
+    runtimeEnemyAlerted_.assign(placements_.size(), 0);
+    runtimeFallingFloorStates_.assign(placements_.size(), 0);
+    runtimeFallingFloorTimers_.assign(placements_.size(), 0.0f);
+    runtimeFallingFloorVelocities_.assign(placements_.size(), 0.0f);
 
     playerRespawnPosition_ = GridToWorld(1, 2);
     for (size_t i = 0; i < placements_.size(); ++i) {
         runtimePlacementPositions_[i] = placements_[i].position;
+        runtimeEnemyDirections_[i] = (i % 2 == 0) ? 1.0f : -1.0f;
         if (placements_[i].itemId == 25) playerRespawnPosition_ = placements_[i].position;
         if (placements_[i].itemId == 5) runtimePlacementActive_[i] = 0;
     }
@@ -620,9 +627,13 @@ void StageEditor::UpdateRuntimeObjects(float deltaTime) {
     playerFlashTimer_ = (std::max)(0.0f, playerFlashTimer_ - deltaTime);
 
     if (runtimePlacementPositions_.size() != placements_.size()) ResetRuntimeState();
+    UpdateEnemies(deltaTime);
     for (size_t i = 0; i < placements_.size(); ++i) {
         const Vector3 previousPosition = runtimePlacementPositions_[i];
-        Vector3 position = placements_[i].position;
+        const int itemId = placements_[i].itemId;
+        Vector3 position = ((itemId >= 22 && itemId <= 24) || itemId == 28)
+            ? runtimePlacementPositions_[i]
+            : placements_[i].position;
         if (placements_[i].itemId == 8) {
             const float amount = 0.5f - 0.5f * std::cos(runtimeTime_ * 1.5f);
             position.x += placements_[i].moveOffset.x * amount;
@@ -638,6 +649,60 @@ void StageEditor::UpdateRuntimeObjects(float deltaTime) {
                 playerPosition_.x += position.x - previousPosition.x;
                 playerPosition_.y += position.y - previousPosition.y;
             }
+        } else if (itemId == 28) {
+            const float halfX = (std::max)(std::abs(placements_[i].scale.x) * 0.5f, 0.15f);
+            const float halfY = (std::max)(std::abs(placements_[i].scale.y) * 0.5f, 0.15f);
+            const float oldTop = previousPosition.y + halfY;
+            const bool standingOnFloor = IsRuntimePlacementActive(i) &&
+                std::abs(playerPosition_.x - previousPosition.x) <= kPlayerHalfSize + halfX &&
+                std::abs((playerPosition_.y - kPlayerHalfSize) - oldTop) <= 0.09f;
+            uint8_t& state = runtimeFallingFloorStates_[i];
+            float& timer = runtimeFallingFloorTimers_[i];
+            float& velocity = runtimeFallingFloorVelocities_[i];
+
+            if (state == 0) { // Waiting for the player.
+                position = placements_[i].position;
+                if (standingOnFloor) {
+                    state = 1;
+                    timer = 0.7f;
+                    ShowRuntimeMessage("FLOOR IS FALLING!", 0.8f);
+                }
+            } else if (state == 1) { // Warning shake before falling.
+                timer -= deltaTime;
+                position = placements_[i].position;
+                position.x += std::sin(runtimeTime_ * 55.0f) * 0.035f;
+                if (timer <= 0.0f) {
+                    state = 2;
+                    velocity = 0.0f;
+                }
+            } else if (state == 2) { // Falling under gravity.
+                velocity -= 18.0f * deltaTime;
+                position.y += velocity * deltaTime;
+                if (position.y < -3.0f) {
+                    state = 3;
+                    timer = 1.6f;
+                    runtimePlacementActive_[i] = 0;
+                    position = placements_[i].position;
+                }
+            } else { // Hidden briefly, then restored at its saved position.
+                timer -= deltaTime;
+                position = placements_[i].position;
+                if (timer <= 0.0f) {
+                    state = 0;
+                    velocity = 0.0f;
+                    runtimePlacementActive_[i] = 1;
+                }
+            }
+
+            if (standingOnFloor && state != 3) {
+                playerPosition_.x += position.x - previousPosition.x;
+                playerPosition_.y += position.y - previousPosition.y;
+            }
+            if (i < objects_.size() && objects_[i]) {
+                objects_[i]->SetColor(state == 1
+                    ? Vector4{1.0f,0.2f,0.08f,1.0f}
+                    : Vector4{0.82f,0.48f,0.18f,1.0f});
+            }
         }
         runtimePlacementPositions_[i] = position;
         if (i < objects_.size() && objects_[i]) objects_[i]->SetPosition(position);
@@ -648,6 +713,102 @@ void StageEditor::UpdateRuntimeObjects(float deltaTime) {
             ? Vector4{0.2f,1.0f,0.35f,1.0f}
             : (playerFlashTimer_ > 0.0f ? Vector4{1.0f,0.15f,0.12f,1.0f} : Vector4{0.12f,0.55f,1.0f,1.0f});
         playerObject_->SetColor(color);
+    }
+}
+
+bool StageEditor::IsPlacementBlocked(const Vector3& position, float halfX, float halfY) const {
+    constexpr float inset = 0.01f;
+    const int minX = static_cast<int>(std::floor((position.x - halfX + inset) / kTileWorldSize));
+    const int maxX = static_cast<int>(std::floor((position.x + halfX - inset) / kTileWorldSize));
+    const int minY = static_cast<int>(std::floor((position.y - halfY + inset) / kTileWorldSize));
+    const int maxY = static_cast<int>(std::floor((position.y + halfY - inset) / kTileWorldSize));
+    for (int y = minY; y <= maxY; ++y) {
+        for (int x = minX; x <= maxX; ++x) {
+            if (IsCollisionSolid(x, y)) return true;
+        }
+    }
+    return false;
+}
+
+void StageEditor::UpdateEnemies(float deltaTime) {
+    if (goalReached_) return;
+    if (runtimeEnemyDirections_.size() != placements_.size()) {
+        runtimeEnemyDirections_.assign(placements_.size(), 1.0f);
+    }
+    if (runtimeEnemyAlerted_.size() != placements_.size()) {
+        runtimeEnemyAlerted_.assign(placements_.size(), 0);
+    }
+
+    for (size_t i = 0; i < placements_.size(); ++i) {
+        const Placement& placement = placements_[i];
+        if (placement.itemId < 22 || placement.itemId > 24 || !IsRuntimePlacementActive(i)) continue;
+
+        Vector3 position = runtimePlacementPositions_[i];
+        const float halfX = (std::max)(std::abs(placement.scale.x) * 0.5f, 0.15f);
+        const float halfY = (std::max)(std::abs(placement.scale.y) * 0.5f, 0.15f);
+
+        if (placement.itemId == 22) { // Walker: walls and ledges reverse its patrol direction.
+            constexpr float speed = 1.6f;
+            float direction = runtimeEnemyDirections_[i];
+            Vector3 candidate = position;
+            candidate.x += direction * speed * deltaTime;
+            const int aheadX = static_cast<int>(std::floor(
+                (candidate.x + direction * (halfX + 0.04f)) / kTileWorldSize));
+            // Enemies are visually smaller than one tile, but their placement is
+            // tile-centered. Probe from the bottom of that placement cell so a
+            // walker placed directly above a floor recognizes the floor below.
+            const int groundY = static_cast<int>(std::floor(
+                (candidate.y - (std::max)(halfY, kTileWorldSize * 0.5f) - 0.06f) / kTileWorldSize));
+            const bool wallAhead = IsPlacementBlocked(candidate, halfX, halfY);
+            const bool ledgeAhead = !IsCollisionSolid(aheadX, groundY);
+            if (wallAhead || ledgeAhead) {
+                runtimeEnemyDirections_[i] = -direction;
+            } else {
+                position = candidate;
+            }
+        } else if (placement.itemId == 23) { // Flyer: loops around its saved spawn point.
+            const float phase = static_cast<float>(i) * 0.73f;
+            Vector3 candidate = placement.position;
+            candidate.x += std::sin(runtimeTime_ * 1.25f + phase) * 2.0f;
+            candidate.y += std::sin(runtimeTime_ * 2.1f + phase) * 0.65f;
+            if (!IsPlacementBlocked(candidate, halfX, halfY)) position = candidate;
+        } else { // Chaser: detects the player, pursues, then returns to its spawn point.
+            constexpr float detectDistance = 7.0f;
+            constexpr float loseDistance = 9.0f;
+            const float playerDx = playerPosition_.x - position.x;
+            const float playerDy = playerPosition_.y - position.y;
+            const float playerDistance = std::sqrt(playerDx * playerDx + playerDy * playerDy);
+            const bool wasAlerted = runtimeEnemyAlerted_[i] != 0;
+            if (!wasAlerted && playerDistance <= detectDistance) {
+                runtimeEnemyAlerted_[i] = 1;
+                ShowRuntimeMessage("CHASER ALERT!", 0.8f);
+            } else if (wasAlerted && playerDistance >= loseDistance) {
+                runtimeEnemyAlerted_[i] = 0;
+            }
+
+            const bool alerted = runtimeEnemyAlerted_[i] != 0;
+            const Vector3 target = alerted ? playerPosition_ : placement.position;
+            const float dx = target.x - position.x;
+            const float dy = target.y - position.y;
+            const float distance = std::sqrt(dx * dx + dy * dy);
+            if (distance > 0.02f) {
+                const float moveDistance = (alerted ? 2.6f : 1.4f) * deltaTime;
+                const float step = (std::min)(moveDistance, distance) / distance;
+                Vector3 candidate = position;
+                candidate.x += dx * step;
+                if (!IsPlacementBlocked(candidate, halfX, halfY)) position.x = candidate.x;
+                candidate = position;
+                candidate.y += dy * step;
+                if (!IsPlacementBlocked(candidate, halfX, halfY)) position.y = candidate.y;
+            }
+            if (i < objects_.size() && objects_[i]) {
+                objects_[i]->SetColor(alerted
+                    ? Vector4{1.0f,0.9f,0.1f,1.0f}
+                    : Vector4{0.95f,0.12f,0.12f,1.0f});
+            }
+        }
+
+        runtimePlacementPositions_[i] = position;
     }
 }
 
@@ -707,7 +868,7 @@ void StageEditor::ResolvePlacedSolidCollisions() {
     for (size_t i = 0; i < placements_.size(); ++i) {
         if (!IsRuntimePlacementActive(i)) continue;
         const int itemId = placements_[i].itemId;
-        if (itemId != 4 && itemId != 5 && itemId != 8 && itemId != 9 && itemId != 10) continue;
+        if (itemId != 4 && itemId != 5 && itemId != 8 && itemId != 9 && itemId != 10 && itemId != 28) continue;
         if (!IsPlayerOverlappingPlacement(i)) continue;
 
         const Vector3 position = GetRuntimePlacementPosition(i);
