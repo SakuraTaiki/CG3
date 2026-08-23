@@ -105,6 +105,7 @@ private:
     void RespawnPlayer(bool damaged = false);
     void UpdatePlayer(Input* input);
     void UpdateRuntimeObjects(float deltaTime);
+    void UpdateEnemies(float deltaTime);
     void UpdateGimmickCollisions(Input* input, float deltaTime);
     void ResolvePlacedSolidCollisions();
     bool IsPlayerOverlappingPlacement(size_t index, float padding = 0.0f) const;
@@ -114,6 +115,7 @@ private:
     void MovePlayerHorizontal(float amount);
     void MovePlayerVertical(float amount);
     bool IsCollisionSolid(int gridX, int gridY) const;
+    bool IsPlacementBlocked(const Vector3& position, float halfX, float halfY) const;
     void PlaceItem();
     void RemoveNearest();
     void RotateCursor();
@@ -177,6 +179,11 @@ private:
     std::vector<uint8_t> runtimePlacementActive_;
     std::vector<uint8_t> runtimePlacementTouching_;
     std::vector<Vector3> runtimePlacementPositions_;
+    std::vector<float> runtimeEnemyDirections_;
+    std::vector<uint8_t> runtimeEnemyAlerted_;
+    std::vector<uint8_t> runtimeFallingFloorStates_;
+    std::vector<float> runtimeFallingFloorTimers_;
+    std::vector<float> runtimeFallingFloorVelocities_;
     std::vector<uint8_t> runtimeTileActive_;
     float runtimeTime_ = 0.0f;
     float playerFlashTimer_ = 0.0f;
